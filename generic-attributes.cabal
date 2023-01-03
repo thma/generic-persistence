@@ -25,7 +25,7 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      TypeInfo
   other-modules:
       Paths_generic_attributes
   hs-source-dirs:
