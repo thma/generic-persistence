@@ -1,7 +1,10 @@
-module Main where
+module Main (main) where
 
 import Data.Data
 import TypeInfo
+import SqlGenerator
+
+
 
 -- Define a sample data type
 data MyType = MyType Int String

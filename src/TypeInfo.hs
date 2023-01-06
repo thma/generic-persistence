@@ -4,7 +4,6 @@ module TypeInfo
   , FieldInfo(..)
   , typeInfo
   , fieldInfo
-  , insertStmtFor
   ) where
     
 import Data.Data
@@ -29,13 +28,7 @@ typeInfo x = TypeInfo
   , typeFields = fieldInfo x
   } 
   
-insertStmtFor :: Data a => a -> String
-insertStmtFor x = "INSERT INTO " 
-  ++ show (typeName $ typeInfo x) 
-  ++ " (" ++ intercalate ", " (map (fromJust . fieldName) $ fieldInfo x)
-  ++ ") VALUES (" 
-  ++ show (typeFields $ typeInfo x) 
-  ++ ");"
+
     
 -- | A function that returns a list of FieldInfos representing the name and type of each field in a data type.
 fieldInfo :: (Data a) => a -> [FieldInfo]
