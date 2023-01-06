@@ -6,9 +6,13 @@ module TypeInfo
   , fieldInfo
   ) where
     
-import Data.Data
-import Data.Maybe
-import Data.List
+import Data.Data (Data, gmapQ, dataTypeOf, dataTypeConstrs, typeOf, Constr, TypeRep, constrFields)
+
+{--
+
+https://chrisdone.com/posts/data-typeable/
+
+--}
     
 data FieldInfo = FieldInfo
   { fieldName :: Maybe String -- ^ The name of the field, Nothing if it has none.
@@ -27,9 +31,7 @@ typeInfo x = TypeInfo
   , typeConstrs = dataTypeConstrs $ dataTypeOf x
   , typeFields = fieldInfo x
   } 
-  
-
-    
+      
 -- | A function that returns a list of FieldInfos representing the name and type of each field in a data type.
 fieldInfo :: (Data a) => a -> [FieldInfo]
 fieldInfo x = zipWith FieldInfo names types
@@ -39,8 +41,4 @@ fieldInfo x = zipWith FieldInfo names types
     types = gmapQ typeOf x
     names = if length candidates == length types
               then map Just candidates
-              else replicate (length types) Nothing
-
-    
-
-
+              else replicate (length types) Nothing 

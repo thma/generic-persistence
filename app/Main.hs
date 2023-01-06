@@ -1,8 +1,10 @@
 module Main (main) where
 
 import Data.Data
+
 import TypeInfo
 import SqlGenerator
+import Data.List (intercalate, elemIndex)
 
 
 
@@ -42,4 +44,5 @@ main = do
   mapM_ (\(FieldInfo name type_) -> putStrLn $ show name ++ ": " ++ show type_) fields
   print ""
   --print $ typeInfo p
-  print $ insertStmtFor p
+  putStrLn $ insertStmtFor p
+
