@@ -36,6 +36,7 @@ library
       base >=4.7 && <5
     , ghc
     , syb
+    , transformers
   default-language: Haskell2010
 
 executable generic-attributes-exe
@@ -50,6 +51,7 @@ executable generic-attributes-exe
     , generic-attributes
     , ghc
     , syb
+    , transformers
   default-language: Haskell2010
 
 test-suite generic-attributes-test
@@ -65,4 +67,5 @@ test-suite generic-attributes-test
     , generic-attributes
     , ghc
     , syb
+    , transformers
   default-language: Haskell2010

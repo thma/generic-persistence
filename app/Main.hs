@@ -1,11 +1,14 @@
+{-# LANGUAGE DeriveDataTypeable#-}
 module Main (main) where
 
 import Data.Data
 
 import TypeInfo
 import SqlGenerator
-import Data.List (intercalate, elemIndex)
-
+--import Data.List (intercalate, elemIndex)
+import Data.Dynamic (toDyn)
+--import Control.Monad.Trans.State.Lazy
+--import Control.Monad.Trans.Class (lift)
 
 
 -- Define a sample data type
@@ -35,6 +38,7 @@ ms = MySum1 1
 
 ms2 = MySum2 "Hello"
 
+mp :: MyProduct
 mp = MyProduct 1 ms2
 
 main :: IO ()
@@ -48,4 +52,10 @@ main = do
   putStrLn $ selectStmtFor (typeInfo p) "123456"
   putStrLn $ updateStmtFor p
   putStrLn $ deleteStmtFor p
+
+  let bob = applyConstr (toConstr p) [toDyn (4711 :: Int), toDyn "Bob", toDyn (30 :: Int), toDyn "456 Main St"] :: Maybe Person
+  print bob
+  let ctor = toConstr p
+      dtype = constrType ctor
+  print dtype
 

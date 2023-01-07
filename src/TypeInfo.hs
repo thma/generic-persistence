@@ -9,12 +9,16 @@ module TypeInfo
   , fieldNamesFromTypeInfo
   , fieldValues
   , gshow
+  , applyConstr
   ) where
     
 import Data.Data -- (Data, gmapQ, dataTypeOf, dataTypeConstrs, typeOf, Constr, TypeRep, constrFields)
 import           Data.Generics.Aliases (extQ)
 import Data.Maybe (fromMaybe)
 import Data.List (elemIndex)
+import Data.Dynamic (Dynamic, fromDynamic, toDyn)
+import Control.Monad.Trans.State.Lazy
+import Control.Monad.Trans.Class (lift)
 
 {--
 
@@ -23,20 +27,20 @@ https://chrisdone.com/posts/data-typeable/
 --}
     
 data FieldInfo = FieldInfo
-  { fieldName :: Maybe String -- ^ The name of the field, Nothing if it has none.
-  , fieldType :: TypeRep      -- ^ The type of the field.
+  { fieldName :: Maybe String   -- ^ The name of the field, Nothing if it has none.
+  , fieldConstructor :: Constr  -- ^ The type of the field.
   } deriving (Show)
     
 data TypeInfo = TypeInfo
-  { typeName :: TypeRep      -- ^ The name of the type.
-  , typeConstrs :: [Constr]   -- ^ The constructors of the type.
+  { typeName :: TypeRep       -- ^ The name of the type.
+  , typeConstructor :: Constr -- ^ The constructors of the type.
   , typeFields :: [FieldInfo] -- ^ The fields of the type.
   } deriving (Show)
   
 typeInfo :: Data a => a -> TypeInfo  
 typeInfo x = TypeInfo
   { typeName = typeOf x
-  , typeConstrs = dataTypeConstrs $ dataTypeOf x
+  , typeConstructor = toConstr x
   , typeFields = fieldInfo x
   } 
 
@@ -46,7 +50,7 @@ fieldInfo x = zipWith FieldInfo names types
   where
     constructor = head $ dataTypeConstrs $ dataTypeOf x
     candidates = constrFields constructor
-    types = gmapQ typeOf x
+    types = gmapQ toConstr x
     names = if length candidates == length types
               then map Just candidates
               else replicate (length types) Nothing
@@ -99,3 +103,39 @@ gshows = render `extQ` (shows :: String -> ShowS) where
           isTuple = all (==',') (filter (not . flip elem "()") (constructor ""))
           isNull = all (`elem` "[]") (constructor "")
           isList = constructor "" == "(:)"
+
+
+
+-- https://stackoverflow.com/questions/47606189/fromconstrb-or-something-other-useful
+applyConstr :: Data a => Constr -> [Dynamic] -> Maybe a
+applyConstr ctor args = let
+   nextField :: forall d. Data d => StateT [Dynamic] Maybe d
+   nextField = do
+      as <- get
+      case as of
+         [] -> lift Nothing  -- too few arguments
+         (a:rest) -> do
+            put rest
+            case fromDynamic a of
+               Nothing -> lift Nothing  -- runtime type mismatch
+               Just x  -> return x
+   in case runStateT (fromConstrM nextField ctor) args of
+      Just (x, []) -> Just x
+      _            -> Nothing  -- runtime type error or too few / too many arguments
+
+{--
+buildFromRecord :: Data a => TypeInfo -> [String] -> Maybe a
+buildFromRecord ti record = applyConstr ctor args
+  where
+    ctor = typeConstructor ti
+    argCtors = map fieldConstructor (typeFields ti)
+    cvPairs = zip argCtors record
+    args = map 
+      (\(c, v) -> (fromConstr toConstr (read v)
+      cvPairs
+ 
+    args = map (\col -> )
+    args = map toDyn record
+--}
+
+-- bob = applyConstr (toConstr p) [toDyn (4711 :: Int), toDyn "Bob", toDyn (30 :: Int), toDyn "456 Main St"] :: Maybe Person
