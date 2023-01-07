@@ -20,13 +20,14 @@ data MyProduct = MyProduct Int MySum
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
-  { name :: String
+  { id :: Int
+  , name :: String
   , age :: Int
   , address :: String
   } deriving (Data, Show)
 
 
-p = Person "Alice" 25 "123 Main St"
+p = Person 123456 "Alice" 25 "123 Main St"
 
 mt = MyType 1 "Hello"
 
@@ -38,11 +39,13 @@ mp = MyProduct 1 ms2
 
 main :: IO ()
 main = do
-  let p = Person "Alice" 25 "123 Main St"
   let fields = fieldInfo p
   putStrLn "Fields:"
   mapM_ (\(FieldInfo name type_) -> putStrLn $ show name ++ ": " ++ show type_) fields
   print ""
-  --print $ typeInfo p
+
   putStrLn $ insertStmtFor p
+  putStrLn $ selectStmtFor (typeInfo p) "123456"
+  putStrLn $ updateStmtFor p
+  putStrLn $ deleteStmtFor p
 

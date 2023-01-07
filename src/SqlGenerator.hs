@@ -1,74 +1,64 @@
 module SqlGenerator
   ( insertStmtFor
   , updateStmtFor
+  , deleteStmtFor
+  , selectStmtFor
   )
 where
 
-import           Data.Data             (Data, gmapQ, showConstr, toConstr)
-import           Data.Generics.Aliases (extQ)
+import           Data.Data             (Data)
 import           Data.List             (intercalate)
-import           Data.Maybe
 import           TypeInfo
 
---import Data.Generics.Text (gshow)
 
+-- | A function that returns an SQL insert statement for an instance of type 'a'. Type 'a' must be an instance of Data.
+-- The function will use the field names of the data type to generate the column names in the insert statement.
+-- The values of the fields will be used as the values in the insert statement.
+-- Output example: INSERT INTO Person (id, name, age, address) VALUES (123456, "Alice", 25, "123 Main St");
 insertStmtFor :: Data a => a -> String
 insertStmtFor x =
   "INSERT INTO "
     ++ show (typeName $ typeInfo x)
     ++ " ("
-    ++ intercalate ", " fieldList
+    ++ intercalate ", " (fieldNames x)
     ++ ") VALUES ("
-    ++ intercalate ", " valueList
+    ++ intercalate ", " (fieldValues x)
     ++ ");"
-  where
-    fieldList = map (fromMaybe (error "works only for Record Types with named fields") . fieldName) $ fieldInfo x
-    valueList = gmapQ gshow x 
+
+
 
 -- UPDATE table_name
 -- SET column1 = value1, column2 = value2, ...
--- WHERE condition; 
+-- WHERE condition;
 
 updateStmtFor :: Data a => a -> String
 updateStmtFor x =
   "UPDATE "
     ++ show (typeName $ typeInfo x)
     ++ " SET "
-    ++ intercalate ", " fieldList
-    ++ " WHERE "
-    ++ intercalate ", " valueList
+    ++ intercalate ", " updatePairs
+    ++ " WHERE ID = "
+    ++ fieldValueAsString x "id"
     ++ ";"
-  where
-    fieldList = map (fromMaybe (error "works only for Record Types with named fields") . fieldName) $ fieldInfo x
-    valueList = gmapQ gshow x
+    where updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
 
 -- SELECT column1, column2, ...
 -- FROM table_name
 -- WHERE ID=1;
 selectStmtFor :: TypeInfo -> String -> String
-selectStmtFor typeInfo id = "SELECT * FROM " ++ show (typeName typeInfo) ++ " WHERE ID=" ++ id ++ ";"
+selectStmtFor ti id =
+  "SELECT "
+  ++ intercalate ", " (fieldNamesFromTypeInfo ti)
+  ++ " FROM " ++ show (typeName ti) ++ " WHERE ID = " ++ id ++ ";"
 
--- DELETE FROM Customers WHERE CustomerName='Alfreds Futterkiste';
+-- DELETE FROM Customers WHERE ID=1234;
 deleteStmtFor :: Data a => a -> String
 deleteStmtFor x =
   "DELETE FROM "
     ++ show (typeName $ typeInfo x)
-    ++ " WHERE "
-    ++ intercalate ", " valueList
+    ++ " WHERE ID="
+    ++ fieldValueAsString x "id"
     ++ ";"
-  where
-    fieldList = map (fromMaybe (error "works only for Record Types with named fields") . fieldName) $ fieldInfo x
-    valueList = gmapQ gshow x
 
--- | Generic show: taken from syb package
-gshow :: Data a => a -> String
-gshow x = gshows x ""
 
--- | Generic shows. code was modified from syb Data.Generics.Text
-gshows :: Data a => a -> ShowS
-gshows =
-  ( \t ->
-      (showString . showConstr . toConstr $ t)
-        . (foldr (.) id . gmapQ ((showChar ' ' .) . gshows) $ t)
-  )
-    `extQ` (shows :: String -> ShowS)
+
