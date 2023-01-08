@@ -24,6 +24,7 @@ dependencies:
 - ghc
 - syb
 - transformers
+
 #- generics-sop
 
 ghc-options:

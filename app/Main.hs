@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable#-}
+{-# LANGUAGE ExtendedDefaultRules#-}
 module Main (main) where
 
 import Data.Data
@@ -53,8 +54,13 @@ main = do
   putStrLn $ updateStmtFor p
   putStrLn $ deleteStmtFor p
 
-  let bob = applyConstr (toConstr p) [toDyn (4711 :: Int), toDyn "Bob", toDyn (30 :: Int), toDyn "456 Main St"] :: Maybe Person
+  let bob = applyConstr (toConstr p) [toDyn 4711, toDyn "Bob", toDyn 30, toDyn "456 Main St"] :: Maybe Person
+      rob = applyConstr (toConstr p) [toDyn (read "5656" :: Int), toDyn "Rob", toDyn (31 :: Int), toDyn "457 Main St"] :: Maybe Person
+      x = fromConstrB (fromConstr (toConstr 6879879)) (toConstr (Just 1 )) :: Maybe Int
+
   print bob
+  print rob
+  print x
   let ctor = toConstr p
       dtype = constrType ctor
   print dtype

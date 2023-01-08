@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes#-}
 module TypeInfo
   ( 
     TypeInfo(..) 
@@ -10,15 +11,17 @@ module TypeInfo
   , fieldValues
   , gshow
   , applyConstr
+  , test
   ) where
-    
+
 import Data.Data -- (Data, gmapQ, dataTypeOf, dataTypeConstrs, typeOf, Constr, TypeRep, constrFields)
 import           Data.Generics.Aliases (extQ)
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.List (elemIndex)
 import Data.Dynamic (Dynamic, fromDynamic, toDyn)
 import Control.Monad.Trans.State.Lazy
 import Control.Monad.Trans.Class (lift)
+import GRead2 (gread)
 
 {--
 
@@ -123,19 +126,33 @@ applyConstr ctor args = let
       Just (x, []) -> Just x
       _            -> Nothing  -- runtime type error or too few / too many arguments
 
+
 {--
-buildFromRecord :: Data a => TypeInfo -> [String] -> Maybe a
-buildFromRecord ti record = applyConstr ctor args
+
+fromConstrB (fromConstr (toConstr ((read "34") :: Int))) (toConstr (Just 1 :: Maybe Int)) :: Maybe Int
+
+
+ -}
+--test :: Data a => Constr -> String -> a
+test :: Data a => p -> String -> a
+test ctor str =  (fromJust $ gread str)
+--}
+
+
+
+{--
+buildFromRecord :: (Data a, Read a) => TypeInfo -> [String] -> Maybe a
+buildFromRecord ti record = applyConstr ctor args 
   where
     ctor = typeConstructor ti
     argCtors = map fieldConstructor (typeFields ti)
     cvPairs = zip argCtors record
-    args = map 
-      (\(c, v) -> (fromConstr toConstr (read v)
+    args = map
+      (\(c, v) -> toDyn (fromJust $ gread v)  :: Dynamic)
       cvPairs
- 
-    args = map (\col -> )
-    args = map toDyn record
+
+    --args = map (\col -> )
+    --args = map toDyn record
 --}
 
 -- bob = applyConstr (toConstr p) [toDyn (4711 :: Int), toDyn "Bob", toDyn (30 :: Int), toDyn "456 Main St"] :: Maybe Person
