@@ -8,13 +8,17 @@ module Main (main) where
 import Data.Data hiding (typeRep, IntRep, TypeRep)
 
 import TypeInfo
-import RecordtypeReflection
+import RecordtypeReflection hiding (convert)
 import SqlGenerator
-import Data.Dynamic --(toDyn)
+import Data.Dynamic
 import Type.Reflection
 import GHC.Data.Maybe (expectJust)
 import Data.Maybe (fromMaybe)
 import Control.Monad
+
+import Database.HDBC
+import Database.HDBC.Sqlite3
+import Data.Convertible.Base (convert, safeConvert)
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
@@ -29,33 +33,30 @@ p = Person 123456 "Alice" 25 "123 Main St"
 
 main :: IO ()
 main = do
-  let fields = fieldInfo p
-  putStrLn "Fields:"
-  mapM_ (\(FieldInfo name constr type_) -> putStrLn $ show name ++ ": " ++ show type_) fields
-  print ""
-
+  -- generate sql statements for a Person p
   putStrLn $ insertStmtFor p
   putStrLn $ selectStmtFor (typeInfo p) "123456"
   putStrLn $ updateStmtFor p
   putStrLn $ deleteStmtFor p
 
-  let 
-      strings :: [String]
-      strings = ["4712", "Bob Marley", "36", "Tuff Gong Studio, Kingston, Jamaica"]
-      
-      bobMa = (buildFromRecord (typeInfo p) strings :: Maybe Person)
-
-  print bobMa
+  -- insert a Person into a database
+  conn <- connectSqlite3 "sqlite.db"
+  quickQuery conn (insertStmtFor p) []
+  commit conn
   
-  entity <- retrieveEntity "4711" (typeInfo p) :: IO (Maybe Person)
+  -- select a Person from a database
+  entity <- retrieveEntity conn "123456" (typeInfo p) :: IO Person
   print entity
+  
+  disconnect conn
 
-retrieveEntity :: forall a. (Data a) => String -> TypeInfo -> IO a
-retrieveEntity id ti = do
-  let 
-      stmt = selectStmtFor ti id
-      strings = [id, "Robert Zimmermann", "36", "Tuff Gong Studio, Kingston, Jamaica"]
-  -- execute stmt  
-      bobMa = (buildFromRecord ti strings :: Maybe a)
-  return $ fromMaybe (error "No entity found") bobMa
 
+-- | A function that retrieves an entity from a database.
+-- I would like to get rid of the TypeInfo paraemeter and derive it directly from the 'IO a' result type.
+-- This will need some helping hand from the Internet...
+retrieveEntity :: forall a. (Data a) => Connection -> String -> TypeInfo -> IO a
+retrieveEntity conn id ti = do
+  let stmt = selectStmtFor ti id
+  resultRowsSqlValues <- quickQuery conn stmt []
+  let (resultRow :: [String]) = map convert (head resultRowsSqlValues)
+  return $ expectJust ("No " ++ (show $ typeName ti) ++ " found for id " ++ id) (buildFromRecord ti resultRow :: Maybe a)
