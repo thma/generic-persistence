@@ -39,9 +39,14 @@ main = do
   putStrLn $ updateStmtFor p
   putStrLn $ deleteStmtFor p
 
+  -- initialize Person table
+  conn <- connectSqlite3 "sqlite1.db"
+  run conn ("DROP TABLE IF EXISTS Person;") []
+  run conn ("CREATE TABLE IF NOT EXISTS Person (id INT PRIMARY KEY, name TEXT, age INT, address TEXT);") []
+  commit conn
+  
   -- insert a Person into a database
-  conn <- connectSqlite3 "sqlite.db"
-  quickQuery conn (insertStmtFor p) []
+  run conn (insertStmtFor p) []
   commit conn
   
   -- select a Person from a database
