@@ -5,7 +5,7 @@ module RecordtypeReflection
   (
     buildFromRecord
   , applyConstr
-  , convert
+  -- , convert
   )
 where
 

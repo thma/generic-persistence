@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable#-}
-{-# LANGUAGE ExtendedDefaultRules#-}
-{-# LANGUAGE GADTs #-}
+--{-# LANGUAGE GADTs #-}
 {-# LANGUAGE TypeApplications#-}
 {-# LANGUAGE AllowAmbiguousTypes#-}
 module Main (main) where
@@ -8,8 +7,9 @@ module Main (main) where
 import Data.Data hiding (typeRep, IntRep, TypeRep)
 
 import TypeInfo
-import RecordtypeReflection hiding (convert)
+import RecordtypeReflection
 import SqlGenerator
+import DataPersistence
 import Data.Dynamic
 import Type.Reflection
 import GHC.Data.Maybe (expectJust)
@@ -18,7 +18,7 @@ import Control.Monad
 
 import Database.HDBC
 import Database.HDBC.Sqlite3
-import Data.Convertible.Base (convert, safeConvert)
+
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
@@ -56,12 +56,3 @@ main = do
   disconnect conn
 
 
--- | A function that retrieves an entity from a database.
--- I would like to get rid of the TypeInfo paraemeter and derive it directly from the 'IO a' result type.
--- This will need some helping hand from the Internet...
-retrieveEntity :: forall a. (Data a) => Connection -> String -> TypeInfo -> IO a
-retrieveEntity conn id ti = do
-  let stmt = selectStmtFor ti id
-  resultRowsSqlValues <- quickQuery conn stmt []
-  let (resultRow :: [String]) = map convert (head resultRowsSqlValues)
-  return $ expectJust ("No " ++ (show $ typeName ti) ++ " found for id " ++ id) (buildFromRecord ti resultRow :: Maybe a)
