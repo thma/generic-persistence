@@ -4,6 +4,8 @@
 {-# LANGUAGE ScopedTypeVariables#-}
 {-# LANGUAGE TypeApplications#-}
 {-# LANGUAGE AllowAmbiguousTypes#-}
+{-# LANGUAGE ExplicitForAll #-}
+
 module TypeInfo
   ( 
     TypeInfo(..) 
@@ -22,20 +24,17 @@ import Data.Maybe (fromMaybe)
 import Data.List (elemIndex)
 import Type.Reflection (SomeTypeRep(..), typeRep, eqTypeRep)
 import GHC.Data.Maybe (expectJust)
---import Control.Monad (zipWithM)
-import Data.Typeable
+import Data.Typeable hiding (typeRep, IntRep)
+import GHC.Core.TyCo.Rep
+import GHC
 
 {--
 
 https://chrisdone.com/posts/data-typeable/
 
 --}
-    
-data FieldInfo = FieldInfo
-  { fieldName :: Maybe String   -- ^ The name of the field, Nothing if it has none.
-  , fieldConstructor :: Constr  -- ^ The constr of the field.
-  , fieldType :: TypeRep        -- ^ The type of the field.
-  } deriving (Show)
+
+
     
 data TypeInfo = TypeInfo
   { typeName :: TypeRep       -- ^ The name of the type.
@@ -50,13 +49,12 @@ typeInfo x = TypeInfo
   , typeFields = fieldInfo x
   } 
 
--- | typeName @String ==> "[Char]
-typeName' :: forall a. Typeable a => String
-typeName' = show . typeRep $ Proxy @a  
+data FieldInfo = FieldInfo
+  { fieldName :: Maybe String   -- ^ The name of the field, Nothing if it has none.
+  , fieldConstructor :: Constr  -- ^ The constr of the field.
+  , fieldType :: TypeRep        -- ^ The type of the field.
+  } deriving (Show)
   
-tInfo :: forall a. Typeable a => String
-tInfo = typeInfo $ Proxy @a  
-
 -- | A function that returns a list of FieldInfos representing the name, constructor and type of each field in a data type.
 fieldInfo :: (Data a) => a -> [FieldInfo]
 fieldInfo x = zipWith3 FieldInfo names constrs types
@@ -120,10 +118,3 @@ gshows = render `extQ` (shows :: String -> ShowS) where
           isNull = all (`elem` "[]") (constructor "")
           isList = constructor "" == "(:)"  
 
-  
-
-
-
-
-
-    

@@ -1,6 +1,6 @@
---{-# LANGUAGE RankNTypes#-}
+{-# LANGUAGE RankNTypes#-}
 {-# LANGUAGE GADTs #-}
---{-# LANGUAGE ExtendedDefaultRules#-}
+{-# LANGUAGE TypeApplications#-}
 module RecordtypeReflection 
   (
     buildFromRecord
@@ -14,7 +14,6 @@ import TypeInfo
 import Data.Dynamic (Dynamic, fromDynamic, toDyn)
 import Control.Monad.Trans.State.Lazy
 import Control.Monad.Trans.Class (lift)
---import GRead2 (gread)
 import Type.Reflection (SomeTypeRep(..), typeRep, eqTypeRep)
 import GHC.Data.Maybe (expectJust)
 import Control.Monad (zipWithM)

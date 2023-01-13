@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable#-}
 {-# LANGUAGE ExtendedDefaultRules#-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE TypeApplications#-}
+{-# LANGUAGE AllowAmbiguousTypes#-}
 module Main (main) where
 
 import Data.Data hiding (typeRep, IntRep, TypeRep)
@@ -11,6 +13,7 @@ import SqlGenerator
 import Data.Dynamic --(toDyn)
 import Type.Reflection
 import GHC.Data.Maybe (expectJust)
+import Data.Maybe (fromMaybe)
 import Control.Monad
 
 -- | A data type with several fields, using record syntax.
@@ -23,7 +26,6 @@ data Person = Person
 
 p = Person 123456 "Alice" 25 "123 Main St"
 
-proxy = Proxy :: Proxy Person
 
 main :: IO ()
 main = do
@@ -39,10 +41,21 @@ main = do
 
   let 
       strings :: [String]
-      strings = ["4712", "Bob Marley", "361", "Tuff Gong Studio, Kingston, Jamaica"]
+      strings = ["4712", "Bob Marley", "36", "Tuff Gong Studio, Kingston, Jamaica"]
       
-      bobMa = (buildFromRecord (typeInfo @Person) strings :: Maybe Person)
+      bobMa = (buildFromRecord (typeInfo p) strings :: Maybe Person)
 
   print bobMa
+  
+  entity <- retrieveEntity "4711" (typeInfo p) :: IO (Maybe Person)
+  print entity
 
+retrieveEntity :: forall a. (Data a) => String -> TypeInfo -> IO a
+retrieveEntity id ti = do
+  let 
+      stmt = selectStmtFor ti id
+      strings = [id, "Robert Zimmermann", "36", "Tuff Gong Studio, Kingston, Jamaica"]
+  -- execute stmt  
+      bobMa = (buildFromRecord ti strings :: Maybe a)
+  return $ fromMaybe (error "No entity found") bobMa
 
