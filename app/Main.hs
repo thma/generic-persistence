@@ -22,7 +22,7 @@ import Database.HDBC.Sqlite3
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
-  { id :: !Int
+  { personID :: !Int
   , name :: !String
   , age :: !Int
   , address :: !String
@@ -42,7 +42,7 @@ main = do
   -- initialize Person table
   conn <- connectSqlite3 "sqlite1.db"
   run conn ("DROP TABLE IF EXISTS Person;") []
-  run conn ("CREATE TABLE IF NOT EXISTS Person (id INT PRIMARY KEY, name TEXT, age INT, address TEXT);") []
+  run conn ("CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);") []
   commit conn
   
   -- insert a Person into a database
