@@ -7,14 +7,14 @@ module Main (main) where
 import Data.Data hiding (typeRep, IntRep, TypeRep)
 
 import TypeInfo
-import RecordtypeReflection
-import SqlGenerator
+--import RecordtypeReflection
+--import SqlGenerator
 import DataPersistence
-import Data.Dynamic
-import Type.Reflection
-import GHC.Data.Maybe (expectJust)
-import Data.Maybe (fromMaybe)
-import Control.Monad
+--import Data.Dynamic
+--import Type.Reflection
+--import GHC.Data.Maybe (expectJust)
+--import Data.Maybe (fromMaybe)
+--import Control.Monad
 
 import Database.HDBC
 import Database.HDBC.Sqlite3
@@ -28,30 +28,38 @@ data Person = Person
   , address :: !String
   } deriving (Data, Show)
 
-p = Person 123456 "Alice" 25 "123 Main St"
+
 
 
 main :: IO ()
 main = do
+  let p = Person 123456 "Alice" 25 "123 Main St"
   -- generate sql statements for a Person p
-  putStrLn $ insertStmtFor p
-  putStrLn $ selectStmtFor (typeInfo p) "123456"
-  putStrLn $ updateStmtFor p
-  putStrLn $ deleteStmtFor p
+  --putStrLn $ insertStmtFor p
+  --putStrLn $ selectStmtFor (typeInfo p) "123456"
+  --putStrLn $ updateStmtFor p
+  --putStrLn $ deleteStmtFor p
 
   -- initialize Person table
   conn <- connectSqlite3 "sqlite1.db"
-  run conn ("DROP TABLE IF EXISTS Person;") []
-  run conn ("CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);") []
+  runRaw conn ("DROP TABLE IF EXISTS Person;")
+  runRaw conn ("CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);")
   commit conn
   
   -- insert a Person into a database
-  run conn (insertStmtFor p) []
-  commit conn
+  persistEntity conn p
+  
+  -- update a Person in a database
+  persistEntity conn p {name = "Bob"}
   
   -- select a Person from a database
-  entity <- retrieveEntity conn "123456" (typeInfo p) :: IO Person
+  entity <- retrieveEntityById conn (typeInfo p) "123456" :: IO Person
   print entity
+  
+  deleteEntity conn p
+  entity' <- retrieveEntityById conn (typeInfo p) "123456" :: IO Person
+  print entity'
+  
   
   disconnect conn
 

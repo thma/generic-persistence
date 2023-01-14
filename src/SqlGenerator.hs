@@ -3,6 +3,7 @@ module SqlGenerator
   , updateStmtFor
   , deleteStmtFor
   , selectStmtFor
+  , idColumn
   )
 where
 
@@ -39,12 +40,12 @@ updateStmtFor x =
     where updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
           ti = typeInfo x
 
-selectStmtFor :: TypeInfo -> String -> String
+selectStmtFor :: (Show id) => TypeInfo -> id -> String
 selectStmtFor ti id =
   "SELECT "
   ++ intercalate ", " (fieldNamesFromTypeInfo ti)
   ++ " FROM " ++ show (typeName ti) 
-  ++ " WHERE " ++ idColumn ti ++ " = " ++ id ++ ";"
+  ++ " WHERE " ++ idColumn ti ++ " = " ++ show id ++ ";"
 
 
 deleteStmtFor :: Data a => a -> String
@@ -55,6 +56,17 @@ deleteStmtFor x =
     ++ fieldValueAsString x (idColumn ti) 
     ++ ";"
     where ti = typeInfo x
+
+-- "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
+{--
+createTableStmtFor :: TypeInfo -> String
+createTableStmtFor ti =
+  "CREATE TABLE IF NOT EXISTS "
+    ++ show (typeName ti)
+    ++ " ("
+    ++ intercalate ", " (zipWith (\n t -> n ++ " " ++ t) (fieldNamesFromTypeInfo ti) (fieldTypesFromTypeInfo ti))
+    ++ ");"
+--}
 
 idColumn :: TypeInfo -> String
 idColumn ti = (map toLower (show $ typeName ti)) ++ "ID"
