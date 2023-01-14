@@ -4,6 +4,7 @@
 module RecordtypeReflection 
   (
     buildFromRecord
+  , buildFromRecord'  
   , applyConstr
   -- , convert
   )
@@ -17,6 +18,8 @@ import Control.Monad.Trans.Class (lift)
 import Type.Reflection (SomeTypeRep(..), typeRep, eqTypeRep)
 import GHC.Data.Maybe (expectJust)
 import Control.Monad (zipWithM)
+import Database.HDBC (SqlValue, fromSql, toSql)
+import qualified Data.Convertible.Base as C (convert, safeConvert)
 
   
 buildFromRecord :: (Data a) => TypeInfo -> [String] -> Maybe a
@@ -27,6 +30,15 @@ buildFromRecord ti record = applyConstr ctor dynamicsArgs
     dynamicsArgs = expectJust 
       ("buildFromRecord: error in converting record " ++ show record) 
       (zipWithM convert types record)  
+
+buildFromRecord' :: (Data a) => TypeInfo -> [SqlValue] -> Maybe a
+buildFromRecord' ti record = applyConstr ctor dynamicsArgs 
+  where
+    ctor = typeConstructor ti
+    types = map fieldType (typeFields ti) 
+    dynamicsArgs = expectJust 
+      ("buildFromRecord: error in converting record " ++ show record) 
+      (zipWithM convert' types record)  
 
 -- https://stackoverflow.com/questions/47606189/fromconstrb-or-something-other-useful
 applyConstr :: Data a => Constr -> [Dynamic] -> Maybe a
@@ -45,7 +57,6 @@ applyConstr ctor args = let
       Just (x, []) -> Just x
       _            -> Nothing  -- runtime type error or too few / too many arguments
 
-
 -- https://stackoverflow.com/questions/46992740/how-to-specify-type-of-value-via-typerep
 -- | Parse a string into a value of the type represented by the SomeTypeRep parameter.
 --  If parsing fails, return Nothing.
@@ -56,5 +67,12 @@ convert (SomeTypeRep rep) str
   | Just HRefl <- eqTypeRep rep (typeRep @Double) = Just $ toDyn (read str :: Double)
   | Just HRefl <- eqTypeRep rep (typeRep @String) = Just $ toDyn str
   | otherwise = Nothing
+  
+convert' :: SomeTypeRep -> SqlValue -> Maybe Dynamic
+convert' (SomeTypeRep rep) val
+  | Just HRefl <- eqTypeRep rep (typeRep @Int)    = Just $ toDyn (fromSql val :: Int)
+  | Just HRefl <- eqTypeRep rep (typeRep @Double) = Just $ toDyn (fromSql val:: Double)
+  | Just HRefl <- eqTypeRep rep (typeRep @String) = Just $ toDyn (fromSql val :: String)
+  | otherwise = Nothing  
   
   
