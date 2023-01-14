@@ -16,6 +16,7 @@ module TypeInfo
   , fieldNames
   , fieldNamesFromTypeInfo
   , fieldValues
+  , gshow
   ) where
 
 import Data.Data hiding (typeRep, IntRep)

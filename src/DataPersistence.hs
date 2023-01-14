@@ -9,7 +9,7 @@ module DataPersistence
   )
 where
 
-import Database.HDBC (IConnection, quickQuery, run, commit)
+import Database.HDBC (IConnection, quickQuery, run, runRaw, commit)
 import Data.Convertible.Base (convert, safeConvert)
 import TypeInfo
 import Data.Data
@@ -31,7 +31,7 @@ import Data.Maybe (fromMaybe)
 -- | A function that retrieves an entity from a database.
 -- I would like to get rid of the TypeInfo paraemeter and derive it directly from the 'IO a' result type.
 -- This will need some helping hand from the Internet...
-retrieveEntityById :: forall a conn id . (Data a, IConnection conn, Show id) => conn -> TypeInfo -> id -> IO a
+retrieveEntityById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> TypeInfo -> id -> IO a
 retrieveEntityById conn ti id = do
   let stmt = selectStmtFor ti id
   resultRowsSqlValues <- quickQuery conn stmt []
@@ -43,7 +43,7 @@ retrieveEntityById conn ti id = do
     _ -> error $ "More than one entity found for id " ++ show id
 
  
-persistEntity :: forall a conn . (Data a, Show a, IConnection conn) => conn -> a -> IO ()
+persistEntity :: forall a conn . (Data a, IConnection conn) => conn -> a -> IO ()
 persistEntity conn entity = do
   let ti = typeInfo entity
       id = entityId entity
@@ -53,12 +53,12 @@ persistEntity conn entity = do
   resultRows <- quickQuery conn selectStmt []
   case resultRows of
     [] -> do
-      putStrLn $ "Inserting " ++ show entity
-      run conn insertStmt []
+      putStrLn $ "Inserting " ++ gshow entity
+      runRaw conn insertStmt
       commit conn
     [singleRow] -> do
-      putStrLn $ "Updating " ++ show entity
-      run conn updateStmt []
+      putStrLn $ "Updating " ++ gshow entity
+      runRaw conn updateStmt
       commit conn
     _ -> error $ "More than one entity found for id " ++ show id
   
@@ -68,7 +68,7 @@ entityId entity = fieldValueAsString entity idField
   where
     idField = idColumn (typeInfo entity)
 
-deleteEntity :: forall a conn . (Data a, Show a, IConnection conn) => conn -> a -> IO ()
+deleteEntity :: forall a conn . (Data a, IConnection conn) => conn -> a -> IO ()
 deleteEntity conn entity = do
   let ti = typeInfo entity
       id = entityId entity
