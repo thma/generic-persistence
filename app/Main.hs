@@ -53,7 +53,7 @@ main = do
   persistEntity conn p {name = "Bob"}
   
   -- select a Person from a database
-  entity <- retrieveEntityById' conn (typeInfo p) "123456" :: IO Person
+  entity <- retrieveEntityById conn (typeInfo p) "123456" :: IO Person
   print entity
   
   -- delete a Person from a database
@@ -62,7 +62,7 @@ main = do
   -- insert a Person into a database
   persistEntity conn p
     
-  entity' <- retrieveEntityById' conn (typeInfo p) "123456" :: IO Person
+  entity' <- retrieveEntityById conn (typeInfo p) "123456" :: IO Person
   print entity'
   
 

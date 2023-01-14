@@ -3,7 +3,7 @@
 {-# LANGUAGE QuantifiedConstraints#-}
 module DataPersistence
   (
-    retrieveEntityById'
+    retrieveEntityById
   , persistEntity
   , deleteEntity
   )
@@ -37,21 +37,8 @@ retrieveEntityById conn ti id = do
   resultRowsSqlValues <- quickQuery conn stmt []
   case resultRowsSqlValues of
     [] -> error $ "No " ++ show (typeName ti) ++ " found for id " ++ show id
-    [singleRowSqlValues] -> do
-      let (resultRow :: [String]) = map convert singleRowSqlValues
-      return $ expectJust ("No " ++ (show $ typeName ti) ++ " found for id " ++ show id) (buildFromRecord ti resultRow :: Maybe a)
-    _ -> error $ "More than one entity found for id " ++ show id
-
- 
-retrieveEntityById' :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> TypeInfo -> id -> IO a
-retrieveEntityById' conn ti id = do
-  let stmt = selectStmtFor ti id
-  resultRowsSqlValues <- quickQuery conn stmt []
-  case resultRowsSqlValues of
-    [] -> error $ "No " ++ show (typeName ti) ++ " found for id " ++ show id
     ([singleRowSqlValues]) -> do
-      --let (resultRow :: []) = map convert singleRowSqlValues
-      return $ expectJust ("No " ++ (show $ typeName ti) ++ " found for id " ++ show id) (buildFromRecord' ti singleRowSqlValues :: Maybe a)
+      return $ expectJust ("No " ++ (show $ typeName ti) ++ " found for id " ++ show id) (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show id 
  
 persistEntity :: forall a conn . (Data a, IConnection conn) => conn -> a -> IO ()
