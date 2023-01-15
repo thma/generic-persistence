@@ -77,4 +77,4 @@ createTableStmtFor ti =
 --}
 
 idColumn :: TypeInfo -> String
-idColumn ti = (map toLower (show $ typeName ti)) ++ "ID"
+idColumn ti = map toLower (typeName ti) ++ "ID"

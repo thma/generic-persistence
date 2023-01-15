@@ -7,6 +7,7 @@
 module TypeInfo
   ( TypeInfo (..),
     FieldInfo (..),
+    typeName,
     typeInfo,
     fieldInfo,
     fieldValueAsString,
@@ -20,7 +21,6 @@ where
 import           Data.Data             hiding (IntRep, typeRep)
 import           Data.Generics.Aliases (extQ)
 import           Data.List             (elemIndex)
-import           Data.Maybe            (fromMaybe)
 import           GHC.Data.Maybe        (expectJust)
 
 {--
@@ -30,9 +30,7 @@ https://chrisdone.com/posts/data-typeable/
 --}
 
 data TypeInfo = TypeInfo
-  { -- | The name of the type.
-    typeName        :: TypeRep,
-    -- | The constructors of the type.
+  { -- | The constructors of the type.
     typeConstructor :: Constr,
     -- | The fields of the type.
     typeFields      :: [FieldInfo]
@@ -42,10 +40,13 @@ data TypeInfo = TypeInfo
 typeInfo :: Data a => a -> TypeInfo
 typeInfo x =
   TypeInfo
-    { typeName = typeOf x,
+    { 
       typeConstructor = toConstr x,
       typeFields = fieldInfo x
     }
+ 
+typeName :: TypeInfo -> String    
+typeName ti = show (typeConstructor ti) 
 
 data FieldInfo = FieldInfo
   { -- | The name of the field, Nothing if it has none.
@@ -77,7 +78,7 @@ fieldValues :: (Data a) => a -> [String]
 fieldValues = gmapQ gshow
 
 fieldNamesFromTypeInfo :: TypeInfo -> [String]
-fieldNamesFromTypeInfo ti = map (fromMaybe (error errMsg) . fieldName) (typeFields ti)
+fieldNamesFromTypeInfo ti = map (expectJust errMsg . fieldName) (typeFields ti)
   where
     errMsg = "Type " ++ show (typeName ti) ++ " does not have named fields"
 
