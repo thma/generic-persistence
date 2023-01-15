@@ -4,6 +4,7 @@
 
 module DataPersistence
   ( retrieveEntityById,
+    retrieveAllEntities,
     persistEntity,
     deleteEntity,
   )
@@ -36,6 +37,12 @@ retrieveEntityById conn ti eid = do
     [singleRowSqlValues] -> do
       return $ expectJust ("No " ++ show (typeName ti) ++ " found for id " ++ show eid) (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show eid
+
+retrieveAllEntities :: forall a conn. (Data a, IConnection conn) => conn -> TypeInfo -> IO [a]
+retrieveAllEntities conn ti = do
+  let stmt = selectAllStmtFor ti
+  resultRowsSqlValues <- quickQuery conn stmt []
+  return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
 
 persistEntity :: forall a conn. (Data a, IConnection conn) => conn -> a -> IO ()
 persistEntity conn entity = do

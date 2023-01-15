@@ -5,19 +5,38 @@
 module RecordtypeReflection
   ( buildFromRecord,
     applyConstr,
+    fieldValueAsString,
   )
 where
 
 import           Control.Monad                  (zipWithM)
 import           Control.Monad.Trans.Class      (lift)
-import           Control.Monad.Trans.State.Lazy
-import           Data.Data                      hiding (IntRep, typeRep)
+import Control.Monad.Trans.State.Lazy
+import Data.Data hiding (typeRep)
 import           Data.Dynamic                   (Dynamic, fromDynamic, toDyn)
 import           Database.HDBC                  (SqlValue, fromSql)
 import           GHC.Data.Maybe                 (expectJust)
-import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
-                                                 typeRep)
-import           TypeInfo
+import           Type.Reflection                (SomeTypeRep (..), eqTypeRep, typeRep)
+import           Data.List                      (elemIndex)
+                                                 
+import TypeInfo
+    ( FieldInfo(fieldType),
+      TypeInfo(typeFields, typeConstructor),
+      typeInfo,
+      typeName,
+      fieldNames,
+      fieldValues )
+
+fieldValueAsString :: Data a => a -> String -> String
+fieldValueAsString x field =
+  valueList !! index
+  where
+    fieldList = fieldNames x
+    valueList = fieldValues x
+    index =
+      expectJust
+        ("Field " ++ field ++ " is not present in type " ++ show (typeName $ typeInfo x))
+        (elemIndex field fieldList)
 
 buildFromRecord :: (Data a) => TypeInfo -> [SqlValue] -> Maybe a
 buildFromRecord ti record = applyConstr ctor dynamicsArgs

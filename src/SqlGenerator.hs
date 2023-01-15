@@ -3,6 +3,7 @@ module SqlGenerator
     updateStmtFor,
     deleteStmtFor,
     selectStmtFor,
+    selectAllStmtFor,
     idColumn,
   )
 where
@@ -11,6 +12,7 @@ import           Data.Char (toLower)
 import           Data.Data (Data)
 import           Data.List (intercalate)
 import           TypeInfo
+import           RecordtypeReflection
 
 -- | A function that returns an SQL insert statement for an instance of type 'a'. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -52,6 +54,14 @@ selectStmtFor ti eid =
     ++ " = "
     ++ show eid
     ++ ";"
+
+selectAllStmtFor :: TypeInfo -> String
+selectAllStmtFor ti =
+  "SELECT "
+    ++ intercalate ", " (fieldNamesFromTypeInfo ti)
+    ++ " FROM "
+    ++ show (typeName ti)
+    ++ ";"    
 
 deleteStmtFor :: Data a => a -> String
 deleteStmtFor x =

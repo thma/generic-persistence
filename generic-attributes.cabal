@@ -1,0 +1,84 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           generic-attributes
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/generic-attributes#readme>
+homepage:       https://github.com/githubuser/generic-attributes#readme
+bug-reports:    https://github.com/githubuser/generic-attributes/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2022 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/generic-attributes
+
+library
+  exposed-modules:
+      DataPersistence
+      RecordtypeReflection
+      SqlGenerator
+      TypeInfo
+  other-modules:
+      Paths_generic_attributes
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      HDBC
+    , HDBC-sqlite3
+    , base >=4.7 && <5
+    , convertible
+    , ghc
+    , ghc-prim
+    , syb
+    , transformers
+  default-language: Haskell2010
+
+executable generic-attributes-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_generic_attributes
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      HDBC
+    , HDBC-sqlite3
+    , base >=4.7 && <5
+    , convertible
+    , generic-attributes
+    , ghc
+    , ghc-prim
+    , syb
+    , transformers
+  default-language: Haskell2010
+
+test-suite generic-attributes-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_generic_attributes
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      HDBC
+    , HDBC-sqlite3
+    , base >=4.7 && <5
+    , convertible
+    , generic-attributes
+    , ghc
+    , ghc-prim
+    , syb
+    , transformers
+  default-language: Haskell2010

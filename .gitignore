@@ -1,2 +1,7 @@
 .stack-work/
 *~
+.idea/
+sqlite.db
+dist-newstyle/
+*.iml
+.DS_Store

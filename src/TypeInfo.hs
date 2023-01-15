@@ -10,7 +10,6 @@ module TypeInfo
     typeName,
     typeInfo,
     fieldInfo,
-    fieldValueAsString,
     fieldNames,
     fieldNamesFromTypeInfo,
     fieldValues,
@@ -18,9 +17,14 @@ module TypeInfo
   )
 where
 
-import           Data.Data             hiding (IntRep, typeRep)
+import Data.Data
+    ( Data(gmapQ, toConstr),
+      constrFields,
+      showConstr,
+      typeOf,
+      Constr,
+      TypeRep )
 import           Data.Generics.Aliases (extQ)
-import           Data.List             (elemIndex)
 import           GHC.Data.Maybe        (expectJust)
 
 {--
@@ -82,18 +86,7 @@ fieldNamesFromTypeInfo ti = map (expectJust errMsg . fieldName) (typeFields ti)
   where
     errMsg = "Type " ++ show (typeName ti) ++ " does not have named fields"
 
-fieldValueAsString :: Data a => a -> String -> String
-fieldValueAsString x field =
-  valueList !! index
-  where
-    fieldList = fieldNames x
-    valueList = fieldValues x
-    index =
-      expectJust
-        ("Field " ++ field ++ " is not present in type " ++ show (typeName $ typeInfo x))
-        (elemIndex field fieldList)
-
--- | Generic show: taken from syb package
+-- | Generic show: taken from syb package / https://chrisdone.com/posts/data-typeable/
 gshow :: Data a => a -> String
 gshow x = gshows x ""
 
@@ -112,13 +105,10 @@ gshows = render `extQ` (shows :: String -> ShowS)
             . drop 1
             . listSlots
             . showChar ']'
-      | otherwise -- showChar '('
-        =
+      | otherwise =
           constructor
             . slots
       where
-        -- . showChar ')'
-
         constructor = showString . showConstr . toConstr $ t
         slots = foldr (.) id . gmapQ ((showChar ' ' .) . gshows) $ t
         commaSlots = foldr (.) id . gmapQ ((showChar ',' .) . gshows) $ t
