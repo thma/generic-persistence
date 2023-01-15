@@ -2,6 +2,7 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 
+
 module DataPersistence
   ( retrieveEntityById,
     retrieveAllEntities,
@@ -24,6 +25,7 @@ import           TypeInfo
  The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
  HDBC is used to access the RDBMS.
 --}
+
 
 -- | A function that retrieves an entity from a database.
 -- I would like to get rid of the TypeInfo paraemeter and derive it directly from the 'IO a' result type.

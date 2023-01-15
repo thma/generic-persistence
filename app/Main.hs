@@ -42,20 +42,20 @@ main = do
   persistEntity conn p {personID = 123457, name = "Bob"}
   
   -- select a Person from a database
-  entity <- retrieveEntityById conn (typeInfo p) 123456 :: IO Person
-  print entity
+  alice <- retrieveEntityById conn (typeInfo p) (123456 :: Int) :: IO Person
+  print alice
 
   -- select all Persons from a database
-  entities <- retrieveAllEntities conn (typeInfo p) :: IO [Person]
-  print entities
-  
+  allPersons <- retrieveAllEntities conn (typeInfo p) :: IO [Person]
+  print allPersons
+
   -- delete a Person from a database
-  deleteEntity conn p
+  deleteEntity conn alice
   
   -- insert a Person into a database
-  persistEntity conn p
+  persistEntity conn alice
     
-  entity' <- retrieveEntityById conn (typeInfo p) 123456 :: IO Person
+  entity' <- retrieveEntityById conn (typeInfo p) "123456" :: IO Person
   print entity'
   
 

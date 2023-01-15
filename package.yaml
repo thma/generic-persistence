@@ -28,6 +28,7 @@ dependencies:
 - convertible
 - HDBC #>= 2.4.0.4
 
+
 ghc-options:
 - -Wall
 - -Wcompat
@@ -43,7 +44,7 @@ library:
   source-dirs: src
 
 executables:
-  generic-attributes-exe:
+  generic-attributes-demo:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

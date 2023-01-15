@@ -44,7 +44,7 @@ library
     , transformers
   default-language: Haskell2010
 
-executable generic-attributes-exe
+executable generic-attributes-demo
   main-is: Main.hs
   other-modules:
       Paths_generic_attributes
