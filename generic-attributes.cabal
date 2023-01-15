@@ -24,7 +24,7 @@ source-repository head
 
 library
   exposed-modules:
-      DataPersistence
+      GenericPersistence
       RecordtypeReflection
       SqlGenerator
       TypeInfo

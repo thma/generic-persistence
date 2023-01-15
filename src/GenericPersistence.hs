@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 
 
-module DataPersistence
+module GenericPersistence
   ( retrieveEntityById,
     retrieveAllEntities,
     persistEntity,

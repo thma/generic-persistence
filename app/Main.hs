@@ -5,7 +5,7 @@ module Main (main) where
 import Data.Data ( Data )
 
 import TypeInfo ( typeInfo )
-import DataPersistence
+import GenericPersistence
 import Database.HDBC ( IConnection(disconnect, runRaw, commit) )
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 
