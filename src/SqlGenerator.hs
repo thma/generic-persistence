@@ -1,17 +1,16 @@
 module SqlGenerator
-  ( insertStmtFor
-  , updateStmtFor
-  , deleteStmtFor
-  , selectStmtFor
-  , idColumn
+  ( insertStmtFor,
+    updateStmtFor,
+    deleteStmtFor,
+    selectStmtFor,
+    idColumn,
   )
 where
 
-import           Data.Data             (Data)
-import           Data.List             (intercalate)
+import           Data.Char (toLower)
+import           Data.Data (Data)
+import           Data.List (intercalate)
 import           TypeInfo
-import           Data.Char             (toLower)
-
 
 -- | A function that returns an SQL insert statement for an instance of type 'a'. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -27,35 +26,44 @@ insertStmtFor x =
     ++ intercalate ", " (fieldValues x)
     ++ ");"
 
-
 updateStmtFor :: Data a => a -> String
 updateStmtFor x =
   "UPDATE "
     ++ show (typeName $ typeInfo x)
     ++ " SET "
     ++ intercalate ", " updatePairs
-    ++ " WHERE " ++ idColumn ti ++ " = "
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = "
     ++ fieldValueAsString x (idColumn ti)
     ++ ";"
-    where updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
-          ti = typeInfo x
+  where
+    updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
+    ti = typeInfo x
 
 selectStmtFor :: (Show id) => TypeInfo -> id -> String
-selectStmtFor ti id =
+selectStmtFor ti eid =
   "SELECT "
-  ++ intercalate ", " (fieldNamesFromTypeInfo ti)
-  ++ " FROM " ++ show (typeName ti) 
-  ++ " WHERE " ++ idColumn ti ++ " = " ++ show id ++ ";"
-
+    ++ intercalate ", " (fieldNamesFromTypeInfo ti)
+    ++ " FROM "
+    ++ show (typeName ti)
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = "
+    ++ show eid
+    ++ ";"
 
 deleteStmtFor :: Data a => a -> String
 deleteStmtFor x =
   "DELETE FROM "
     ++ show (typeName $ typeInfo x)
-    ++ " WHERE " ++ idColumn ti ++ " = "
-    ++ fieldValueAsString x (idColumn ti) 
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = "
+    ++ fieldValueAsString x (idColumn ti)
     ++ ";"
-    where ti = typeInfo x
+  where
+    ti = typeInfo x
 
 -- "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
 {--
@@ -70,4 +78,3 @@ createTableStmtFor ti =
 
 idColumn :: TypeInfo -> String
 idColumn ti = (map toLower (show $ typeName ti)) ++ "ID"
-

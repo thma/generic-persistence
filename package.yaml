@@ -24,9 +24,9 @@ dependencies:
 - ghc-prim
 - syb
 - transformers
-- HDBC
-- HDBC-sqlite3
+- HDBC-sqlite3 #>= 2.3.3.1
 - convertible
+- HDBC #>= 2.4.0.4
 
 ghc-options:
 - -Wall
