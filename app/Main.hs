@@ -1,12 +1,14 @@
 {-# LANGUAGE DeriveDataTypeable#-}
-{-# LANGUAGE AllowAmbiguousTypes#-}
 module Main (main) where
 
 import Data.Data ( Data )
-
-import TypeInfo ( typeInfo )
+import TypeInfo ( typeInfo ) 
 import GenericPersistence
-import Database.HDBC ( IConnection(disconnect, runRaw, commit) )
+    ( deleteEntity,
+      persistEntity,
+      retrieveAllEntities,
+      retrieveEntityById )
+import Database.HDBC (disconnect, runRaw, commit) 
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 
 
@@ -38,8 +40,11 @@ main = do
   -- insert a Person into a database
   persistEntity conn p
   
-  -- update a Person in a database
+  -- insert a second Person in a database
   persistEntity conn p {personID = 123457, name = "Bob"}
+  
+  -- update a Person
+  persistEntity conn p {address = "Elmstreet 1"}  
   
   -- select a Person from a database
   alice <- retrieveEntityById conn (typeInfo p) (123456 :: Int) :: IO Person
@@ -52,14 +57,11 @@ main = do
   -- delete a Person from a database
   deleteEntity conn alice
   
-  -- insert a Person into a database
-  persistEntity conn alice
-    
-  entity' <- retrieveEntityById conn (typeInfo p) "123456" :: IO Person
-  print entity'
-  
+  -- select all Persons from a database
+  allPersons' <- retrieveAllEntities conn (typeInfo p) :: IO [Person]
+  print allPersons'
 
-  
+  -- close connection
   disconnect conn
 
 
