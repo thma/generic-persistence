@@ -215,13 +215,33 @@ The overall logic in this function is as follows:
 
 The `selectStmt`, `insertStmt` and `updateStmt` are generated dynamically using the `selectStmtFor`, `insertStmtFor` and `updateStmtFor` functions.
 
-Let's start with `insertStmtFor` first as it is the simplest one:
+Let's start with `insertStmtFor` as it is the simplest one.
+
+Let's say we have a Person entity:
 
 ```haskell
--- | A function that returns an SQL insert statement for an instance of type 'a'. Type 'a' must be an instance of Data.
--- The function will use the field names of the data type to generate the column names in the insert statement.
--- The values of the fields will be used as the values in the insert statement.
--- Output example: INSERT INTO Person (id, name, age, address) VALUES (123456, "Alice", 25, "123 Main St");
+alice :: Person
+alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
+```haskell
+
+Then the corresponding insert statement is:
+
+```sql
+INSERT INTO Person (id, name, age, address) VALUES (123456, "Alice", 25, "Elmstreet 1");
+```
+
+So in order to generate the insert statement we need to know the table name, the column names and the values.
+The idea is to use Haskell Generics to obtain these from the entity instance.
+As of now I'm using the type- and attribute-names directly as column names. But this could be easily changed later on.
+The tricky business is to dynamically inspect the entity instance and extract the values of the attributes.
+
+So here comes the code for `insertStmtFor`:
+
+```haskell
+import           TypeInfo             (TypeInfo, fieldNames,
+                                       fieldNamesFromTypeInfo, fieldValues,
+                                       typeInfo, typeName)
+
 insertStmtFor :: Data a => a -> String
 insertStmtFor x =
   "INSERT INTO "
@@ -232,3 +252,4 @@ insertStmtFor x =
     ++ intercalate ", " (fieldValues x)
     ++ ");"
 ```
+
