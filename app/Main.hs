@@ -64,4 +64,28 @@ main = do
   -- close connection
   disconnect conn
 
+main' :: IO ()
+main' = do
+    -- initialize Person table
+    conn <- connectSqlite3 "sqlite.db"
+    runRaw conn "DROP TABLE IF EXISTS Person;"
+    runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
+    commit conn
+  
+    -- create a Person entity
+    let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
+    -- insert a Person into a database
+    persistEntity conn alice
+
+    -- update a Person
+    persistEntity conn alice {address = "Main Street 200"}  
+    
+    -- select a Person from a database
+    alice' <- retrieveEntityById conn (typeInfo p) 123456 :: IO Person
+
+    -- delete a Person from a database
+    deleteEntity conn alice 
+
+    -- close connection
+    disconnect conn

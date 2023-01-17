@@ -17,13 +17,8 @@ module TypeInfo
   )
 where
 
-import Data.Data
-    ( Data(gmapQ, toConstr),
-      constrFields,
-      showConstr,
-      typeOf,
-      Constr,
-      TypeRep )
+import           Data.Data             (Constr, Data (gmapQ, toConstr), TypeRep,
+                                        constrFields, showConstr, typeOf)
 import           Data.Generics.Aliases (extQ)
 import           GHC.Data.Maybe        (expectJust)
 
@@ -44,13 +39,12 @@ data TypeInfo = TypeInfo
 typeInfo :: Data a => a -> TypeInfo
 typeInfo x =
   TypeInfo
-    { 
-      typeConstructor = toConstr x,
+    { typeConstructor = toConstr x,
       typeFields = fieldInfo x
     }
- 
-typeName :: TypeInfo -> String    
-typeName ti = show (typeConstructor ti) 
+
+typeName :: TypeInfo -> String
+typeName ti = show (typeConstructor ti)
 
 data FieldInfo = FieldInfo
   { -- | The name of the field, Nothing if it has none.

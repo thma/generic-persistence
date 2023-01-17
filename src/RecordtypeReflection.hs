@@ -11,21 +11,18 @@ where
 
 import           Control.Monad                  (zipWithM)
 import           Control.Monad.Trans.Class      (lift)
-import Control.Monad.Trans.State.Lazy
-import Data.Data hiding (typeRep)
+import           Control.Monad.Trans.State.Lazy( StateT(runStateT), get, put )
+import           Data.Data ( Data, fromConstrM, Constr, (:~~:)(HRefl) )
 import           Data.Dynamic                   (Dynamic, fromDynamic, toDyn)
+import           Data.List                      (elemIndex)
 import           Database.HDBC                  (SqlValue, fromSql)
 import           GHC.Data.Maybe                 (expectJust)
-import           Type.Reflection                (SomeTypeRep (..), eqTypeRep, typeRep)
-import           Data.List                      (elemIndex)
-                                                 
-import TypeInfo
-    ( FieldInfo(fieldType),
-      TypeInfo(typeFields, typeConstructor),
-      typeInfo,
-      typeName,
-      fieldNames,
-      fieldValues )
+import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
+                                                 typeRep)
+import           TypeInfo                       (FieldInfo (fieldType),
+                                                 TypeInfo (typeConstructor, typeFields),
+                                                 fieldNames, fieldValues,
+                                                 typeInfo, typeName)
 
 fieldValueAsString :: Data a => a -> String -> String
 fieldValueAsString x field =

@@ -1,9 +1,96 @@
 # generic-persistence
 
-## shoort demo
+## Introduction
 
-here comes a short demo that shows how the persistence of POHOs (plain old haskell objects) can be handled with 
-the GenericPersistence library.
+In this article I'll describe how to write a rudimentary Haskell persistence layer (on top of HDBC). 
+My approach will rely heavily on Generics (`Data.Data`, `Data.Typeable`) and Reflection (`Type.Reflection`).
+
+<!--
+Some twenty years back the Java community became increasingly unhappy with the persistence mechanism provided by SUN, 
+the Entity Beans of the Enterprise Java Beans (EJB) framework. The EJB framework required developers to implement 
+complex interfaces and to write a lot of boilerplate code to integrate into the heavy machinery of the EJB-container.
+
+Developers wanted to have persistence features for their [plain old Java objects* 
+(POJOs)](https://en.wikipedia.org/wiki/Plain_old_Java_object) without all the boilerplate and dependencies on awkward frameworks.
+-->
+
+
+The *functional goal* of my persistence layer is to provide hassle-free RDBMS Persistence for Haskell data types in 
+record notation (for brevity I call them *Entities*). 
+That is, it must provide means for inserting, updating, deleting and quering such enties to/from relational databases.
+
+Not in scope for the current state of the library are things like:
+- A query language
+- User-definable mappings of Haskell types to RDBMS types
+- Handling of relationships between entities (1:1, 1:n, n:m)
+- Handling of transactions
+- Handling of database migrations
+- Handling of database schemas
+- Handling of database connections and sessions
+- Caching
+- ...
+
+So as of now it's just about the bare minimum to get some data into a database and to get it back out again.
+
+The main *design goal* is to minimize the *boilerplate* code required. Ideally I would like to achieve the following:
+
+- no manual instantiation of type classes
+- no implementation of encoders/decoders
+- no special naming convention for types and their attributes 
+- no special types to define entities and attributes
+- no Template Haskell scaffolding of glue code
+
+In an ideal world we would be able to take any POHO (Plain old Haskell Object) 
+and persist it to any RDBMS with just a few simple steps:
+
+```haskell
+-- | define a data type with several fields, using record syntax.
+data Person = Person
+  { personID :: Int
+  , name :: String
+  , age :: Int
+  , address :: String
+  } 
+
+main :: IO ()
+main = do
+      -- open an HDBC connection to a sqlite db (assuming the db has all relevant data at hand)
+    conn <- connectSqlite3 "sqlite.db" 
+  
+    -- create a Person entity
+    let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
+
+    -- insert a Person into a database
+    persistEntity conn alice
+
+    -- update a Person
+    persistEntity conn alice {address = "Main Street 200"}  
+    
+    -- select a Person from a database
+    alice' <- retrieveEntityById conn 123456 :: IO Person
+
+    -- delete a Person from a database
+    deleteEntity conn alice 
+
+    -- close connection
+    disconnect conn
+```
+
+Of course, we expect `persistEntity`, `retrieveEntity` and `deleteEntity` to be polymorphic 
+to accept any data type as an argument:
+
+```haskell
+persistEntity :: IConnection -> a -> IO ()
+
+deleteEntity :: IConnection -> a -> IO ()
+
+retrieveEntityById :: forall a conn id. (IConnection conn, Show id) => conn -> id -> IO a
+```
+
+
+## short demo
+
+Here comes a short demo that shows how close my library comes to the proclaimed design goals.
 
 ```haskell
 {-# LANGUAGE DeriveDataTypeable#-}
@@ -17,51 +104,131 @@ import Database.HDBC.Sqlite3 ( connectSqlite3 )
 
 -- | define a data type with several fields, using record syntax.
 data Person = Person
-  { personID :: !Int
-  , name :: !String
-  , age :: !Int
-  , address :: !String
+  { personID :: Int
+  , name :: String
+  , age :: Int
+  , address :: String
   } deriving (Data, Show)
+```
 
--- | a sample instance of Person
-p :: Person
-p = Person 123456 "Alice" 25 "123 Main St"
+Here I added the `deriving (Data, Show)` stanza. The persistent data type must be deriving the `Data.Data` type class. This is required
+to enable all the Generics magics to work behind the scenes. 
+Fortunately, deriving `Data` needs no manual implementation.
 
+Deriving `Show`is not required, I just want to be able to print out the entities.
+
+```haskell
 main :: IO ()
 main = do
+    -- initialize Person table
+    conn <- connectSqlite3 "sqlite.db"
+    runRaw conn "DROP TABLE IF EXISTS Person;"
+    runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
+    commit conn
+```
 
-  -- open a connection to a sqlite db
-  conn <- connectSqlite3 "sqlite.db"
-  -- prepare db by initializing the Person table
-  runRaw conn "DROP TABLE IF EXISTS Person;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
-  commit conn
-  
-  -- insert a Person into a database
-  persistEntity conn p
-  
-  -- insert a second Person in a database
-  persistEntity conn p {personID = 123457, name = "Bob"}
+As of now my library does not cover the creation of database tables. So I have to do it manually.
+As I mentioned, the library does not cover any user defined mapping of data type attributes to columns.
+So I have to use the same names for the attributes and the columns, 
+and I'm using column types that can be automatically converted by HDBC.
 
-  -- update a Person
-  persistEntity conn p {address = "Elmstreet 1"}  
-  
-  -- select a Person from a database
-  alice <- retrieveEntityById conn (typeInfo p) (123456 :: Int) :: IO Person
-  print alice
 
-  -- select all Persons from a database
-  allPersons <- retrieveAllEntities conn (typeInfo p) :: IO [Person]
-  print allPersons
+```haskell
+    -- create a Person entity
+    let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
-  -- delete a Person from a database
-  deleteEntity conn alice
-  
-  -- select all Persons from a database
-  allPersons' <- retrieveAllEntities conn (typeInfo p) :: IO [Person]
-  print allPersons'
+    -- insert a Person into a database
+    persistEntity conn alice
 
-  -- close connection
-  disconnect conn
+    -- update a Person
+    persistEntity conn alice {address = "Main Street 200"}  
+```
 
+So far everything works as advertised. I can insert and update entities.
+In the next section we'll see a minor deviation:
+
+```haskell
+    -- select a Person from a database
+    alice' <- retrieveEntityById conn (typeInfo p) 123456 :: IO Person
+```
+
+The `retrieveEntityById` function requires an additional argument, the `TypeInfo` of the entity type.
+This is required to enable the library to find the correct table and columns for the entity type.
+
+As of now I did not find a way to get the `TypeInfo` of a type dynamically via a `TypeRep` 
+that might be obtained at runtime by a call like `typeRep ([] :: [a])` within the `retrieveEntityById` function.
+
+I assume that this can be easily fixed and is not a major drawback.
+
+The final part of the demo then again works as expected:
+
+```haskell
+    -- delete a Person from a database
+    deleteEntity conn alice 
+
+    -- close connection
+    disconnect conn
+```
+
+Summarizing, we can state that most of my design goals are met. 
+I'm eager to learn if you would see such a persistence API as useful and if you have any suggestions for improvement.
+
+## A deeper dive into the library
+
+In this section we are taking a closer look at the library internals. Let's start with the `persistEntity` function:
+
+```haskell
+-- | A function that persists an entity  to a database.
+-- The function takes an HDBC connection and an entity (fulfilling constraint 'Data a') as parameters.
+-- The entity is either inserted or updated, depending on whether it already exists in the database.
+-- The required SQL statements are generated dynamically using Haskell generics and reflection
+persistEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
+persistEntity conn entity = do
+  resultRows <- quickQuery conn selectStmt []
+  case resultRows of
+    [] -> do
+      putStrLn $ "Inserting " ++ gshow entity
+      runRaw conn insertStmt
+      commit conn
+    [_singleRow] -> do
+      putStrLn $ "Updating " ++ gshow entity
+      runRaw conn updateStmt
+      commit conn
+    _ -> error $ "More than one entity found for id " ++ show eid
+  where
+    ti = typeInfo entity
+    eid = entityId entity
+    selectStmt = selectStmtFor ti eid
+    insertStmt = insertStmtFor entity
+    updateStmt = updateStmtFor entity
+    
+    entityId :: forall d. (Data d) => d -> String
+    entityId x = fieldValueAsString x (idColumn (typeInfo x))
+```
+
+The overall logic in this function is as follows:
+
+1. Perform a select query against the table corresponding to type `a` to check whether a record is already present for the primary key value derived from `entity`.
+2. If the list of resulting rows is empty, the entity has not been persisted before and an `INSERT`-statement has to be excecuted.
+3. If the list contains exactly one row, the entity already was stored in the DB and an `UPDATE`-statement has to be executed.
+4. If the list contains more than one row, something is wrong and an error is thrown.
+
+The `selectStmt`, `insertStmt` and `updateStmt` are generated dynamically using the `selectStmtFor`, `insertStmtFor` and `updateStmtFor` functions.
+
+Let's start with `insertStmtFor` first as it is the simplest one:
+
+```haskell
+-- | A function that returns an SQL insert statement for an instance of type 'a'. Type 'a' must be an instance of Data.
+-- The function will use the field names of the data type to generate the column names in the insert statement.
+-- The values of the fields will be used as the values in the insert statement.
+-- Output example: INSERT INTO Person (id, name, age, address) VALUES (123456, "Alice", 25, "123 Main St");
+insertStmtFor :: Data a => a -> String
+insertStmtFor x =
+  "INSERT INTO "
+    ++ show (typeName $ typeInfo x)
+    ++ " ("
+    ++ intercalate ", " (fieldNames x)
+    ++ ") VALUES ("
+    ++ intercalate ", " (fieldValues x)
+    ++ ");"
 ```

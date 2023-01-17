@@ -2,7 +2,6 @@
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 
-
 module GenericPersistence
   ( retrieveEntityById,
     retrieveAllEntities,
@@ -14,9 +13,11 @@ where
 import           Data.Data
 import           Database.HDBC        (IConnection, commit, quickQuery, runRaw)
 import           GHC.Data.Maybe       (expectJust)
-import           RecordtypeReflection
-import           SqlGenerator
-import           TypeInfo
+import           RecordtypeReflection (buildFromRecord, fieldValueAsString)
+import           SqlGenerator         (deleteStmtFor, idColumn, insertStmtFor,
+                                       selectAllStmtFor, selectStmtFor,
+                                       updateStmtFor)
+import           TypeInfo             (TypeInfo, gshow, typeInfo, typeName)
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -25,7 +26,6 @@ import           TypeInfo
  The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
  HDBC is used to access the RDBMS.
 --}
-
 
 -- | A function that retrieves an entity from a database.
 -- I would like to get rid of the TypeInfo paraemeter and derive it directly from the 'IO a' result type.
@@ -46,13 +46,12 @@ retrieveAllEntities conn ti = do
   resultRowsSqlValues <- quickQuery conn stmt []
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
 
-persistEntity :: forall a conn. (Data a, IConnection conn) => conn -> a -> IO ()
+-- | A function that persists an entity  to a database.
+-- The function takes an HDBC connection and an entity (fulfilling constraint 'Data a') as parameters.
+-- The entity is either inserted or updated, depending on whether it already exists in the database.
+-- The required SQL statements are generated dynamically using Haskell generics and reflection
+persistEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
 persistEntity conn entity = do
-  let ti = typeInfo entity
-      eid = entityId entity
-      selectStmt = selectStmtFor ti eid
-      insertStmt = insertStmtFor entity
-      updateStmt = updateStmtFor entity
   resultRows <- quickQuery conn selectStmt []
   case resultRows of
     [] -> do
@@ -65,12 +64,18 @@ persistEntity conn entity = do
       commit conn
     _ -> error $ "More than one entity found for id " ++ show eid
   where
+    ti = typeInfo entity
+    eid = entityId entity
+    selectStmt = selectStmtFor ti eid
+    insertStmt = insertStmtFor entity
+    updateStmt = updateStmtFor entity
+    
     entityId :: forall d. (Data d) => d -> String
-    entityId x = fieldValueAsString x idField
-      where
-        idField = idColumn (typeInfo x)
+    entityId x = fieldValueAsString x (idColumn (typeInfo x))
+    
 
-deleteEntity :: forall a conn. (Data a, IConnection conn) => conn -> a -> IO ()
+--deleteEntity :: forall a conn. (Data a, IConnection conn) => conn -> a -> IO ()
+deleteEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
 deleteEntity conn entity = do
   runRaw conn (deleteStmtFor entity)
   commit conn
