@@ -222,7 +222,7 @@ Let's say we have a Person entity:
 ```haskell
 alice :: Person
 alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
-```haskell
+```
 
 Then the corresponding insert statement is:
 
