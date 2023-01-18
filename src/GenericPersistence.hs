@@ -32,6 +32,7 @@ import           TypeInfo             (TypeInfo, gshow, typeInfo, typeName)
 -- This will need some helping hand from the Internet...
 retrieveEntityById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> TypeInfo -> id -> IO a
 retrieveEntityById conn ti eid = do
+  trace $ "Retrieve " ++ typeName ti ++ " with id " ++ show eid
   let stmt = selectStmtFor ti eid
   resultRowsSqlValues <- quickQuery conn stmt []
   case resultRowsSqlValues of
@@ -42,6 +43,7 @@ retrieveEntityById conn ti eid = do
 
 retrieveAllEntities :: forall a conn. (Data a, IConnection conn) => conn -> TypeInfo -> IO [a]
 retrieveAllEntities conn ti = do
+  trace $ "Retrieve all " ++ typeName ti
   let stmt = selectAllStmtFor ti
   resultRowsSqlValues <- quickQuery conn stmt []
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
@@ -55,11 +57,11 @@ persistEntity conn entity = do
   resultRows <- quickQuery conn selectStmt []
   case resultRows of
     [] -> do
-      putStrLn $ "Inserting " ++ gshow entity
+      trace $ "Inserting " ++ gshow entity
       runRaw conn insertStmt
       commit conn
     [_singleRow] -> do
-      putStrLn $ "Updating " ++ gshow entity
+      trace $ "Updating " ++ gshow entity
       runRaw conn updateStmt
       commit conn
     _ -> error $ "More than one entity found for id " ++ show eid
@@ -70,12 +72,15 @@ persistEntity conn entity = do
     insertStmt = insertStmtFor entity
     updateStmt = updateStmtFor entity
     
-    entityId :: forall d. (Data d) => d -> String
-    entityId x = fieldValueAsString x (idColumn (typeInfo x))
+entityId :: forall d. (Data d) => d -> String
+entityId x = fieldValueAsString x (idColumn (typeInfo x))
     
 
---deleteEntity :: forall a conn. (Data a, IConnection conn) => conn -> a -> IO ()
 deleteEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
 deleteEntity conn entity = do
+  trace $ "Deleting " ++ typeName (typeInfo entity) ++ " with id " ++ entityId entity
   runRaw conn (deleteStmtFor entity)
   commit conn
+
+trace :: String -> IO ()
+trace = putStrLn
