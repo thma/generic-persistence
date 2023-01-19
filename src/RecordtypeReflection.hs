@@ -32,7 +32,7 @@ fieldValueAsString x field =
     valueList = fieldValues x
     index =
       expectJust
-        ("Field " ++ field ++ " is not present in type " ++ show (typeName $ typeInfo x))
+        ("Field " ++ field ++ " is not present in type " ++ show (typeName x))
         (elemIndex field fieldList)
 
 buildFromRecord :: (Data a) => TypeInfo -> [SqlValue] -> Maybe a

@@ -129,7 +129,7 @@ ghci> main
 Inserting Person 123456 "Alice" 25 "Elmstreet 1"
 Updating Person 123456 "Alice" 25 "Main Street 200"
 Retrieve Person with id 123456
-Retrieved from DB: Person 123456 "Alice" 25 "Main Street 200"
+Retrieved From DB: Person 123456 "Alice" 25 "Main Street 200"
 Deleting Person with id 123456
 ```
 
@@ -141,7 +141,7 @@ I'm eager to learn if you would regard such a persistence API as useful and if y
 In this section we are taking a closer look at the library internals. Let's start with the `persistEntity` function:
 
 ```haskell
--- | A function that persists an entity  to a database.
+-- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity (fulfilling constraint 'Data a') as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
@@ -172,7 +172,7 @@ trace :: String -> IO ()
 trace = putStrLn
 ```
 
-The overall logic in this function is as follows:
+The overall logic of this function is as follows:
 
 1. Perform a select query against the table corresponding to type `a` to check whether a record is already present for the primary key value derived from `entity`.
 2. If the list of resulting rows is empty, the entity has not been persisted before and an `INSERT`-statement has to be excecuted.
@@ -206,12 +206,12 @@ So here comes the code for `insertStmtFor`:
 ```haskell
 import           TypeInfo             (TypeInfo, fieldNames,
                                        fieldNamesFromTypeInfo, fieldValues,
-                                       typeInfo, typeName)
+                                       typeInfo, typeName, tiTypeName)
 
 insertStmtFor :: Data a => a -> String
 insertStmtFor x =
   "INSERT INTO "
-    ++ show (typeName $ typeInfo x)
+    ++ typeName x
     ++ " ("
     ++ intercalate ", " (fieldNames x)
     ++ ") VALUES ("
@@ -219,3 +219,9 @@ insertStmtFor x =
     ++ ");"
 ```
 
+The overall construction of the insert statement is obvious. We just need to know a bit more about the `typeName`, `fieldNames` and `fieldValues` functions from the `TypeInfo` module:
+
+```haskell
+typeName :: (Data a) => a -> String
+typeName = show . toConstr 
+```

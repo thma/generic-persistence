@@ -12,9 +12,9 @@ import           Data.Char            (toLower)
 import           Data.Data            (Data)
 import           Data.List            (intercalate)
 import           RecordtypeReflection (fieldValueAsString)
-import           TypeInfo             (TypeInfo, fieldNames,
+import           TypeInfo             (TypeInfo (typeConstructor), fieldNames,
                                        fieldNamesFromTypeInfo, fieldValues,
-                                       typeInfo, typeName)
+                                       typeInfo, typeName, tiTypeName)
 
 -- | A function that returns an SQL insert statement for an instance of type 'a'. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -23,7 +23,7 @@ import           TypeInfo             (TypeInfo, fieldNames,
 insertStmtFor :: Data a => a -> String
 insertStmtFor x =
   "INSERT INTO "
-    ++ show (typeName $ typeInfo x)
+    ++ typeName x
     ++ " ("
     ++ intercalate ", " (fieldNames x)
     ++ ") VALUES ("
@@ -33,7 +33,7 @@ insertStmtFor x =
 updateStmtFor :: Data a => a -> String
 updateStmtFor x =
   "UPDATE "
-    ++ show (typeName $ typeInfo x)
+    ++ typeName x
     ++ " SET "
     ++ intercalate ", " updatePairs
     ++ " WHERE "
@@ -50,7 +50,7 @@ selectStmtFor ti eid =
   "SELECT "
     ++ intercalate ", " (fieldNamesFromTypeInfo ti)
     ++ " FROM "
-    ++ show (typeName ti)
+    ++ tiTypeName ti
     ++ " WHERE "
     ++ idColumn ti
     ++ " = "
@@ -62,13 +62,13 @@ selectAllStmtFor ti =
   "SELECT "
     ++ intercalate ", " (fieldNamesFromTypeInfo ti)
     ++ " FROM "
-    ++ show (typeName ti)
+    ++ tiTypeName ti
     ++ ";"
 
 deleteStmtFor :: Data a => a -> String
 deleteStmtFor x =
   "DELETE FROM "
-    ++ show (typeName $ typeInfo x)
+    ++ show (typeName x)
     ++ " WHERE "
     ++ idColumn ti
     ++ " = "
@@ -89,4 +89,4 @@ createTableStmtFor ti =
 --}
 
 idColumn :: TypeInfo -> String
-idColumn ti = map toLower (typeName ti) ++ "ID"
+idColumn ti = map toLower (show $ typeConstructor ti) ++ "ID"

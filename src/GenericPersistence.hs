@@ -17,7 +17,7 @@ import           RecordtypeReflection (buildFromRecord, fieldValueAsString)
 import           SqlGenerator         (deleteStmtFor, idColumn, insertStmtFor,
                                        selectAllStmtFor, selectStmtFor,
                                        updateStmtFor)
-import           TypeInfo             (TypeInfo, gshow, typeInfo, typeName)
+import           TypeInfo             (TypeInfo(..), gshow, typeInfo, typeName)
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -30,23 +30,34 @@ import           TypeInfo             (TypeInfo, gshow, typeInfo, typeName)
 -- | A function that retrieves an entity from a database.
 -- I would like to get rid of the TypeInfo paraemeter and derive it directly from the 'IO a' result type.
 -- This will need some helping hand from the Internet...
-retrieveEntityById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> TypeInfo -> id -> IO a
-retrieveEntityById conn ti eid = do
-  trace $ "Retrieve " ++ typeName ti ++ " with id " ++ show eid
+retrieveEntityById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> id -> IO a
+retrieveEntityById conn eid = do
+  let dt = dataTypeOf (undefined :: a) 
+      constr = head $ dataTypeConstrs dt
+      sample = fromConstr constr :: a
+      ti = typeInfo sample
+  trace $ "Retrieve " ++ show (typeConstructor ti) ++ " with id " ++ show eid
   let stmt = selectStmtFor ti eid
   resultRowsSqlValues <- quickQuery conn stmt []
   case resultRowsSqlValues of
-    [] -> error $ "No " ++ show (typeName ti) ++ " found for id " ++ show eid
+    [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
     [singleRowSqlValues] -> do
-      return $ expectJust ("No " ++ show (typeName ti) ++ " found for id " ++ show eid) (buildFromRecord ti singleRowSqlValues :: Maybe a)
+      return $ expectJust ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show eid
 
-retrieveAllEntities :: forall a conn. (Data a, IConnection conn) => conn -> TypeInfo -> IO [a]
-retrieveAllEntities conn ti = do
-  trace $ "Retrieve all " ++ typeName ti
+
+retrieveAllEntities :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
+retrieveAllEntities conn = do
+  let dt = dataTypeOf (undefined :: a) 
+      constr = head $ dataTypeConstrs dt
+      sample = fromConstr constr :: a
+      ti = typeInfo sample  
+  trace $ "Retrieve all " ++ show (typeConstructor ti) ++ "s"
   let stmt = selectAllStmtFor ti
   resultRowsSqlValues <- quickQuery conn stmt []
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
+
+
 
 -- | A function that persists an entity  to a database.
 -- The function takes an HDBC connection and an entity (fulfilling constraint 'Data a') as parameters.
@@ -78,7 +89,7 @@ entityId x = fieldValueAsString x (idColumn (typeInfo x))
 
 deleteEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
 deleteEntity conn entity = do
-  trace $ "Deleting " ++ typeName (typeInfo entity) ++ " with id " ++ entityId entity
+  trace $ "Deleting " ++ typeName entity ++ " with id " ++ entityId entity
   runRaw conn (deleteStmtFor entity)
   commit conn
 

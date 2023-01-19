@@ -4,10 +4,6 @@ module Main where
 import Data.Data ( Data )
 import TypeInfo ( typeInfo, gshow ) 
 import GenericPersistence
-    ( deleteEntity,
-      persistEntity,
-      retrieveAllEntities,
-      retrieveEntityById )
 import Database.HDBC (disconnect, runRaw, commit) 
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 
@@ -38,7 +34,7 @@ main = do
     persistEntity conn alice {address = "Main Street 200"}  
     
     -- select a Person from a database
-    alice' <- retrieveEntityById conn (typeInfo p) 123456 :: IO Person
+    alice' <- retrieveEntityById conn 123456 :: IO Person
     putStrLn $ "Retrieved from DB: " ++ gshow alice'
 
     -- delete a Person from a database
@@ -71,18 +67,18 @@ main1 = do
   persistEntity conn p {address = "Elmstreet 1"}  
   
   -- select a Person from a database
-  alice <- retrieveEntityById conn (typeInfo p) (123456 :: Int) :: IO Person
+  alice <- retrieveEntityById conn (123456 :: Int) :: IO Person
   print $ gshow alice
 
   -- select all Persons from a database
-  allPersons <- retrieveAllEntities conn (typeInfo p) :: IO [Person]
+  allPersons <- retrieveAllEntities conn :: IO [Person]
   print $ gshow allPersons
 
   -- delete a Person from a database
   deleteEntity conn alice
   
   -- select all Persons from a database
-  allPersons' <- retrieveAllEntities conn (typeInfo p) :: IO [Person]
+  allPersons' <- retrieveAllEntities conn :: IO [Person]
   print $ gshow allPersons'
 
   -- close connection

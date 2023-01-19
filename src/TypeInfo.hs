@@ -9,6 +9,8 @@ module TypeInfo
     FieldInfo (..),
     typeName,
     typeInfo,
+    typeInfoFrom,
+    tiTypeName,
     fieldInfo,
     fieldNames,
     fieldNamesFromTypeInfo,
@@ -18,7 +20,7 @@ module TypeInfo
 where
 
 import           Data.Data             (Constr, Data (gmapQ, toConstr), TypeRep,
-                                        constrFields, showConstr, typeOf)
+                                        constrFields, showConstr, typeOf, DataType, dataTypeConstrs, dataTypeRep, fromConstr)
 import           Data.Generics.Aliases (extQ)
 import           GHC.Data.Maybe        (expectJust)
 
@@ -43,8 +45,24 @@ typeInfo x =
       typeFields = fieldInfo x
     }
 
-typeName :: TypeInfo -> String
-typeName ti = show (typeConstructor ti)
+typeInfoFrom :: forall a. Data a => DataType -> TypeInfo
+typeInfoFrom dt =
+  TypeInfo
+    { typeConstructor = constr, --toConstr sample,
+      typeFields = fieldInfo sample
+    }
+    where
+      constr = head $ dataTypeConstrs dt
+      sample = fromConstr constr :: a
+
+
+
+
+typeName :: (Data a) => a -> String
+typeName = show . toConstr
+
+tiTypeName :: TypeInfo -> String
+tiTypeName = show . typeConstructor
 
 data FieldInfo = FieldInfo
   { -- | The name of the field, Nothing if it has none.
@@ -69,6 +87,18 @@ fieldInfo x = zipWith3 FieldInfo names constrs types
         then map Just candidates
         else replicate (length constrs) Nothing
 
+-- fieldInfoFrom :: forall a. Data a => Constr -> [FieldInfo]
+-- fieldInfoFrom constructor = zipWith3 FieldInfo names constrs types
+--   where
+--     candidates = constrFields constructor
+--     sample = fromConstr constructor :: a
+--     constrs = gmapQ toConstr sample
+--     types = gmapQ typeOf sample
+--     names =
+--       if length candidates == length constrs
+--         then map Just candidates
+--         else replicate (length constrs) Nothing      
+
 fieldNames :: (Data a) => a -> [String]
 fieldNames x = fieldNamesFromTypeInfo $ typeInfo x
 
@@ -78,7 +108,7 @@ fieldValues = gmapQ gshow
 fieldNamesFromTypeInfo :: TypeInfo -> [String]
 fieldNamesFromTypeInfo ti = map (expectJust errMsg . fieldName) (typeFields ti)
   where
-    errMsg = "Type " ++ show (typeName ti) ++ " does not have named fields"
+    errMsg = "Type " ++ show (typeConstructor ti) ++ " does not have named fields"
 
 -- | Generic show: taken from syb package / https://chrisdone.com/posts/data-typeable/
 gshow :: Data a => a -> String
