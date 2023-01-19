@@ -28,32 +28,34 @@ import           TypeInfo             (TypeInfo(..), gshow, typeInfo, typeName)
 --}
 
 -- | A function that retrieves an entity from a database.
--- I would like to get rid of the TypeInfo paraemeter and derive it directly from the 'IO a' result type.
--- This will need some helping hand from the Internet...
+-- The function takes an HDBC connection and an entity id as parameters.
+-- It returns the entity of type `a` with the given id.
+-- An error is thrown if no entity with the given id exists or if more than one entity with the given id exist.
 retrieveEntityById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> id -> IO a
 retrieveEntityById conn eid = do
-  let dt = dataTypeOf (undefined :: a) 
-      constr = head $ dataTypeConstrs dt
-      sample = fromConstr constr :: a
-      ti = typeInfo sample
+  let (ti,_) = computeTypeInfo :: (TypeInfo, a) -- returning an `a` convinces the compiler that the TypeInfo represents type `a`
+      stmt = selectStmtFor ti eid
   trace $ "Retrieve " ++ show (typeConstructor ti) ++ " with id " ++ show eid
-  let stmt = selectStmtFor ti eid
   resultRowsSqlValues <- quickQuery conn stmt []
   case resultRowsSqlValues of
     [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
     [singleRowSqlValues] -> do
       return $ expectJust ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show eid
+  
+computeTypeInfo :: forall a . Data a => (TypeInfo, a)
+computeTypeInfo = 
+  let dt = dataTypeOf (undefined :: a) 
+      constr = head $ dataTypeConstrs dt
+      sample = fromConstr constr :: a
+  in (typeInfo sample, sample)
 
 
 retrieveAllEntities :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
 retrieveAllEntities conn = do
-  let dt = dataTypeOf (undefined :: a) 
-      constr = head $ dataTypeConstrs dt
-      sample = fromConstr constr :: a
-      ti = typeInfo sample  
+  let (ti,_) = computeTypeInfo :: (TypeInfo, a) -- returning an `a` convinces the compiler that the TypeInfo represents type `a`
+      stmt = selectAllStmtFor ti
   trace $ "Retrieve all " ++ show (typeConstructor ti) ++ "s"
-  let stmt = selectAllStmtFor ti
   resultRowsSqlValues <- quickQuery conn stmt []
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
 

@@ -48,15 +48,12 @@ typeInfo x =
 typeInfoFrom :: forall a. Data a => DataType -> TypeInfo
 typeInfoFrom dt =
   TypeInfo
-    { typeConstructor = constr, --toConstr sample,
+    { typeConstructor = constr, 
       typeFields = fieldInfo sample
     }
     where
       constr = head $ dataTypeConstrs dt
       sample = fromConstr constr :: a
-
-
-
 
 typeName :: (Data a) => a -> String
 typeName = show . toConstr
@@ -86,19 +83,7 @@ fieldInfo x = zipWith3 FieldInfo names constrs types
       if length candidates == length constrs
         then map Just candidates
         else replicate (length constrs) Nothing
-
--- fieldInfoFrom :: forall a. Data a => Constr -> [FieldInfo]
--- fieldInfoFrom constructor = zipWith3 FieldInfo names constrs types
---   where
---     candidates = constrFields constructor
---     sample = fromConstr constructor :: a
---     constrs = gmapQ toConstr sample
---     types = gmapQ typeOf sample
---     names =
---       if length candidates == length constrs
---         then map Just candidates
---         else replicate (length constrs) Nothing      
-
+   
 fieldNames :: (Data a) => a -> [String]
 fieldNames x = fieldNamesFromTypeInfo $ typeInfo x
 

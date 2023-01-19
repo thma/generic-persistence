@@ -27,6 +27,7 @@ Not in scope for the current state of the library are things like:
 - Handling of database migrations
 - Handling of database schemas
 - Handling of database connections and sessions
+- Handling auto-incrementing primary keys
 - Caching
 - ...
 
@@ -94,27 +95,12 @@ For the column types we are choosing types that can be automatically converted b
 
     -- update a Person
     persistEntity conn alice {address = "Main Street 200"}  
-```
 
-So far everything works as advertised. I can insert and update entities.
-In the next section we'll see a minor deviation:
-
-```haskell
     -- select a Person from a database
-    alice' <- retrieveEntityById conn (typeInfo p) 123456 :: IO Person
-```
+    -- The result type must be provided explicitly, because `retrieveEntityById` 
+    -- has a polymorphic return type `IO a`.
+    alice' <- retrieveEntityById conn 123456 :: IO Person
 
-The `retrieveEntityById` function requires an additional argument, the `TypeInfo` of the entity type.
-This is required to enable the library to find the correct table and columns for the entity type.
-
-As of now I did not find a way to get the `TypeInfo` of a type dynamically via a `TypeRep` 
-that might be obtained at runtime by a call like `typeRep ([] :: [a])` within the `retrieveEntityById` function.
-
-I assume that this should be easy to fix and is not a major drawback.
-
-The final part of the demo then again works as expected:
-
-```haskell
     -- delete a Person from a database
     deleteEntity conn alice 
 
@@ -122,7 +108,7 @@ The final part of the demo then again works as expected:
     disconnect conn
 ```
 
-ANd here comes the output of the demo program:
+And here comes the output of the demo program. As you can see, there is some trace output for each of the database operations.
 
 ```haskell
 ghci> main
@@ -133,8 +119,13 @@ Retrieved From DB: Person 123456 "Alice" 25 "Main Street 200"
 Deleting Person with id 123456
 ```
 
-Summarizing, we can state that most of my design goals are met. 
+Summarizing, we can state that there is virtually no boilerplate code required in the user code.
+The only thing we have to do is to derive the `Data` type class for our data types.
+The library takes care of the rest.
+
 I'm eager to learn if you would regard such a persistence API as useful and if you have any suggestions for improvements!
+Do you thing it makes sense to continue working on it, or are there already enough libraries out there that do the same?
+
 
 ## A deeper dive into the library
 
@@ -179,7 +170,7 @@ The overall logic of this function is as follows:
 3. If the list contains exactly one row, the entity already was stored in the DB and an `UPDATE`-statement has to be executed.
 4. If the list contains more than one row, something is wrong and an error is thrown.
 
-The `selectStmt`, `insertStmt` and `updateStmt` are generated dynamically using the `selectStmtFor`, `insertStmtFor` and `updateStmtFor` functions.
+The `selectStmtFor`, `insertStmtFor` and `updateStmtFor` functions are used to generate the required SQL statements dynamically.
 
 Let's start with `insertStmtFor` as it is the simplest one.
 
