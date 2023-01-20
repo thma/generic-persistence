@@ -21,8 +21,7 @@ import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
 import           TypeInfo                       (FieldInfo (fieldType),
                                                  TypeInfo (typeConstructor, typeFields),
-                                                 fieldNames, fieldValues,
-                                                 typeInfo, typeName)
+                                                 fieldNames, fieldValues, typeName)
 
 fieldValueAsString :: Data a => a -> String -> String
 fieldValueAsString x field =

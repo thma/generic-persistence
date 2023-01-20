@@ -14,9 +14,9 @@ Developers wanted to have persistence features for their [plain old Java objects
 (POJOs)](https://en.wikipedia.org/wiki/Plain_old_Java_object) without all the boilerplate and dependencies on awkward frameworks.
 -->
 
+The *functional goal* of my persistence layer is to provide hassle-free RDBMS persistence for Haskell data types in 
+Record notation (for brevity I call them *Entities*).
 
-The *functional goal* of my persistence layer is to provide hassle-free RDBMS Persistence for Haskell data types in 
-record notation (for brevity I call them *Entities*). 
 That is, it must provide means for inserting, updating, deleting and quering such enties to/from relational databases.
 
 Not in scope for the current state of the library are things like:
@@ -46,7 +46,7 @@ and persist it to any RDBMS without any additional effort.
 
 ## Short demo
 
-Here comes a short demo that demonstrate how close my library comes to the proclaimed design goals.
+Here now follows a short demo that shows how the library looks and feels from the user's point of view.
 
 ```haskell
 {-# LANGUAGE DeriveDataTypeable#-}
@@ -81,29 +81,30 @@ main = do
     commit conn
 ```
 
-As of now my library does not cover the creation of database tables. So we have to do it manually.
+As of now my library does not cover the creation of database tables. So this is still a manual step.
 As already mentioned, the library does not cover any user defined mapping of data type attributes to columns.
 As of now the same names for the attributes and the columns are used.
-For the column types we are choosing types that can be automatically converted by HDBC.
+For the column types we are choosing types that can be automatically converted by HDBC. 
+
+Now we move on to using the actual library functions:
 
 ```haskell
     -- create a Person entity
     let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
     -- insert a Person into a database
-    persistEntity conn alice
+    persist conn alice
 
     -- update a Person
-    persistEntity conn alice {address = "Main Street 200"}  
-
+    persist conn alice {address = "Main Street 200"}  
+    
     -- select a Person from a database
-    -- The result type must be provided explicitly, because `retrieveEntityById` 
-    -- has a polymorphic return type `IO a`.
-    alice' <- retrieveEntityById conn 123456 :: IO Person
+    -- The result type must be provided explicitly, as `retrieveById` has a polymorphic return type `IO a`.
+    alice' <- retrieveById conn "123456" :: IO Person
 
     -- delete a Person from a database
-    deleteEntity conn alice 
-
+    delete conn alice'
+    
     -- close connection
     disconnect conn
 ```
@@ -115,29 +116,29 @@ ghci> main
 Inserting Person 123456 "Alice" 25 "Elmstreet 1"
 Updating Person 123456 "Alice" 25 "Main Street 200"
 Retrieve Person with id 123456
-Retrieved From DB: Person 123456 "Alice" 25 "Main Street 200"
 Deleting Person with id 123456
 ```
 
 Summarizing, we can state that there is virtually no boilerplate code required in the user code.
-The only thing we have to do is to derive the `Data` type class for our data types.
+The only thing we have to do is to derive the `Data` type class for our persistent data types.
 The library takes care of the rest.
 
-I'm eager to learn if you would regard such a persistence API as useful and if you have any suggestions for improvements!
-Do you thing it makes sense to continue working on it, or are there already enough libraries out there that do the same?
-
+I' explicitely asking for feedback here:
+- Do you regard such a persistence API as useful?
+- Do you have any suggestions for improvements?
+- Do you think it makes sense to continue working on it, or are there already enough libraries out there that do the same?
 
 ## A deeper dive into the library
 
-In this section we are taking a closer look at the library internals. Let's start with the `persistEntity` function:
+In this section we are taking a closer look at the library internals. Let's start with the `persist` function:
 
 ```haskell
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity (fulfilling constraint 'Data a') as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
-persistEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
-persistEntity conn entity = do
+persist :: (IConnection conn, Data a) => conn -> a -> IO ()
+persist conn entity = do
   resultRows <- quickQuery conn selectStmt []
   case resultRows of
     [] -> do

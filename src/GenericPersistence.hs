@@ -3,10 +3,10 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 
 module GenericPersistence
-  ( retrieveEntityById,
-    retrieveAllEntities,
-    persistEntity,
-    deleteEntity,
+  ( retrieveById,
+    retrieveAll,
+    persist,
+    delete,
   )
 where
 
@@ -31,8 +31,8 @@ import           TypeInfo             (TypeInfo(..), gshow, typeInfo, typeName)
 -- The function takes an HDBC connection and an entity id as parameters.
 -- It returns the entity of type `a` with the given id.
 -- An error is thrown if no entity with the given id exists or if more than one entity with the given id exist.
-retrieveEntityById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> id -> IO a
-retrieveEntityById conn eid = do
+retrieveById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> id -> IO a
+retrieveById conn eid = do
   let (ti,_) = computeTypeInfo :: (TypeInfo, a) -- returning an `a` convinces the compiler that the TypeInfo represents type `a`
       stmt = selectStmtFor ti eid
   trace $ "Retrieve " ++ show (typeConstructor ti) ++ " with id " ++ show eid
@@ -51,8 +51,8 @@ computeTypeInfo =
   in (typeInfo sample, sample)
 
 
-retrieveAllEntities :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
-retrieveAllEntities conn = do
+retrieveAll :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
+retrieveAll conn = do
   let (ti,_) = computeTypeInfo :: (TypeInfo, a) -- returning an `a` convinces the compiler that the TypeInfo represents type `a`
       stmt = selectAllStmtFor ti
   trace $ "Retrieve all " ++ show (typeConstructor ti) ++ "s"
@@ -65,8 +65,8 @@ retrieveAllEntities conn = do
 -- The function takes an HDBC connection and an entity (fulfilling constraint 'Data a') as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
-persistEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
-persistEntity conn entity = do
+persist :: (IConnection conn, Data a) => conn -> a -> IO ()
+persist conn entity = do
   resultRows <- quickQuery conn selectStmt []
   case resultRows of
     [] -> do
@@ -89,8 +89,8 @@ entityId :: forall d. (Data d) => d -> String
 entityId x = fieldValueAsString x (idColumn (typeInfo x))
     
 
-deleteEntity :: (IConnection conn, Data a) => conn -> a -> IO ()
-deleteEntity conn entity = do
+delete :: (IConnection conn, Data a) => conn -> a -> IO ()
+delete conn entity = do
   trace $ "Deleting " ++ typeName entity ++ " with id " ++ entityId entity
   runRaw conn (deleteStmtFor entity)
   commit conn

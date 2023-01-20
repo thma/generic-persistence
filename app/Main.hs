@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable#-}
-module Main where
+module Main (main, main1) where
 
 import Data.Data ( Data )
-import TypeInfo ( typeInfo, gshow ) 
+import TypeInfo ( gshow ) 
 import GenericPersistence
 import Database.HDBC (disconnect, runRaw, commit) 
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
@@ -28,21 +28,20 @@ main = do
     let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
     -- insert a Person into a database
-    persistEntity conn alice
+    persist conn alice
 
     -- update a Person
-    persistEntity conn alice {address = "Main Street 200"}  
+    persist conn alice {address = "Main Street 200"}  
     
     -- select a Person from a database
-    alice' <- retrieveEntityById conn 123456 :: IO Person
-    putStrLn $ "Retrieved from DB: " ++ gshow alice'
+    -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
+    alice' <- retrieveById conn "123456" :: IO Person
 
     -- delete a Person from a database
-    deleteEntity conn alice 
-
+    delete conn alice'
+    
     -- close connection
     disconnect conn
-
 
 
 p :: Person
@@ -58,27 +57,27 @@ main1 = do
   commit conn
   
   -- insert a Person into a database
-  persistEntity conn p
+  persist conn p
   
   -- insert a second Person in a database
-  persistEntity conn p {personID = 123457, name = "Bob"}
+  persist conn p {personID = 123457, name = "Bob"}
   
   -- update a Person
-  persistEntity conn p {address = "Elmstreet 1"}  
+  persist conn p {address = "Elmstreet 1"}  
   
   -- select a Person from a database
-  alice <- retrieveEntityById conn (123456 :: Int) :: IO Person
+  alice <- retrieveById conn (123456 :: Int) :: IO Person
   print $ gshow alice
 
   -- select all Persons from a database
-  allPersons <- retrieveAllEntities conn :: IO [Person]
+  allPersons <- retrieveAll conn :: IO [Person]
   print $ gshow allPersons
 
   -- delete a Person from a database
-  deleteEntity conn alice
+  delete conn alice
   
   -- select all Persons from a database
-  allPersons' <- retrieveAllEntities conn :: IO [Person]
+  allPersons' <- retrieveAll conn :: IO [Person]
   print $ gshow allPersons'
 
   -- close connection

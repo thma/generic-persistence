@@ -20,7 +20,7 @@ module TypeInfo
 where
 
 import           Data.Data             (Constr, Data (gmapQ, toConstr), TypeRep,
-                                        constrFields, showConstr, typeOf, DataType, dataTypeConstrs, dataTypeRep, fromConstr)
+                                        constrFields, showConstr, typeOf, DataType, dataTypeConstrs, fromConstr)
 import           Data.Generics.Aliases (extQ)
 import           GHC.Data.Maybe        (expectJust)
 
