@@ -13,10 +13,10 @@ where
 
 import           Control.Monad                  (zipWithM)
 import           Control.Monad.Trans.Class      (lift)
-import           Control.Monad.Trans.State.Lazy( StateT(runStateT), get, put )
+import           Control.Monad.Trans.State.Lazy ( StateT(..) ) 
 import           Data.Data                      hiding (typeRep)
 import           Data.Dynamic                   (Dynamic, fromDynamic, toDyn)
-import           Data.List                      (elemIndex)
+import           Data.List                      (elemIndex, uncons)
 import           Database.HDBC                  (SqlValue, fromSql)
 import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
@@ -45,6 +45,8 @@ fieldValueAsString x field =
 fieldValues :: (Data a) => a -> [String]
 fieldValues = gmapQ gshow
 
+-- | This function takes a `TypeInfo a`and a List of HDBC `SqlValue`s and returns a `Maybe a`.
+--  If the conversion fails, Nothing is returned, otherwise Just a.
 buildFromRecord :: (Data a) => TypeInfo a -> [SqlValue] -> Maybe a
 buildFromRecord ti record = applyConstr ctor dynamicsArgs
   where
@@ -55,19 +57,14 @@ buildFromRecord ti record = applyConstr ctor dynamicsArgs
         ("buildFromRecord: error in converting record " ++ show record)
         (zipWithM convert types record)
 
--- https://stackoverflow.com/questions/47606189/fromconstrb-or-something-other-useful
+-- | This function takes a `Constr` and a list of `Dynamic` values and returns a `Maybe a`.
+--   If an `a`entity could be constructed, Just a is returned, otherwise Nothing.
+--   See also https://stackoverflow.com/questions/47606189/fromconstrb-or-something-other-useful
+--   for Info on how to use fromConstrM
 applyConstr :: Data a => Constr -> [Dynamic] -> Maybe a
 applyConstr ctor args =
   let nextField :: forall d. Data d => StateT [Dynamic] Maybe d
-      nextField = do
-        as <- get
-        case as of
-          [] -> lift Nothing -- too few arguments
-          (a : rest) -> do
-            put rest
-            case fromDynamic a of
-              Nothing -> lift Nothing -- runtime type mismatch
-              Just x  -> return x
+      nextField = StateT uncons >>= lift . fromDynamic
    in case runStateT (fromConstrM nextField ctor) args of
         Just (x, []) -> Just x
         _            -> Nothing -- runtime type error or too few / too many arguments

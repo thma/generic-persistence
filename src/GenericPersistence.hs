@@ -40,10 +40,16 @@ retrieveById conn eid = do
   case resultRowsSqlValues of
     [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
     [singleRowSqlValues] -> do
-      return $ expectJust ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) (buildFromRecord ti singleRowSqlValues :: Maybe a)
+      return $ 
+        expectJust 
+          ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) 
+          (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show eid
   
 
+-- | This function retrieves all entities of type `a` from a database.
+--  The function takes an HDBC connection as parameter.
+--  The type `a` is determined by the context of the function call.
 retrieveAll :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
 retrieveAll conn = do
   let ti = typeInfoFromContext
@@ -51,7 +57,6 @@ retrieveAll conn = do
   trace $ "Retrieve all " ++ tiTypeName ti ++ "s"
   resultRowsSqlValues <- quickQuery conn stmt []
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
-
 
 
 -- | A function that persists an entity  to a database.

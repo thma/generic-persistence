@@ -44,6 +44,7 @@ updateStmtFor x =
     updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
     ti = typeInfo x
 
+-- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
 selectStmtFor :: (Show id) => TypeInfo a -> id -> String
 selectStmtFor ti eid =
   "SELECT "

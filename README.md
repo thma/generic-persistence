@@ -5,15 +5,6 @@
 In this article I'll describe how to write a minimalistic Haskell persistence layer (on top of HDBC). 
 My approach will rely heavily on Generics (`Data.Data`, `Data.Typeable`) and Reflection (`Type.Reflection`).
 
-<!--
-Some twenty years back the Java community became increasingly unhappy with the persistence mechanism provided by SUN, 
-the Entity Beans of the Enterprise Java Beans (EJB) framework. The EJB framework required developers to implement 
-complex interfaces and to write a lot of boilerplate code to integrate into the heavy machinery of the EJB-container.
-
-Developers wanted to have persistence features for their [plain old Java objects* 
-(POJOs)](https://en.wikipedia.org/wiki/Plain_old_Java_object) without all the boilerplate and dependencies on awkward frameworks.
--->
-
 The *functional goal* of my persistence layer is to provide hassle-free RDBMS persistence for Haskell data types in 
 Record notation (for brevity I call them *Entities*).
 
@@ -27,11 +18,12 @@ Not in scope for the current state of the library are things like:
 - Handling of database migrations
 - Handling of database schemas
 - Handling of database connections and sessions
+- Handling of prepared statements
 - Handling auto-incrementing primary keys
 - Caching
 - ...
 
-So as of now it's just about the bare minimum to get some data into a database and to get it back out again.
+So as of now it's just about the bare minimum to get some data into a database and to get it back out again by using Generics and Reflection.
 
 The main *design goal* is to minimize the *boilerplate* code required. Ideally I would like to achieve the following:
 
@@ -123,12 +115,10 @@ Summarizing, we can state that there is virtually no boilerplate code required i
 The only thing we have to do is to derive the `Data` type class for our persistent data types.
 The library takes care of the rest.
 
-I'm explicitely asking for your feedback here:
-- Do you regard such a persistence API as useful?
-- Do you have any suggestions for improvements?
-- Do you think it makes sense to continue working on it, or are there already enough libraries out there that do the same?
 
 ## A deeper dive into the library
+
+### The `persist` function
 
 In this section we are taking a closer look at the library internals. Let's start with the `persist` function:
 
@@ -170,6 +160,8 @@ The overall logic of this function is as follows:
 4. If the list contains more than one row, something is wrong and an error is thrown.
 
 The `selectStmtFor`, `insertStmtFor` and `updateStmtFor` functions are used to generate the required SQL statements dynamically.
+
+#### Inserting an entity
 
 Let's start with `insertStmtFor` as it is the simplest one.
 
@@ -306,6 +298,8 @@ The `fieldNames` function uses the `typeInfo` function to obtain the `TypeInfo` 
 
 This is all tooling that we need to generate the insert statement for an entity by dynamically inspecting its type information. This statement is then used to insert the entity into the database by using the HDBC API.
 
+#### Updating an entity
+
 The update statement is generated in a similar way. The only difference is that we need to know the primary key of the entity in order to generate the `WHERE` clause of the update statement.
 
 ```haskell
@@ -358,3 +352,194 @@ fieldValueAsString x field =
 --   Example: fieldValues (Person "John" 42) = ["John", "42"]
 fieldValues :: (Data a) => a -> [String]
 fieldValues = gmapQ gshow
+```
+
+#### Selecting an entity
+
+Creating a select query with `selectStmtFor` works slightly different than `insertStmtFor` and `updateStmtFor`. When creating a `SELECT` statement we don't have an entity to inspect. Instead we need to know the type of the entity and the primary key value of the entity we want to select. 
+That's why we need to pass the type information and the primary key value as parameters to the `selectStmtFor` function:
+
+```haskell
+-- | This function takes a `TypeInfo` object and a primary key value as input parameters and returns a select statement for the entity.
+selectStmtFor :: (Show id) => TypeInfo a -> id -> String
+selectStmtFor ti eid =
+  "SELECT "
+    ++ intercalate ", " (fieldNamesFromTypeInfo ti)
+    ++ " FROM "
+    ++ tiTypeName ti
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = "
+    ++ show eid
+    ++ ";"
+
+-- | A function that returns the (unqualified) type name of `a` from a `TypeInfo a` object.
+tiTypeName :: TypeInfo a -> String
+tiTypeName = dataTypeName . constrType . typeConstructor    
+```
+
+Apart from `tiTypeName` we have already seen all the other ingredients of the `selectStmtFor` function.
+
+### The `retrieveById` function
+
+The `retrieveById` function is the counterpart of the `persist` function. It takes a connection and a primary key value as input parameters and returns the entity with the given primary key value. If no unique entity with the given primary key value exists, an error is thrown.
+
+```haskell
+-- | A function that retrieves an entity from a database.
+--   The function takes an HDBC connection and an entity id as parameters.
+--   It returns the entity of type `a` with the given id.
+--   An error is thrown if no such entity exists or if there are more than one entity with the given id.
+retrieveById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> id -> IO a
+retrieveById conn eid = do
+  let ti = typeInfoFromContext 
+      stmt = selectStmtFor ti eid
+  trace $ "Retrieve " ++ tiTypeName ti ++ " with id " ++ show eid
+  resultRowsSqlValues <- quickQuery conn stmt []
+  case resultRowsSqlValues of
+    [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
+    [singleRowSqlValues] -> do
+      return $ 
+        expectJust 
+          ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) 
+          (buildFromRecord ti singleRowSqlValues :: Maybe a)
+    _ -> error $ "More than one entity found for id " ++ show eid
+```
+
+We have already seen the `selectStmtFor` function in the previous section. But we have two other quite elaborated ingredients to make the `retrieveById` function work:
+
+- The `typeInfoFromContext` function is a helper function that returns the `TypeInfo` instance for the entity type `a`:
+- The `buildFromRecord` function takes a `TypeInfo` instance and a list of `SqlValue` objects and returns the entity of type `a` if the list of `SqlValue` objects can be converted to the entity type `a`. If the conversion fails, `Nothing` is returned.
+
+```haskell
+-- | This function creates a TypeInfo object from the context of a function call.
+--   The Phantom Type `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.  
+typeInfoFromContext :: forall a . Data a => TypeInfo a
+typeInfoFromContext = 
+  let dt = dataTypeOf (undefined :: a)   -- looks awkward, but it's the official way...
+      constr = head $ dataTypeConstrs dt -- TODO: handle cases with more than one Constructor...
+      sample = fromConstr constr :: a
+  in typeInfo sample
+```
+
+This is quite dense, so let's take it step by step:
+
+First we use ` dataTypeOf :: a -> DataType ` to get the `DataType` object for the type `a`. As we don't have a value of type `a` at hand, we have to take it from thin air. So we use an `undefined :: a` as parameter. This is a bit awkward, but it's the official way to do it. The `undefined` value is never evaluated, so it doesn't matter what value we pass to `dataTypeOf`. But we need to convince the compiler that we really have a value of type `a` at hand.
+
+Then we use `dataTypeConstrs` to get a list of `DataConstr` objects for the type `a`. We take the first `DataConstr` object from this list and use it to create a sample value of type `a` with `fromConstr`. 
+
+Finally this sample value is used to create a `TypeInfo a` object for the type `a`.
+
+Cudos to [the brilliant people on stackoverflow](https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation/75172846#75172846) for the explanation of how to get the `DataType` object from thin air.
+
+The `buildFromRecord` function is even bit more complex. It takes a `TypeInfo` object and a list of `SqlValue` objects and tries to convert the list of `SqlValue` objects to the entity type `a`. If the conversion fails, `Nothing` is returned:
+
+```haskell
+-- | This function takes a `TypeInfo a`and a List of HDBC `SqlValue`s and returns a `Maybe a`.
+--  If the construction of an entity fails, Nothing is returned, otherwise Just a.
+buildFromRecord :: (Data a) => TypeInfo a -> [SqlValue] -> Maybe a
+buildFromRecord ti record = applyConstr ctor dynamicsArgs
+  where
+    ctor = typeConstructor ti
+    types = map fieldType (typeFields ti)
+    dynamicsArgs =
+      expectJust
+        ("buildFromRecord: error in converting record " ++ show record)
+        (zipWithM convert types record)
+```	
+
+Before we can apply the `applyConstr` function to instantiate an `a` value, we have to do some preparation work. The `[SqlValue]` list contains the values of the fields of the entity as they are coming from the database. In order to use these values to instantiate an `a` value, we have to convert them to the types of the fields of the entity. In order to use them as list elements we wrap them in `Dynamic` objects. 
+
+```haskell
+-- | convert a SqlValue into a Dynamic value that is backed by a value of the type represented by the SomeTypeRep parameter.
+--  If conversion fails, return Nothing.
+--  conversion to Dynamic is required to allow the use of fromDynamic in applyConstr
+--  see also https://stackoverflow.com/questions/46992740/how-to-specify-type-of-value-via-typerep
+convert :: SomeTypeRep -> SqlValue -> Maybe Dynamic
+convert (SomeTypeRep rep) val
+  | Just HRefl <- eqTypeRep rep (typeRep @Int) = Just $ toDyn (fromSql val :: Int)
+  | Just HRefl <- eqTypeRep rep (typeRep @Double) = Just $ toDyn (fromSql val :: Double)
+  | Just HRefl <- eqTypeRep rep (typeRep @String) = Just $ toDyn (fromSql val :: String)
+  | otherwise = Nothing
+```
+
+The `convert` function takes a `SomeTypeRep`, representing the type of a given entity field, and a `SqlValue` object and tries to convert the `SqlValue` to the type represented by `SomeTypeRep`. If the conversion fails, `Nothing` is returned. This conversion is needed keep the compiler happy. As you can see the list of supported is quite restricted at the moment. But it's easy to extend the list of supported types.
+
+Now we are ready to use the `applyConstr` function to instantiate an `a` value. The `applyConstr` function takes a `Constr` object and a list of `Dynamic` objects and tries to construct an entity of type `a` fromthe list of `Dynamic` objects. If the construction fails, `Nothing` is returned.
+
+```haskell
+-- | This function takes a `Constr` and a list of `Dynamic` values and returns a `Maybe a`.
+--   If an `a`entity could be constructed, Just a is returned, otherwise Nothing.
+--   See also https://stackoverflow.com/questions/47606189/fromconstrb-or-something-other-useful
+--   for Info on how to use fromConstrM
+applyConstr :: Data a => Constr -> [Dynamic] -> Maybe a
+applyConstr ctor args =
+  let nextField :: forall d. Data d => StateT [Dynamic] Maybe d
+      nextField = StateT uncons >>= lift . fromDynamic
+   in case runStateT (fromConstrM nextField ctor) args of
+        Just (x, []) -> Just x
+        _            -> Nothing -- runtime type error or too few / too many arguments
+```
+
+### The `retrieveAll` function
+
+This function is used to retrieve all entities of a given type from the database. It takes an HDBC connection as parameter and returns a list of entities of type `a`. The type `a` is determined by the context of the function call.
+
+As you can see, thisd function reuses most of the ingredients from `retrieveById` but just uses a simpler SQL statement to retrieve all entities of a given type:
+
+```haskell
+-- | This function retrieves all entities of type `a` from a database.
+--  The function takes an HDBC connection as parameter.
+--  The type `a` is determined by the context of the function call.
+retrieveAll :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
+retrieveAll conn = do
+  let ti = typeInfoFromContext
+      stmt = selectAllStmtFor ti
+  trace $ "Retrieve all " ++ tiTypeName ti ++ "s"
+  resultRowsSqlValues <- quickQuery conn stmt []
+  return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
+
+selectAllStmtFor :: TypeInfo a -> String
+selectAllStmtFor ti =
+  "SELECT "
+    ++ intercalate ", " (fieldNamesFromTypeInfo ti)
+    ++ " FROM "
+    ++ tiTypeName ti
+    ++ ";"
+```
+
+### The `delete` function
+
+This function is used to delete an entity from the database. It takes an HDBC connection and an entity of type `a` as parameters. It also does not bring anything new to the table. It just uses the `deleteStmtFor` function to generate the SQL statement to delete the entity from the database:
+  
+```haskell
+delete :: (IConnection conn, Data a) => conn -> a -> IO ()
+delete conn entity = do
+  trace $ "Deleting " ++ typeName entity ++ " with id " ++ entityId entity
+  runRaw conn (deleteStmtFor entity)
+  commit conn
+
+deleteStmtFor :: Data a => a -> String
+deleteStmtFor x =
+  "DELETE FROM "
+    ++ show (typeName x)
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = "
+    ++ fieldValueAsString x (idColumn ti)
+    ++ ";"
+  where
+    ti = typeInfo x
+```  
+
+## Conclusion
+
+We have learnt ho use `Data` based Generics to implement a simple persistence library. The user of the library will not have to write any boilerplate code. The library will generate the SQL statements and the code to convert the database records to Haskell entities. 
+
+The library is by no means complete. It is just a proof of concept. But it shows that it is possible to use Generics to eliminate a lot of handwritten code.
+
+I'm explicitely asking for your feedback here:
+- Do you regard such a persistence API as useful?
+- Do you have any suggestions for improvements?
+- Which feature would you like to see most urgently?
+- Do you think it makes sense to extend this proof of concept to a full fledged solution, 
+  or are there already enough libraries out there that do the same?
