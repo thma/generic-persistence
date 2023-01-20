@@ -17,7 +17,7 @@ import           RecordtypeReflection (buildFromRecord, fieldValueAsString)
 import           SqlGenerator         (deleteStmtFor, idColumn, insertStmtFor,
                                        selectAllStmtFor, selectStmtFor,
                                        updateStmtFor)
-import           TypeInfo             (TypeInfo(..), gshow, typeInfo, typeName)
+import           TypeInfo             (TypeInfo(..), gshow, typeInfo, typeName, typeInfoFromContext)
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -33,7 +33,7 @@ import           TypeInfo             (TypeInfo(..), gshow, typeInfo, typeName)
 -- An error is thrown if no entity with the given id exists or if more than one entity with the given id exist.
 retrieveById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> id -> IO a
 retrieveById conn eid = do
-  let (ti,_) = computeTypeInfo :: (TypeInfo, a) -- returning an `a` convinces the compiler that the TypeInfo represents type `a`
+  let ti = typeInfoFromContext 
       stmt = selectStmtFor ti eid
   trace $ "Retrieve " ++ show (typeConstructor ti) ++ " with id " ++ show eid
   resultRowsSqlValues <- quickQuery conn stmt []
@@ -43,17 +43,10 @@ retrieveById conn eid = do
       return $ expectJust ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show eid
   
-computeTypeInfo :: forall a . Data a => (TypeInfo, a)
-computeTypeInfo = 
-  let dt = dataTypeOf (undefined :: a) 
-      constr = head $ dataTypeConstrs dt
-      sample = fromConstr constr :: a
-  in (typeInfo sample, sample)
-
 
 retrieveAll :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
 retrieveAll conn = do
-  let (ti,_) = computeTypeInfo :: (TypeInfo, a) -- returning an `a` convinces the compiler that the TypeInfo represents type `a`
+  let ti = typeInfoFromContext
       stmt = selectAllStmtFor ti
   trace $ "Retrieve all " ++ show (typeConstructor ti) ++ "s"
   resultRowsSqlValues <- quickQuery conn stmt []

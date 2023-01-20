@@ -45,7 +45,7 @@ updateStmtFor x =
     updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
     ti = typeInfo x
 
-selectStmtFor :: (Show id) => TypeInfo -> id -> String
+selectStmtFor :: (Show id) => TypeInfo a -> id -> String
 selectStmtFor ti eid =
   "SELECT "
     ++ intercalate ", " (fieldNamesFromTypeInfo ti)
@@ -57,7 +57,7 @@ selectStmtFor ti eid =
     ++ show eid
     ++ ";"
 
-selectAllStmtFor :: TypeInfo -> String
+selectAllStmtFor :: TypeInfo a -> String
 selectAllStmtFor ti =
   "SELECT "
     ++ intercalate ", " (fieldNamesFromTypeInfo ti)
@@ -88,5 +88,5 @@ createTableStmtFor ti =
     ++ ");"
 --}
 
-idColumn :: TypeInfo -> String
+idColumn :: TypeInfo a -> String
 idColumn ti = map toLower (show $ typeConstructor ti) ++ "ID"

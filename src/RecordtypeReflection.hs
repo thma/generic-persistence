@@ -34,7 +34,7 @@ fieldValueAsString x field =
         ("Field " ++ field ++ " is not present in type " ++ show (typeName x))
         (elemIndex field fieldList)
 
-buildFromRecord :: (Data a) => TypeInfo -> [SqlValue] -> Maybe a
+buildFromRecord :: (Data a) => TypeInfo a -> [SqlValue] -> Maybe a
 buildFromRecord ti record = applyConstr ctor dynamicsArgs
   where
     ctor = typeConstructor ti

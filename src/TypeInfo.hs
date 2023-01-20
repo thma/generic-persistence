@@ -4,12 +4,14 @@
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 
+
+
 module TypeInfo
   ( TypeInfo (..),
     FieldInfo (..),
     typeName,
     typeInfo,
-    typeInfoFrom,
+    typeInfoFromContext,
     tiTypeName,
     fieldInfo,
     fieldNames,
@@ -19,8 +21,8 @@ module TypeInfo
   )
 where
 
-import           Data.Data             (Constr, Data (gmapQ, toConstr), TypeRep,
-                                        constrFields, showConstr, typeOf, DataType, dataTypeConstrs, fromConstr)
+import           Data.Data             (Constr, Data (gmapQ, toConstr, dataTypeOf), TypeRep,
+                                        constrFields, showConstr, typeOf, dataTypeConstrs, fromConstr)
 import           Data.Generics.Aliases (extQ)
 import           GHC.Data.Maybe        (expectJust)
 
@@ -30,7 +32,7 @@ https://chrisdone.com/posts/data-typeable/
 
 --}
 
-data TypeInfo = TypeInfo
+data TypeInfo a = TypeInfo
   { -- | The constructors of the type.
     typeConstructor :: Constr,
     -- | The fields of the type.
@@ -38,27 +40,26 @@ data TypeInfo = TypeInfo
   }
   deriving (Show)
 
-typeInfo :: Data a => a -> TypeInfo
+typeInfo :: Data a => a -> TypeInfo a
 typeInfo x =
   TypeInfo
     { typeConstructor = toConstr x,
       typeFields = fieldInfo x
     }
 
-typeInfoFrom :: forall a. Data a => DataType -> TypeInfo
-typeInfoFrom dt =
-  TypeInfo
-    { typeConstructor = constr, 
-      typeFields = fieldInfo sample
-    }
-    where
-      constr = head $ dataTypeConstrs dt
+-- | This function creates a TypeInfo object from the context of a function call.
+--   The Phantom Type `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.  
+typeInfoFromContext :: forall a . Data a => TypeInfo a
+typeInfoFromContext = 
+  let dt = dataTypeOf (undefined :: a)   -- This is a trick I learned from https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation/75172846#75172846
+      constr = head $ dataTypeConstrs dt -- TODO: handle cases with more than one Constructor
       sample = fromConstr constr :: a
+  in typeInfo sample
 
 typeName :: (Data a) => a -> String
 typeName = show . toConstr
 
-tiTypeName :: TypeInfo -> String
+tiTypeName :: TypeInfo a -> String
 tiTypeName = show . typeConstructor
 
 data FieldInfo = FieldInfo
@@ -90,7 +91,7 @@ fieldNames x = fieldNamesFromTypeInfo $ typeInfo x
 fieldValues :: (Data a) => a -> [String]
 fieldValues = gmapQ gshow
 
-fieldNamesFromTypeInfo :: TypeInfo -> [String]
+fieldNamesFromTypeInfo :: TypeInfo a -> [String]
 fieldNamesFromTypeInfo ti = map (expectJust errMsg . fieldName) (typeFields ti)
   where
     errMsg = "Type " ++ show (typeConstructor ti) ++ " does not have named fields"
