@@ -11,12 +11,10 @@ where
 import           Data.Char            (toLower)
 import           Data.Data            (Data)
 import           Data.List            (intercalate)
-import           RecordtypeReflection (fieldValueAsString)
-import           TypeInfo             (TypeInfo (typeConstructor), fieldNames,
-                                       fieldNamesFromTypeInfo, fieldValues,
-                                       typeInfo, typeName, tiTypeName)
+import           RecordtypeReflection (fieldValueAsString, fieldValues)
+import           TypeInfo             
 
--- | A function that returns an SQL insert statement for an instance of type 'a'. Type 'a' must be an instance of Data.
+-- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
 -- The values of the fields will be used as the values in the insert statement.
 -- Output example: INSERT INTO Person (id, name, age, address) VALUES (123456, "Alice", 25, "123 Main St");
@@ -30,6 +28,7 @@ insertStmtFor x =
     ++ intercalate ", " (fieldValues x)
     ++ ");"
 
+-- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Data.
 updateStmtFor :: Data a => a -> String
 updateStmtFor x =
   "UPDATE "
@@ -88,5 +87,7 @@ createTableStmtFor ti =
     ++ ");"
 --}
 
+-- | A function that returns the name of the primary key column for a type 'a'.
+--   By convention we are using the following name: convert the type name to lower case and append "ID".
 idColumn :: TypeInfo a -> String
-idColumn ti = map toLower (show $ typeConstructor ti) ++ "ID"
+idColumn ti = map toLower (tiTypeName ti) ++ "ID"

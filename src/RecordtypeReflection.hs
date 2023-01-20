@@ -6,23 +6,28 @@ module RecordtypeReflection
   ( buildFromRecord,
     applyConstr,
     fieldValueAsString,
+    fieldValues,
+    gshow
   )
 where
 
 import           Control.Monad                  (zipWithM)
 import           Control.Monad.Trans.Class      (lift)
 import           Control.Monad.Trans.State.Lazy( StateT(runStateT), get, put )
-import           Data.Data ( Data, fromConstrM, Constr, (:~~:)(HRefl) )
+import           Data.Data                      hiding (typeRep)
 import           Data.Dynamic                   (Dynamic, fromDynamic, toDyn)
 import           Data.List                      (elemIndex)
 import           Database.HDBC                  (SqlValue, fromSql)
 import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
-import           TypeInfo                       (FieldInfo (fieldType),
-                                                 TypeInfo (typeConstructor, typeFields),
-                                                 fieldNames, fieldValues, typeName)
+import           TypeInfo                       
+import           Data.Generics.Aliases          (extQ)
 
+-- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
+--  Example: fieldValueAsString (Person "John" 42) "name" = "John"
+--  Example: fieldValueAsString (Person "John" 42) "age" = "42"
+--  if the field is not present in the entity, an error is thrown.
 fieldValueAsString :: Data a => a -> String -> String
 fieldValueAsString x field =
   valueList !! index
@@ -31,8 +36,14 @@ fieldValueAsString x field =
     valueList = fieldValues x
     index =
       expectJust
-        ("Field " ++ field ++ " is not present in type " ++ show (typeName x))
+        ("Field " ++ field ++ " is not present in type " ++ typeName x)
         (elemIndex field fieldList)
+
+-- | A function that take an entity as input paraemeter and returns a list of 
+--   Strings representing the values of all fields of the entity.
+--   Example: fieldValues (Person "John" 42) = ["John", "42"]
+fieldValues :: (Data a) => a -> [String]
+fieldValues = gmapQ gshow
 
 buildFromRecord :: (Data a) => TypeInfo a -> [SqlValue] -> Maybe a
 buildFromRecord ti record = applyConstr ctor dynamicsArgs
@@ -71,3 +82,35 @@ convert (SomeTypeRep rep) val
   | Just HRefl <- eqTypeRep rep (typeRep @Double) = Just $ toDyn (fromSql val :: Double)
   | Just HRefl <- eqTypeRep rep (typeRep @String) = Just $ toDyn (fromSql val :: String)
   | otherwise = Nothing
+
+
+-- | Generic show: taken from syb package and https://chrisdone.com/posts/data-typeable/
+gshow :: Data a => a -> String
+gshow x = gshows x ""
+
+gshows :: Data a => a -> ShowS
+gshows = render `extQ` (shows :: String -> ShowS)
+  where
+    render t
+      | isTuple =
+          showChar '('
+            . drop 1
+            . commaSlots
+            . showChar ')'
+      | isNull = showString "[]"
+      | isList =
+          showChar '['
+            . drop 1
+            . listSlots
+            . showChar ']'
+      | otherwise =
+          constructor
+            . slots
+      where
+        constructor = showString . showConstr . toConstr $ t
+        slots = foldr (.) id . gmapQ ((showChar ' ' .) . gshows) $ t
+        commaSlots = foldr (.) id . gmapQ ((showChar ',' .) . gshows) $ t
+        listSlots = foldr (.) id . init . gmapQ ((showChar ',' .) . gshows) $ t
+        isTuple = all (== ',') (filter (not . flip elem "()") (constructor ""))
+        isNull = all (`elem` "[]") (constructor "")
+        isList = constructor "" == "(:)"

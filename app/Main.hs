@@ -2,8 +2,8 @@
 module Main (main, main1) where
 
 import Data.Data ( Data )
-import TypeInfo ( gshow ) 
 import GenericPersistence
+import RecordtypeReflection (gshow)
 import Database.HDBC (disconnect, runRaw, commit) 
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 

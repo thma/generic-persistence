@@ -2,7 +2,7 @@
 
 ## Introduction
 
-In this article I'll describe how to write a rudimentary Haskell persistence layer (on top of HDBC). 
+In this article I'll describe how to write a minimalistic Haskell persistence layer (on top of HDBC). 
 My approach will rely heavily on Generics (`Data.Data`, `Data.Typeable`) and Reflection (`Type.Reflection`).
 
 <!--
@@ -54,7 +54,7 @@ module Main (main) where
 
 import Data.Data ( Data )
 import TypeInfo ( typeInfo ) 
-import GenericPersistence( deleteEntity, persistEntity, retrieveAllEntities, retrieveEntityById )
+import GenericPersistence( delete, persist, retrieveAll, retrieveById )
 import Database.HDBC (disconnect, runRaw, commit) 
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 
@@ -68,7 +68,7 @@ data Person = Person
 ```
 
 The persistent data type must be deriving the `Data.Data` type class. This is required
-to enable all the Generics magics to work behind the scenes. 
+to enable all the Generics magic to work behind the scenes. 
 Fortunately, deriving `Data` needs no manual implementation, we get it for free by enabling `DeriveDataTypeable`.
 
 ```haskell
@@ -123,7 +123,7 @@ Summarizing, we can state that there is virtually no boilerplate code required i
 The only thing we have to do is to derive the `Data` type class for our persistent data types.
 The library takes care of the rest.
 
-I' explicitely asking for feedback here:
+I'm explicitely asking for your feedback here:
 - Do you regard such a persistence API as useful?
 - Do you have any suggestions for improvements?
 - Do you think it makes sense to continue working on it, or are there already enough libraries out there that do the same?
@@ -133,8 +133,8 @@ I' explicitely asking for feedback here:
 In this section we are taking a closer look at the library internals. Let's start with the `persist` function:
 
 ```haskell
--- | A function that persists an entity to a database.
--- The function takes an HDBC connection and an entity (fulfilling constraint 'Data a') as parameters.
+-- | A function that persists an entity  to a database.
+-- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: (IConnection conn, Data a) => conn -> a -> IO ()
@@ -156,12 +156,10 @@ persist conn entity = do
     selectStmt = selectStmtFor ti eid
     insertStmt = insertStmtFor entity
     updateStmt = updateStmtFor entity
-
+    
+-- | A function that returns the primary key value of an entity as a String.    
 entityId :: forall d. (Data d) => d -> String
 entityId x = fieldValueAsString x (idColumn (typeInfo x))
-
-trace :: String -> IO ()
-trace = putStrLn
 ```
 
 The overall logic of this function is as follows:
@@ -196,10 +194,6 @@ The tricky business is to dynamically inspect the entity instance and extract th
 So here comes the code for `insertStmtFor`:
 
 ```haskell
-import           TypeInfo             (TypeInfo, fieldNames,
-                                       fieldNamesFromTypeInfo, fieldValues,
-                                       typeInfo, typeName, tiTypeName)
-
 insertStmtFor :: Data a => a -> String
 insertStmtFor x =
   "INSERT INTO "
@@ -214,6 +208,153 @@ insertStmtFor x =
 The overall construction of the insert statement is obvious. We just need to know a bit more about the `typeName`, `fieldNames` and `fieldValues` functions from the `TypeInfo` module:
 
 ```haskell
+-- | A function that returns the (unqualified) type name of an entity.
 typeName :: (Data a) => a -> String
-typeName = show . toConstr 
+typeName = dataTypeName . dataTypeOf
 ```
+
+The `typeName` function uses the `dataTypeOf :: a -> DataType` function of the `Data`type class to obtain the type of a `Data`instance.
+
+```haskell
+-- | A function that take an entity as input paraemeter and returns a list of 
+--   Strings representing the values of all fields of the entity.
+--   Example: fieldValues (Person "John" 42) = ["John", "42"]
+fieldValues :: (Data a) => a -> [String]
+fieldValues = gmapQ gshow
+```
+
+The function `fieldValues` is a bit more tricky. It uses the `gmapQ` function from the `Data.Data` module to map the `gshow` function over all attributes of the entity. The `gshow` function is a generic version of the `show` function that works on any `Data` instance.
+If you want to know more about `gmapQ` and `gshow`, you can read Chris Done's [Typeable and Data in Haskell](https://chrisdone.com/posts/data-typeable/).
+
+
+To understand the `fieldNames` function, we need to take a look at `TypeInfo` and `FieldInfo` first:
+
+```haskell
+-- | A data type that holding information about a type. The Phantom type parameter `a` ensures type safety.
+data TypeInfo a = TypeInfo
+  { -- | The constructors of the type.
+    typeConstructor :: Constr,
+    -- | The fields of the type.
+    typeFields      :: [FieldInfo]
+  }
+  deriving (Show)
+
+-- | A data type that holds information about a field of a data type.
+data FieldInfo = FieldInfo
+  { -- | The name of the field, Nothing if it has none.
+    fieldName        :: Maybe String,
+    -- | The constructor of the field.
+    fieldConstructor :: Constr,
+    -- | The type of the field.
+    fieldType        :: TypeRep
+  }
+  deriving (Show)  
+```
+
+A `TypeInfo` can be obtained from an entity using the `typeInfo` function:
+
+```haskell
+typeInfo :: Data a => a -> TypeInfo a
+typeInfo x =
+  TypeInfo
+    { typeConstructor = toConstr x,
+      typeFields = fieldInfo x
+    }
+```
+
+Where `toConstr :: a -> Constr` is a function from the `Data` type class that returns the constructor of a `Data a` instance; and
+`fieldInfo` is a function that returns the list of `FieldInfo` instances for a given entity:
+
+```haskell
+-- | A function that returns a list of FieldInfos representing the name, constructor and type of each field in the data type `a`.
+fieldInfo :: (Data a) => a -> [FieldInfo]
+fieldInfo x = zipWith3 FieldInfo names constrs types
+  where
+    constructor = toConstr x
+    candidates = constrFields constructor
+    constrs = gmapQ toConstr x
+    types = gmapQ typeOf x
+    names :: [Maybe String] =
+      if length candidates == length constrs
+        then map Just candidates
+        else replicate (length constrs) Nothing
+```
+
+The `fieldInfo` function uses the `constrFields :: Constr -> [String]` function from the `Data` type class to obtain the names of the fields of the constructor of the entity. If type `a` is a record type, the names of the fields are returned. Otherwise an empty list is returned.
+This list of candidate field names then used to create a list `names` of `Maybe String` values . If the length of the candidate list is equal to the length of the list of actual field constructors, the entity is a record type and the candidate names are used. Otherwise the list of names is filled with `Nothing` values.
+
+The `gmapQ` function is used to map the `toConstr` and `typeOf` functions over the entity to obtain the constructors and types of the fields.
+
+Finally the `zipWith3` function is used to combine the three lists into a list of `FieldInfo` instances.
+
+Now back to the `fieldNames` function:
+
+```haskell
+-- | A function that returns the list of field names of an entity of type `a`.  
+fieldNames :: (Data a) => a -> [String]
+fieldNames = fieldNamesFromTypeInfo . typeInfo
+
+-- | A function that returns the list of field names of a `TypeInfo a` object.
+--   An error is thrown if the type does not have named fields.
+fieldNamesFromTypeInfo :: TypeInfo a -> [String]
+fieldNamesFromTypeInfo ti = map (expectJust errMsg . fieldName) (typeFields ti)
+  where
+    errMsg = "Type " ++ tiTypeName ti ++ " does not have named fields"
+```
+
+The `fieldNames` function uses the `typeInfo` function to obtain the `TypeInfo` instance for the entity and then maps the `fieldNamesFromTypeInfo` function over all type fields to obtain the list of field names.
+
+This is all tooling that we need to generate the insert statement for an entity by dynamically inspecting its type information. This statement is then used to insert the entity into the database by using the HDBC API.
+
+The update statement is generated in a similar way. The only difference is that we need to know the primary key of the entity in order to generate the `WHERE` clause of the update statement.
+
+```haskell
+-- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Data.
+updateStmtFor :: Data a => a -> String
+updateStmtFor x =
+  "UPDATE "
+    ++ typeName x
+    ++ " SET "
+    ++ intercalate ", " updatePairs
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = "
+    ++ fieldValueAsString x (idColumn ti)
+    ++ ";"
+  where
+    updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
+    ti = typeInfo x
+```
+
+The primary key column is obtained using the `idColumn` function:
+
+```haskell
+-- | A function that returns the name of the primary key column for a type 'a'.
+--  By convention we are using the following name: convert the type name to lower case and append "ID".
+idColumn :: TypeInfo a -> String
+idColumn ti = map toLower (tiTypeName ti) ++ "ID"
+```
+
+The `fieldValueAsString` function takes an entity and a field name as input parameters and returns the value of the field as a String:
+
+```haskell
+-- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
+--  Example: fieldValueAsString (Person "John" 42) "name" = "John"
+--  Example: fieldValueAsString (Person "John" 42) "age" = "42"
+--  if the field is not present in the entity, an error is thrown.
+fieldValueAsString :: Data a => a -> String -> String
+fieldValueAsString x field =
+  valueList !! index
+  where
+    fieldList = fieldNames x
+    valueList = fieldValues x
+    index =
+      expectJust
+        ("Field " ++ field ++ " is not present in type " ++ typeName x)
+        (elemIndex field fieldList)
+
+-- | A function that take an entity as input parameter and returns a list of 
+--   Strings representing the values of all fields of the entity.
+--   Example: fieldValues (Person "John" 42) = ["John", "42"]
+fieldValues :: (Data a) => a -> [String]
+fieldValues = gmapQ gshow
