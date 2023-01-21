@@ -11,6 +11,7 @@ Record notation (for brevity I call them *Entities*).
 That is, it must provide means for inserting, updating, deleting and quering such enties to/from relational databases.
 
 Not in scope for the current state of the library are things like:
+
 - A query language
 - User-definable mappings of Haskell types to RDBMS types
 - Handling of relationships between entities (1:1, 1:n, n:m)
@@ -568,11 +569,13 @@ deleteStmtFor x =
 
 ## Conclusion
 
-We have learnt ho use `Data` based Generics to implement a simple persistence library. The user of the library will not have to write any boilerplate code. The library will generate the SQL statements and the code to convert the database records to Haskell entities. 
+We have learnt ho use `Data` based Generics to implement a simple persistence library. The user will not have to write any boilerplate code. The library will generate the SQL statements and the code to convert back and forth between the database records and Haskell entities. 
 
-The library is by no means complete. It is just a proof of concept. But it shows that it is possible to use Generics to eliminate a lot of handwritten code.
+The library is by no means complete. Right now it's just a proof of concept. 
+But it shows that it is possible to use Generics to eliminate a lot of handwritten code in the implementation of a persistence library.
 
 I'm explicitely asking for your feedback here:
+
 - Do you regard such a persistence API as useful?
 - Do you have any suggestions for improvements?
 - Which feature would you like to see most urgently?
