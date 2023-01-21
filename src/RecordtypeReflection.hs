@@ -24,6 +24,17 @@ import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
 import           TypeInfo                       
 import           Data.Generics.Aliases          (extQ)
 
+import qualified Data.ByteString as B
+import Data.Word ( Word32, Word64 )
+import Data.Int ( Int32, Int64 )
+import Data.Time
+    ( NominalDiffTime, Day, LocalTime, TimeOfDay, UTCTime, ZonedTime ) 
+import Data.Time.Clock.POSIX ( POSIXTime )
+import Data.Ratio ( Ratio )
+import qualified Data.Text as TS
+import qualified Data.Text.Lazy as TL
+
+
 -- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
 --  Example: fieldValueAsString (Person "John" 42) "name" = "John"
 --  Example: fieldValueAsString (Person "John" 42) "age" = "42"
@@ -78,7 +89,26 @@ convert (SomeTypeRep rep) val
   | Just HRefl <- eqTypeRep rep (typeRep @Int) = Just $ toDyn (fromSql val :: Int)
   | Just HRefl <- eqTypeRep rep (typeRep @Double) = Just $ toDyn (fromSql val :: Double)
   | Just HRefl <- eqTypeRep rep (typeRep @String) = Just $ toDyn (fromSql val :: String)
+  | Just HRefl <- eqTypeRep rep (typeRep @Char) = Just $ toDyn (fromSql val :: Char)
+  | Just HRefl <- eqTypeRep rep (typeRep @B.ByteString) = Just $ toDyn (fromSql val :: B.ByteString)
+  | Just HRefl <- eqTypeRep rep (typeRep @Word32) = Just $ toDyn (fromSql val :: Word32)
+  | Just HRefl <- eqTypeRep rep (typeRep @Word64) = Just $ toDyn (fromSql val :: Word64)
+  | Just HRefl <- eqTypeRep rep (typeRep @Int32) = Just $ toDyn (fromSql val :: Int32)
+  | Just HRefl <- eqTypeRep rep (typeRep @Int64) = Just $ toDyn (fromSql val :: Int64)
+  | Just HRefl <- eqTypeRep rep (typeRep @Integer) = Just $ toDyn (fromSql val :: Integer)
+  | Just HRefl <- eqTypeRep rep (typeRep @Bool) = Just $ toDyn (fromSql val :: Bool)
+  | Just HRefl <- eqTypeRep rep (typeRep @UTCTime) = Just $ toDyn (fromSql val :: UTCTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @POSIXTime) = Just $ toDyn (fromSql val :: POSIXTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @LocalTime) = Just $ toDyn (fromSql val :: LocalTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @ZonedTime) = Just $ toDyn (fromSql val :: ZonedTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @TimeOfDay) = Just $ toDyn (fromSql val :: TimeOfDay)
+  | Just HRefl <- eqTypeRep rep (typeRep @Day) = Just $ toDyn (fromSql val :: Day)
+  | Just HRefl <- eqTypeRep rep (typeRep @NominalDiffTime) = Just $ toDyn (fromSql val :: NominalDiffTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @Ratio) = Just $ toDyn (fromSql val :: Ratio Integer)
+  | Just HRefl <- eqTypeRep rep (typeRep @TL.Text) = Just $ toDyn (fromSql val :: TL.Text)
+  | Just HRefl <- eqTypeRep rep (typeRep @TS.Text) = Just $ toDyn (fromSql val :: TS.Text)
   | otherwise = Nothing
+
 
 
 -- | Generic show: taken from syb package and https://chrisdone.com/posts/data-typeable/

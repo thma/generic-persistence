@@ -23,7 +23,7 @@ Not in scope for the current state of the library are things like:
 - Caching
 - ...
 
-So as of now it's just about the bare minimum to get some data into a database and to get it back out again by using Generics and Reflection.
+So as of now it's just about the bare minimum to get some data into a database and to get it back out again.
 
 The main *design goal* is to minimize the *boilerplate* code required. Ideally I would like to achieve the following:
 
@@ -412,26 +412,38 @@ We have already seen the `selectStmtFor` function in the previous section. But w
 
 ```haskell
 -- | This function creates a TypeInfo object from the context of a function call.
---   The Phantom Type `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.  
+--   The Phantom Type parameter `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.  
+--   See also https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation
 typeInfoFromContext :: forall a . Data a => TypeInfo a
 typeInfoFromContext = 
-  let dt = dataTypeOf (undefined :: a)   -- looks awkward, but it's the official way...
-      constr = head $ dataTypeConstrs dt -- TODO: handle cases with more than one Constructor...
-      sample = fromConstr constr :: a
-  in typeInfo sample
+  let dt = dataTypeOf (undefined :: a)   -- This is the trick to get the type from the context. 
+      constr = case dataTypeConstrs dt of
+        [cnstr] -> cnstr
+        _       -> error "typeInfoFromContext: Only types with one constructor are supported"
+      evidence = fromConstr constr :: a  -- this is evidence for the compiler that we have created a value of type `a`
+  in typeInfo evidence
 ```
 
 This is quite dense, so let's take it step by step:
 
-First we use ` dataTypeOf :: a -> DataType ` to get the `DataType` object for the type `a`. As we don't have a value of type `a` at hand, we have to take it from thin air. So we use an `undefined :: a` as parameter. This is a bit awkward, but it's the official way to do it. The `undefined` value is never evaluated, so it doesn't matter what value we pass to `dataTypeOf`. But we need to convince the compiler that we really have a value of type `a` at hand.
+First we use ` dataTypeOf :: a -> DataType ` to get the `DataType` object for the type `a`. 
+As we don't have a value of type `a` at hand, we have to take it from thin air. So we use an `undefined :: a` as parameter. 
+This looks a bit awkward, but seems to be the official way to do it. 
 
-Then we use `dataTypeConstrs` to get a list of `DataConstr` objects for the type `a`. We take the first `DataConstr` object from this list and use it to create a sample value of type `a` with `fromConstr`. 
+Then we use `dataTypeConstrs` to get a list of `DataConstr` objects for the type `a`. 
+If the list contains exactly one constructor, we use it to create a sample value of type `a` with `fromConstr`. 
+Otherwise we throw an error. 
 
-Finally this sample value is used to create a `TypeInfo a` object for the type `a`.
+Finally, this sample value `evidence` is used to create a `TypeInfo a` object for the type `a`.
+It is important to understand that `evidence` being of type `a` forms a proof that the `TypeInfo a` 
+object really describes the type `a` from the context of the function.
 
-Cudos to [the brilliant people on stackoverflow](https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation/75172846#75172846) for the explanation of how to get the `DataType` object from thin air.
+Cudos to [the brilliant people on stackoverflow](https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation) 
+for the explanation of how to get the `DataType` object from thin air.
 
-The `buildFromRecord` function is even bit more complex. It takes a `TypeInfo` object and a list of `SqlValue` objects and tries to convert the list of `SqlValue` objects to the entity type `a`. If the conversion fails, `Nothing` is returned:
+The `buildFromRecord` function is even a bit more complex. 
+It takes a `TypeInfo a` object and a list of `SqlValue` objects and tries to construct an entity of type `a` 
+from the list of `SqlValue` objects. If the construction fails, `Nothing` is returned:
 
 ```haskell
 -- | This function takes a `TypeInfo a`and a List of HDBC `SqlValue`s and returns a `Maybe a`.
@@ -445,9 +457,13 @@ buildFromRecord ti record = applyConstr ctor dynamicsArgs
       expectJust
         ("buildFromRecord: error in converting record " ++ show record)
         (zipWithM convert types record)
-```	
+```
 
-Before we can apply the `applyConstr` function to instantiate an `a` value, we have to do some preparation work. The `[SqlValue]` list contains the values of the fields of the entity as they are coming from the database. In order to use these values to instantiate an `a` value, we have to convert them to the types of the fields of the entity. In order to use them as list elements we wrap them in `Dynamic` objects. 
+Before we can apply the `applyConstr` function to instantiate an `a` value, we have to do some preparation work. 
+The `[SqlValue]` list contains the values of the fields of the entity as they are coming from the database. 
+In order to use these values to instantiate an `a` value, we have to convert them to the types of the fields of the entity. 
+In order to use them as list elements we wrap them in `Dynamic` objects. 
+See also this Haskell Wiki entry on [heterogenous collections with `Dynamic`](https://wiki.haskell.org/Heterogenous_collections#A_Universal_type)
 
 ```haskell
 -- | convert a SqlValue into a Dynamic value that is backed by a value of the type represented by the SomeTypeRep parameter.
@@ -459,10 +475,29 @@ convert (SomeTypeRep rep) val
   | Just HRefl <- eqTypeRep rep (typeRep @Int) = Just $ toDyn (fromSql val :: Int)
   | Just HRefl <- eqTypeRep rep (typeRep @Double) = Just $ toDyn (fromSql val :: Double)
   | Just HRefl <- eqTypeRep rep (typeRep @String) = Just $ toDyn (fromSql val :: String)
+  | Just HRefl <- eqTypeRep rep (typeRep @Char) = Just $ toDyn (fromSql val :: Char)
+  | Just HRefl <- eqTypeRep rep (typeRep @B.ByteString) = Just $ toDyn (fromSql val :: B.ByteString)
+  | Just HRefl <- eqTypeRep rep (typeRep @Word32) = Just $ toDyn (fromSql val :: Word32)
+  | Just HRefl <- eqTypeRep rep (typeRep @Word64) = Just $ toDyn (fromSql val :: Word64)
+  | Just HRefl <- eqTypeRep rep (typeRep @Int32) = Just $ toDyn (fromSql val :: Int32)
+  | Just HRefl <- eqTypeRep rep (typeRep @Int64) = Just $ toDyn (fromSql val :: Int64)
+  | Just HRefl <- eqTypeRep rep (typeRep @Integer) = Just $ toDyn (fromSql val :: Integer)
+  | Just HRefl <- eqTypeRep rep (typeRep @Bool) = Just $ toDyn (fromSql val :: Bool)
+  | Just HRefl <- eqTypeRep rep (typeRep @UTCTime) = Just $ toDyn (fromSql val :: UTCTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @POSIXTime) = Just $ toDyn (fromSql val :: POSIXTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @LocalTime) = Just $ toDyn (fromSql val :: LocalTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @ZonedTime) = Just $ toDyn (fromSql val :: ZonedTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @TimeOfDay) = Just $ toDyn (fromSql val :: TimeOfDay)
+  | Just HRefl <- eqTypeRep rep (typeRep @Day) = Just $ toDyn (fromSql val :: Day)
+  | Just HRefl <- eqTypeRep rep (typeRep @NominalDiffTime) = Just $ toDyn (fromSql val :: NominalDiffTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @Ratio) = Just $ toDyn (fromSql val :: Ratio Integer)
+  | Just HRefl <- eqTypeRep rep (typeRep @TL.Text) = Just $ toDyn (fromSql val :: TL.Text)
+  | Just HRefl <- eqTypeRep rep (typeRep @TS.Text) = Just $ toDyn (fromSql val :: TS.Text)
   | otherwise = Nothing
 ```
 
-The `convert` function takes a `SomeTypeRep`, representing the type of a given entity field, and a `SqlValue` object and tries to convert the `SqlValue` to the type represented by `SomeTypeRep`. If the conversion fails, `Nothing` is returned. This conversion is needed keep the compiler happy. As you can see the list of supported is quite restricted at the moment. But it's easy to extend the list of supported types.
+The `convert` function takes a `SomeTypeRep`, representing the type of a given entity field, and a `SqlValue` object and tries to convert the `SqlValue` to the type represented by `SomeTypeRep`. If the conversion fails, `Nothing` is returned. This explicit conversion is needed keep the compiler happy. 
+As you can see the list of supported types already covers most of the types supported by HDBC. 
 
 Now we are ready to use the `applyConstr` function to instantiate an `a` value. The `applyConstr` function takes a `Constr` object and a list of `Dynamic` objects and tries to construct an entity of type `a` fromthe list of `Dynamic` objects. If the construction fails, `Nothing` is returned.
 

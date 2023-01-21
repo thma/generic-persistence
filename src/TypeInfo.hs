@@ -43,13 +43,16 @@ typeInfo x =
     }
 
 -- | This function creates a TypeInfo object from the context of a function call.
---   The Phantom Type `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.  
+--   The Phantom Type parameter `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.  
+--   See also https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation
 typeInfoFromContext :: forall a . Data a => TypeInfo a
 typeInfoFromContext = 
-  let dt = dataTypeOf (undefined :: a)   -- This is a trick I learned from https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation/75172846#75172846
-      constr = head $ dataTypeConstrs dt -- TODO: handle cases with more than one Constructor
-      sample = fromConstr constr :: a
-  in typeInfo sample
+  let dt = dataTypeOf (undefined :: a)   -- This is the trick to get the type from the context. 
+      constr = case dataTypeConstrs dt of
+        [cnstr] -> cnstr
+        _       -> error "typeInfoFromContext: Only types with one constructor are supported"
+      evidence = fromConstr constr :: a  -- this is evidence for the compiler that we have a value of type a
+  in typeInfo evidence
 
 -- | A function that returns the (unqualified) type name of an entity.
 typeName :: (Data a) => a -> String

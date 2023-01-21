@@ -37,10 +37,13 @@ library
       HDBC
     , HDBC-sqlite3
     , base >=4.7 && <5
+    , bytestring
     , convertible
     , ghc
     , ghc-prim
     , syb
+    , text
+    , time
     , transformers
   default-language: Haskell2010
 
@@ -55,11 +58,14 @@ executable generic-attributes-demo
       HDBC
     , HDBC-sqlite3
     , base >=4.7 && <5
+    , bytestring
     , convertible
     , generic-attributes
     , ghc
     , ghc-prim
     , syb
+    , text
+    , time
     , transformers
   default-language: Haskell2010
 
@@ -75,10 +81,13 @@ test-suite generic-attributes-test
       HDBC
     , HDBC-sqlite3
     , base >=4.7 && <5
+    , bytestring
     , convertible
     , generic-attributes
     , ghc
     , ghc-prim
     , syb
+    , text
+    , time
     , transformers
   default-language: Haskell2010

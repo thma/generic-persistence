@@ -27,6 +27,9 @@ dependencies:
 - HDBC-sqlite3 #>= 2.3.3.1
 - convertible
 - HDBC #>= 2.4.0.4
+- bytestring
+- time
+- text
 
 
 ghc-options:
