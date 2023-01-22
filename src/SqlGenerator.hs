@@ -11,7 +11,7 @@ where
 import           Data.Char            (toLower)
 import           Data.Data            (Data)
 import           Data.List            (intercalate)
-import           RecordtypeReflection (fieldValueAsString, fieldValues)
+import           RecordtypeReflection (fieldValueAsString, fieldValuesAsString)
 import           TypeInfo             
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
@@ -25,7 +25,7 @@ insertStmtFor x =
     ++ " ("
     ++ intercalate ", " (fieldNames x)
     ++ ") VALUES ("
-    ++ intercalate ", " (fieldValues x)
+    ++ intercalate ", " (fieldValuesAsString x)
     ++ ");"
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Data.
@@ -41,7 +41,7 @@ updateStmtFor x =
     ++ fieldValueAsString x (idColumn ti)
     ++ ";"
   where
-    updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValues x)
+    updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValuesAsString x)
     ti = typeInfo x
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.

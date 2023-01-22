@@ -6,8 +6,11 @@ module RecordtypeReflection
   ( buildFromRecord,
     applyConstr,
     fieldValueAsString,
+    fieldValuesAsString,
     fieldValues,
-    gshow
+    gshow,
+    convert,
+    convertToSqlValue
   )
 where
 
@@ -17,7 +20,7 @@ import           Control.Monad.Trans.State.Lazy ( StateT(..) )
 import           Data.Data                      hiding (typeRep)
 import           Data.Dynamic                   (Dynamic, fromDynamic, toDyn)
 import           Data.List                      (elemIndex, uncons)
-import           Database.HDBC                  (SqlValue, fromSql)
+import           Database.HDBC                  (SqlValue, fromSql, toSql)
 import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
@@ -44,7 +47,7 @@ fieldValueAsString x field =
   valueList !! index
   where
     fieldList = fieldNames x
-    valueList = fieldValues x
+    valueList = fieldValuesAsString x
     index =
       expectJust
         ("Field " ++ field ++ " is not present in type " ++ typeName x)
@@ -53,8 +56,11 @@ fieldValueAsString x field =
 -- | A function that take an entity as input paraemeter and returns a list of 
 --   Strings representing the values of all fields of the entity.
 --   Example: fieldValues (Person "John" 42) = ["John", "42"]
-fieldValues :: (Data a) => a -> [String]
-fieldValues = gmapQ gshow
+fieldValuesAsString :: (Data a) => a -> [String]
+fieldValuesAsString = gmapQ gshow
+
+fieldValues :: (Data a) => a -> [Dynamic]
+fieldValues = gmapQ toDyn
 
 -- | This function takes a `TypeInfo a`and a List of HDBC `SqlValue`s and returns a `Maybe a`.
 --  If the conversion fails, Nothing is returned, otherwise Just a.
@@ -109,7 +115,30 @@ convert (SomeTypeRep rep) val
   | Just HRefl <- eqTypeRep rep (typeRep @TS.Text) = Just $ toDyn (fromSql val :: TS.Text)
   | otherwise = Nothing
 
-
+convertToSqlValue :: SomeTypeRep -> Dynamic -> SqlValue
+convertToSqlValue (SomeTypeRep rep) dyn
+  | Just HRefl <- eqTypeRep rep (typeRep @Int) = toSql (expectJust ("Not an Int: " ++ show dyn) (fromDynamic dyn) :: Int)
+  | Just HRefl <- eqTypeRep rep (typeRep @Double) = toSql (expectJust ("Not a Double: " ++ show dyn) (fromDynamic dyn) :: Double)
+  | Just HRefl <- eqTypeRep rep (typeRep @String) = toSql (expectJust ("Not a String: " ++ show dyn) (fromDynamic dyn) :: String)
+  | Just HRefl <- eqTypeRep rep (typeRep @Char) = toSql (expectJust ("Not a Char: " ++ show dyn) (fromDynamic dyn) :: Char)
+  | Just HRefl <- eqTypeRep rep (typeRep @B.ByteString) = toSql (expectJust ("Not a ByteString: " ++ show dyn) (fromDynamic dyn) :: B.ByteString)
+  | Just HRefl <- eqTypeRep rep (typeRep @Word32) = toSql (expectJust ("Not a Word32: " ++ show dyn) (fromDynamic dyn) :: Word32)
+  | Just HRefl <- eqTypeRep rep (typeRep @Word64) = toSql (expectJust ("Not a Word64: " ++ show dyn) (fromDynamic dyn) :: Word64)
+  | Just HRefl <- eqTypeRep rep (typeRep @Int32) = toSql (expectJust ("Not an Int32: " ++ show dyn) (fromDynamic dyn) :: Int32)
+  | Just HRefl <- eqTypeRep rep (typeRep @Int64) = toSql (expectJust ("Not an Int64: " ++ show dyn) (fromDynamic dyn) :: Int64)
+  | Just HRefl <- eqTypeRep rep (typeRep @Integer) = toSql (expectJust ("Not an Integer: " ++ show dyn) (fromDynamic dyn) :: Integer)
+  | Just HRefl <- eqTypeRep rep (typeRep @Bool) = toSql (expectJust ("Not a Bool: " ++ show dyn) (fromDynamic dyn) :: Bool)
+  | Just HRefl <- eqTypeRep rep (typeRep @UTCTime) = toSql (expectJust ("Not a UTCTime: " ++ show dyn) (fromDynamic dyn) :: UTCTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @POSIXTime) = toSql (expectJust ("Not a PosixTime: " ++ show dyn) (fromDynamic dyn) :: POSIXTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @LocalTime) = toSql (expectJust ("Not a LocalTime: " ++ show dyn) (fromDynamic dyn) :: LocalTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @ZonedTime) = toSql (expectJust ("Not a ZonedTime: " ++ show dyn) (fromDynamic dyn) :: ZonedTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @TimeOfDay) = toSql (expectJust ("Not a TimeOfDay: " ++ show dyn) (fromDynamic dyn) :: TimeOfDay)
+  | Just HRefl <- eqTypeRep rep (typeRep @Day) = toSql (expectJust ("Not a Day: " ++ show dyn) (fromDynamic dyn) :: Day)
+  | Just HRefl <- eqTypeRep rep (typeRep @NominalDiffTime) = toSql (expectJust ("Not a NominalTimeDiff: " ++ show dyn) (fromDynamic dyn) :: NominalDiffTime)
+  | Just HRefl <- eqTypeRep rep (typeRep @Ratio) = toSql (expectJust ("Not a Ratio: " ++ show dyn) (fromDynamic dyn) :: Ratio Integer)
+  | Just HRefl <- eqTypeRep rep (typeRep @TL.Text) = toSql (expectJust ("Not a TL.Text: " ++ show dyn) (fromDynamic dyn) :: TL.Text)
+  | Just HRefl <- eqTypeRep rep (typeRep @TS.Text) = toSql (expectJust ("Not a TS.Text: " ++ show dyn) (fromDynamic dyn) :: TS.Text)
+  | otherwise = error $ "convertToSqlValue: " ++ show rep ++ " not supported"
 
 -- | Generic show: taken from syb package and https://chrisdone.com/posts/data-typeable/
 gshow :: Data a => a -> String

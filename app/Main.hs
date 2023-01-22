@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable#-}
+{-# LANGUAGE DeriveAnyClass #-}
 module Main (main, main1) where
 
 import Data.Data ( Data )
 import GenericPersistence
-import RecordtypeReflection (gshow)
 import Database.HDBC (disconnect, runRaw, commit) 
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 
@@ -14,7 +14,7 @@ data Person = Person
   , name :: String
   , age :: Int
   , address :: String
-  } deriving (Data)
+  } deriving (Data, Persistent, Show)
 
 main :: IO ()
 main = do
@@ -67,18 +67,18 @@ main1 = do
   
   -- select a Person from a database
   alice <- retrieveById conn (123456 :: Int) :: IO Person
-  print $ gshow alice
+  print alice
 
   -- select all Persons from a database
   allPersons <- retrieveAll conn :: IO [Person]
-  print $ gshow allPersons
+  print allPersons
 
   -- delete a Person from a database
   delete conn alice
   
   -- select all Persons from a database
   allPersons' <- retrieveAll conn :: IO [Person]
-  print $ gshow allPersons'
+  print allPersons'
 
   -- close connection
   disconnect conn
