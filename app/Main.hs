@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable#-}
+{-# LANGUAGE ImplicitParams        #-}
 module Main (main, main1) where
 
 import Data.Data ( Data )
@@ -14,10 +15,10 @@ data Person = Person
   , name :: String
   , age :: Int
   , address :: String
-  } deriving (Data)
+  } deriving (Data, Show)
 
 main :: IO ()
-main = do
+main = let ?conf = defaultConfig in do
     -- initialize Person table
     conn <- connectSqlite3 "sqlite.db"
     runRaw conn "DROP TABLE IF EXISTS Person;"
@@ -47,9 +48,15 @@ main = do
 p :: Person
 p = Person 123456 "Alice" 25 "123 Main St"
 
-main1 :: IO ()
-main1 = do
+defaultConfig :: Config
+defaultConfig = Config True "sqlite.db"
 
+withConfig x = let ?conf = defaultConfig in x
+
+
+main1 :: IO ()
+main1 = withConfig $ do
+  let ?conf = defaultConfig
   -- initialize Person table
   conn <- connectSqlite3 "sqlite.db"
   runRaw conn "DROP TABLE IF EXISTS Person;"
@@ -67,18 +74,18 @@ main1 = do
   
   -- select a Person from a database
   alice <- retrieveById conn (123456 :: Int) :: IO Person
-  print $ gshow alice
+  print alice
 
   -- select all Persons from a database
   allPersons <- retrieveAll conn :: IO [Person]
-  print $ gshow allPersons
+  print allPersons
 
   -- delete a Person from a database
   delete conn alice
   
   -- select all Persons from a database
   allPersons' <- retrieveAll conn :: IO [Person]
-  print $ gshow allPersons'
+  print allPersons'
 
   -- close connection
   disconnect conn

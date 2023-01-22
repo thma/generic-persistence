@@ -1,12 +1,14 @@
 {-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE ImplicitParams        #-}
 
 module GenericPersistence
   ( retrieveById,
     retrieveAll,
     persist,
     delete,
+    Config (..),
   )
 where
 
@@ -31,7 +33,7 @@ import           TypeInfo             (TypeInfo(..), typeInfo, typeName, typeInf
 -- The function takes an HDBC connection and an entity id as parameters.
 -- It returns the entity of type `a` with the given id.
 -- An error is thrown if no such entity exists or if there are more than one entity with the given id.
-retrieveById :: forall a conn id. (Data a, IConnection conn, Show id) => conn -> id -> IO a
+retrieveById :: forall a conn id. (Data a, IConnection conn, Show id, ?conf :: Config) => conn -> id -> IO a
 retrieveById conn eid = do
   let ti = typeInfoFromContext 
       stmt = selectStmtFor ti eid
@@ -50,7 +52,7 @@ retrieveById conn eid = do
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
 --  The type `a` is determined by the context of the function call.
-retrieveAll :: forall a conn. (Data a, IConnection conn) => conn -> IO [a]
+retrieveAll :: forall a conn. (Data a, IConnection conn, ?conf :: Config) => conn -> IO [a]
 retrieveAll conn = do
   let ti = typeInfoFromContext
       stmt = selectAllStmtFor ti
@@ -63,7 +65,7 @@ retrieveAll conn = do
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
-persist :: (IConnection conn, Data a) => conn -> a -> IO ()
+persist :: (IConnection conn, Data a, ?conf :: Config) => conn -> a -> IO ()
 persist conn entity = do
   resultRows <- quickQuery conn selectStmt []
   case resultRows of
@@ -87,12 +89,17 @@ persist conn entity = do
 entityId :: forall d. (Data d) => d -> String
 entityId x = fieldValueAsString x (idColumn (typeInfo x))    
 
-delete :: (IConnection conn, Data a) => conn -> a -> IO ()
+delete :: (IConnection conn, Data a, ?conf :: Config) => conn -> a -> IO ()
 delete conn entity = do
   trace $ "Deleting " ++ typeName entity ++ " with id " ++ entityId entity
   runRaw conn (deleteStmtFor entity)
   commit conn
 
 -- | A function that traces a string to the console.
-trace :: String -> IO ()
-trace = putStrLn
+trace :: (?conf :: Config) => String -> IO ()
+trace = if debug ?conf then putStrLn else const (return ())
+
+data Config = Config 
+  { debug :: Bool,
+    dbUrl :: String 
+  } deriving (Show, Data)
