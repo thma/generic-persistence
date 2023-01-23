@@ -1,6 +1,3 @@
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE DefaultSignatures #-}
 
 module GenericPersistence
@@ -31,6 +28,8 @@ import Data.Convertible
  HDBC is used to access the RDBMS.
 --}
 
+-- write a type contraint that ensures that the type a is an instance of Data and that type a also has named fields (record syntax)
+
 
 class (Data a) => Entity a where
   fromRow :: [SqlValue] -> a
@@ -49,10 +48,7 @@ class (Data a) => Entity a where
 -- An error is thrown if no such entity exists or if there are more than one entity with the given id.
 retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id SqlValue) => conn -> id -> IO a
 retrieveById conn idx = do
-  let ti = typeInfoFromContext 
-      stmt = preparedSelectStmtFor ti
-      eid = toSql idx
-  trace $ "Retrieve " ++ tiTypeName ti ++ " with id " ++ show eid
+  trace $ "Retrieve " ++ typeName ti ++ " with id " ++ show eid
   resultRowsSqlValues <- quickQuery conn stmt [eid]
   case resultRowsSqlValues of
     [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
@@ -62,6 +58,10 @@ retrieveById conn idx = do
           ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) 
           (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show eid
+  where
+    ti = typeInfoFromContext 
+    stmt = preparedSelectStmtFor ti
+    eid = toSql idx
   
 
 -- | This function retrieves all entities of type `a` from a database.
@@ -69,12 +69,12 @@ retrieveById conn idx = do
 --  The type `a` is determined by the context of the function call.
 retrieveAll :: forall a conn. (Entity a, IConnection conn) => conn -> IO [a]
 retrieveAll conn = do
-  let ti = typeInfoFromContext
-      stmt = selectAllStmtFor ti
-  trace $ "Retrieve all " ++ tiTypeName ti ++ "s"
+  trace $ "Retrieve all " ++ typeName ti ++ "s"
   resultRowsSqlValues <- quickQuery conn stmt []
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
-
+  where 
+    ti = typeInfoFromContext
+    stmt = selectAllStmtFor ti
 
 -- | A function that persists an entity  to a database.
 -- The function takes an HDBC connection and an entity as parameters.
@@ -85,33 +85,35 @@ persist conn entity = do
   resultRows <- quickQuery conn preparedSelectStmt [eid]
   case resultRows of
     [] -> do
-      trace $ "Inserting " ++ gshow entity
-      --runRaw conn insertStmt
+      trace $ "Inserting " ++ toString entity
       _rowcount <- run conn preparedInsertStmt (toRow entity)
       commit conn
     [_singleRow] -> do
-      trace $ "Updating " ++ gshow entity
+      trace $ "Updating " ++ toString entity
       let args = toRow entity ++ [eid]
       _rowcount <- run conn preparedUpdateStmt args
       commit conn
     _ -> error $ "More than one entity found for id " ++ show eid
   where
     ti = typeInfo entity
-    eid = toSql $ entityId entity
+    eid = entityId entity
     preparedSelectStmt = preparedSelectStmtFor ti
     preparedInsertStmt = preparedInsertStmtFor entity
     preparedUpdateStmt = preparedUpdateStmtFor entity
     
 -- | A function that returns the primary key value of an entity as a String.    
-entityId :: forall d. (Data d) => d -> String
-entityId x = fieldValueAsString x (idColumn (typeInfo x))    
+entityId :: forall d. (Data d) => d -> SqlValue
+entityId x = fieldValue x (idColumn (typeInfo x))    
 
 delete :: (IConnection conn, Entity a) => conn -> a -> IO ()
 delete conn entity = do
-  trace $ "Deleting " ++ typeName entity ++ " with id " ++ entityId entity
-  _rowCount <- run conn (preparedDeleteStmtFor entity) [toSql $ entityId entity]
+  trace $ "Deleting " ++ typeName (typeInfo entity) ++ " with id " ++ show (entityId entity)
+  _rowCount <- run conn (preparedDeleteStmtFor entity) [entityId entity]
   commit conn
 
 -- | A function that traces a string to the console.
 trace :: String -> IO ()
 trace = putStrLn
+
+toString :: (Entity a) => a -> String
+toString x = typeName (typeInfo x) ++ " " ++ show (toRow x)

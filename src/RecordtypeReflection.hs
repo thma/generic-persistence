@@ -1,18 +1,11 @@
-{-# LANGUAGE GADTs            #-}
-{-# LANGUAGE RankNTypes       #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module RecordtypeReflection
   ( buildFromRecord,
     applyConstr,
-    fieldValueAsString,
-    fieldValuesAsString,
-    fieldValues,
-    gshow,
+    fieldValue,
     gFromRow,
     gToRow,
-    --convert,
-    --convertToSqlValue
   )
 where
 
@@ -27,7 +20,6 @@ import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
 import           TypeInfo                       
-import           Data.Generics.Aliases          (extQ)
 
 import qualified Data.ByteString as B
 import Data.Word ( Word32, Word64 )
@@ -41,39 +33,38 @@ import qualified Data.Text.Lazy as TL
 
 
 -- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
---  Example: fieldValueAsString (Person "John" 42) "name" = "John"
---  Example: fieldValueAsString (Person "John" 42) "age" = "42"
+--  Example: fieldValue (Person "John" 42) "name" = SqlString "John"
+--  Example: fieldValue (Person "John" 42) "age" = SqlInt64 42
 --  if the field is not present in the entity, an error is thrown.
-fieldValueAsString :: Data a => a -> String -> String
-fieldValueAsString x field =
-  valueList !! index
+fieldValue :: Data a => a -> String -> SqlValue
+fieldValue x field =
+  convertToSqlValue fieldType (valueList !! index)
   where
-    fieldList = fieldNames x
-    valueList = fieldValuesAsString x
+    ti = typeInfo x
+    fieldList = fieldNames ti
+    valueList = fieldValues x
     index =
       expectJust
-        ("Field " ++ field ++ " is not present in type " ++ typeName x)
+        ("Field " ++ field ++ " is not present in type " ++ typeName ti)
         (elemIndex field fieldList)
-
--- | A function that take an entity as input paraemeter and returns a list of 
---   Strings representing the values of all fields of the entity.
---   Example: fieldValues (Person "John" 42) = ["John", "42"]
-fieldValuesAsString :: (Data a) => a -> [String]
-fieldValuesAsString = gmapQ gshow
+    fieldType = fieldTypes ti !! index
 
 fieldValues :: (Data a) => a -> [Dynamic]
 fieldValues = gmapQ toDyn
 
-gFromRow :: (Data a) => [SqlValue] -> a
-gFromRow l = expectJust "error in fromRow" $ buildFromRecord typeInfoFromContext l
+gFromRow :: forall a. (Data a) => [SqlValue] -> a
+gFromRow row = expectJust ("can't construct an " ++ tName ++ " instance from " ++ show row) (buildFromRecord ti row)
+  where
+    ti = typeInfoFromContext
+    tName = typeName ti
+
 
 gToRow :: (Data a) => a -> [SqlValue]
-gToRow x = 
-  let 
+gToRow x = zipWith convertToSqlValue types values
+  where 
     ti = typeInfo x
-    fieldTypes = map fieldType (typeFields ti)
+    types = fieldTypes ti
     values = fieldValues x
-  in zipWith convertToSqlValue fieldTypes values
 
 -- | This function takes a `TypeInfo a`and a List of HDBC `SqlValue`s and returns a `Maybe a`.
 --  If the conversion fails, Nothing is returned, otherwise Just a.
@@ -81,11 +72,11 @@ buildFromRecord :: (Data a) => TypeInfo a -> [SqlValue] -> Maybe a
 buildFromRecord ti record = applyConstr ctor dynamicsArgs
   where
     ctor = typeConstructor ti
-    types = map fieldType (typeFields ti)
+    types = fieldTypes ti
     dynamicsArgs =
       expectJust
         ("buildFromRecord: error in converting record " ++ show record)
-        (zipWithM convert types record)
+        (zipWithM convertToDynamic types record)
 
 -- | This function takes a `Constr` and a list of `Dynamic` values and returns a `Maybe a`.
 --   If an `a`entity could be constructed, Just a is returned, otherwise Nothing.
@@ -103,8 +94,8 @@ applyConstr ctor args =
 --  If conversion fails, return Nothing.
 --  conversion to Dynamic is required to allow the use of fromDynamic in applyConstr
 --  see also https://stackoverflow.com/questions/46992740/how-to-specify-type-of-value-via-typerep
-convert :: SomeTypeRep -> SqlValue -> Maybe Dynamic
-convert (SomeTypeRep rep) val
+convertToDynamic :: SomeTypeRep -> SqlValue -> Maybe Dynamic
+convertToDynamic (SomeTypeRep rep) val
   | Just HRefl <- eqTypeRep rep (typeRep @Int) = Just $ toDyn (fromSql val :: Int)
   | Just HRefl <- eqTypeRep rep (typeRep @Double) = Just $ toDyn (fromSql val :: Double)
   | Just HRefl <- eqTypeRep rep (typeRep @String) = Just $ toDyn (fromSql val :: String)
@@ -152,34 +143,3 @@ convertToSqlValue (SomeTypeRep rep) dyn
   | Just HRefl <- eqTypeRep rep (typeRep @TL.Text) = toSql (expectJust ("Not a TL.Text: " ++ show dyn) (fromDynamic dyn) :: TL.Text)
   | Just HRefl <- eqTypeRep rep (typeRep @TS.Text) = toSql (expectJust ("Not a TS.Text: " ++ show dyn) (fromDynamic dyn) :: TS.Text)
   | otherwise = error $ "convertToSqlValue: " ++ show rep ++ " not supported"
-
--- | Generic show: taken from syb package and https://chrisdone.com/posts/data-typeable/
-gshow :: Data a => a -> String
-gshow x = gshows x ""
-
-gshows :: Data a => a -> ShowS
-gshows = render `extQ` (shows :: String -> ShowS)
-  where
-    render t
-      | isTuple =
-          showChar '('
-            . drop 1
-            . commaSlots
-            . showChar ')'
-      | isNull = showString "[]"
-      | isList =
-          showChar '['
-            . drop 1
-            . listSlots
-            . showChar ']'
-      | otherwise =
-          constructor
-            . slots
-      where
-        constructor = showString . showConstr . toConstr $ t
-        slots = foldr (.) id . gmapQ ((showChar ' ' .) . gshows) $ t
-        commaSlots = foldr (.) id . gmapQ ((showChar ',' .) . gshows) $ t
-        listSlots = foldr (.) id . init . gmapQ ((showChar ',' .) . gshows) $ t
-        isTuple = all (== ',') (filter (not . flip elem "()") (constructor ""))
-        isNull = all (`elem` "[]") (constructor "")
-        isList = constructor "" == "(:)"
