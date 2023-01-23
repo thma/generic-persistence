@@ -14,7 +14,7 @@ data Person = Person
   , name :: String
   , age :: Int
   , address :: String
-  } deriving (Data, Persistent, Show)
+  } deriving (Data, Entity, Show)
 
 main :: IO ()
 main = do

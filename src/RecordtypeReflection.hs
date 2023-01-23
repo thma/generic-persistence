@@ -9,8 +9,10 @@ module RecordtypeReflection
     fieldValuesAsString,
     fieldValues,
     gshow,
-    convert,
-    convertToSqlValue
+    gFromRow,
+    gToRow,
+    --convert,
+    --convertToSqlValue
   )
 where
 
@@ -61,6 +63,17 @@ fieldValuesAsString = gmapQ gshow
 
 fieldValues :: (Data a) => a -> [Dynamic]
 fieldValues = gmapQ toDyn
+
+gFromRow :: (Data a) => [SqlValue] -> a
+gFromRow l = expectJust "error in fromRow" $ buildFromRecord typeInfoFromContext l
+
+gToRow :: (Data a) => a -> [SqlValue]
+gToRow x = 
+  let 
+    ti = typeInfo x
+    fieldTypes = map fieldType (typeFields ti)
+    values = fieldValues x
+  in zipWith convertToSqlValue fieldTypes values
 
 -- | This function takes a `TypeInfo a`and a List of HDBC `SqlValue`s and returns a `Maybe a`.
 --  If the conversion fails, Nothing is returned, otherwise Just a.

@@ -1,9 +1,13 @@
 module SqlGenerator
-  ( insertStmtFor,
-    updateStmtFor,
-    deleteStmtFor,
-    selectStmtFor,
+  ( --insertStmtFor,
+    --updateStmtFor,
+    --deleteStmtFor,
+    --selectStmtFor,
     selectAllStmtFor,
+    preparedInsertStmtFor,
+    preparedUpdateStmtFor,
+    preparedSelectStmtFor,
+    preparedDeleteStmtFor,
     idColumn,
   )
 where
@@ -28,6 +32,19 @@ insertStmtFor x =
     ++ intercalate ", " (fieldValuesAsString x)
     ++ ");"
 
+preparedInsertStmtFor :: Data a => a -> String
+preparedInsertStmtFor x =
+  "INSERT INTO "
+  ++ typeName x
+  ++ " ("
+  ++ intercalate ", " fNames
+  ++ ") VALUES ("
+  ++ intercalate ", " params
+  ++ ");"
+  where
+    fNames = fieldNames x
+    params = replicate (length fNames) "?"
+
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Data.
 updateStmtFor :: Data a => a -> String
 updateStmtFor x =
@@ -44,6 +61,21 @@ updateStmtFor x =
     updatePairs = zipWith (\n v -> n ++ " = " ++ v) (fieldNames x) (fieldValuesAsString x)
     ti = typeInfo x
 
+preparedUpdateStmtFor :: Data a => a -> String
+preparedUpdateStmtFor x =
+  "UPDATE "
+    ++ typeName x
+    ++ " SET "
+    ++ intercalate ", " updatePairs
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = ?"
+    ++ ";"
+  where
+    fNames = fieldNames x
+    updatePairs = map (++ " = ?") fNames
+    ti = typeInfo x
+
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
 selectStmtFor :: (Show id) => TypeInfo a -> id -> String
 selectStmtFor ti eid =
@@ -56,6 +88,16 @@ selectStmtFor ti eid =
     ++ " = "
     ++ show eid
     ++ ";"
+
+preparedSelectStmtFor :: TypeInfo a -> String
+preparedSelectStmtFor ti =
+  "SELECT "
+    ++ intercalate ", " (fieldNamesFromTypeInfo ti)
+    ++ " FROM "
+    ++ tiTypeName ti
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = ?;"
 
 selectAllStmtFor :: TypeInfo a -> String
 selectAllStmtFor ti =
@@ -74,6 +116,16 @@ deleteStmtFor x =
     ++ " = "
     ++ fieldValueAsString x (idColumn ti)
     ++ ";"
+  where
+    ti = typeInfo x
+
+preparedDeleteStmtFor :: Data a => a -> String
+preparedDeleteStmtFor x =
+  "DELETE FROM "
+    ++ show (typeName x)
+    ++ " WHERE "
+    ++ idColumn ti
+    ++ " = ?;"
   where
     ti = typeInfo x
 
