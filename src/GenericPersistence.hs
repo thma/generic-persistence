@@ -1,5 +1,3 @@
-{-# LANGUAGE DefaultSignatures #-}
-
 module GenericPersistence
   ( retrieveById,
     retrieveAll,
@@ -18,6 +16,7 @@ import           RecordtypeReflection
 import           SqlGenerator         
 import           TypeInfo             
 import Data.Convertible
+import Entity
 
 
 {--
@@ -27,19 +26,6 @@ import Data.Convertible
  The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
  HDBC is used to access the RDBMS.
 --}
-
--- write a type contraint that ensures that the type a is an instance of Data and that type a also has named fields (record syntax)
-
-
-class (Data a) => Entity a where
-  fromRow :: [SqlValue] -> a
-  toRow :: a -> [SqlValue]
-
-  default fromRow :: [SqlValue] -> a
-  fromRow = gFromRow
-
-  default toRow :: a -> [SqlValue]
-  toRow = gToRow
 
 
 -- | A function that retrieves an entity from a database.

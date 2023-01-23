@@ -4,14 +4,13 @@ module SqlGenerator
     preparedSelectStmtFor,
     preparedDeleteStmtFor,
     selectAllStmtFor,
-    idColumn,
   )
 where
 
-import           Data.Char            (toLower)
 import           Data.Data            (Data)
 import           Data.List            (intercalate)
-import           TypeInfo             
+import           TypeInfo    
+import           Entity         
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -88,7 +87,4 @@ createTableStmtFor ti =
     ++ ");"
 --}
 
--- | A function that returns the name of the primary key column for a type 'a'.
---   By convention we are using the following name: convert the type name to lower case and append "ID".
-idColumn :: TypeInfo a -> String
-idColumn ti = map toLower (typeName ti) ++ "ID"
+
