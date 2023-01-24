@@ -3,16 +3,16 @@ module Entity
   (
     Entity (..),
     columnNameFor,
-    maybeColumnNameFor,
     toString,
   ) where
 
 import Data.Data ( Data )
-import Database.HDBC ( SqlValue )
+import Database.HDBC ( SqlValue, fromSql )
 import RecordtypeReflection ( gFromRow, gToRow )    
 import TypeInfo
 import Data.Char (toLower)
 import GHC.Data.Maybe (expectJust)
+
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping between a Haskell product type in record notation and a database table.
@@ -61,24 +61,39 @@ Please note the following constraints, that are not explicietly encoded in the t
 --}
 
 class (Data a) => Entity a where
+  -- | Converts a database row to a value of type 'a'.
   fromRow :: [SqlValue] -> a
+
+  -- | Converts a value of type 'a' to a database row.
   toRow :: a -> [SqlValue]
+
+  -- | Returns the name of the primary key field for a type 'a'.
   idField :: a -> String
+
+  -- | Returns a list of tuples that map field names to column names for a type 'a'.
   fieldsToColumns :: a -> [(String, String)]
+
+  -- | Returns the name of the table for a type 'a'.
   tableName :: a -> String
 
+  -- | generic default implementation
   default fromRow :: [SqlValue] -> a
   fromRow = gFromRow
 
+  -- | generic default implementation
   default toRow :: a -> [SqlValue]
   toRow = gToRow
 
+  -- | default implementation: the ID field is the field with the same name 
+  --   as the type name in lower case and appended with "ID", e.g. "bookID"
   default idField :: a -> String
   idField = idFieldName . typeInfo
 
+  -- | default implementation: the field names are used as column names
   default fieldsToColumns :: a -> [(String, String)]
   fieldsToColumns x = zip (fieldNames (typeInfo x)) (fieldNames (typeInfo x))
 
+  -- | default implementation: the type name is used as table name
   default tableName :: a -> String
   tableName = typeName . typeInfo
 
@@ -87,13 +102,18 @@ class (Data a) => Entity a where
 idFieldName :: TypeInfo a -> String
 idFieldName ti = map toLower (typeName ti) ++ "ID"
 
-maybeColumnNameFor :: Entity a => a -> String -> Maybe String
-maybeColumnNameFor x fieldName = lookup fieldName (fieldsToColumns x)
 
+-- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: Entity a => a -> String -> String
 columnNameFor x fieldName = expectJust 
     ("columnNameFor: " ++ toString x ++ " has no column mapping for " ++ fieldName) 
     (maybeColumnNameFor x fieldName)
+  where
+    maybeColumnNameFor :: Entity a => a -> String -> Maybe String
+    maybeColumnNameFor x fieldName = lookup fieldName (fieldsToColumns x)
 
+-- | Returns a string representation of a value of type 'a'.
 toString :: (Entity a) => a -> String
-toString x = typeName (typeInfo x) ++ " " ++ show (toRow x)
+toString x = typeName (typeInfo x) ++ " " ++ unwords mappedRow 
+    where
+        mappedRow = map fromSql (toRow x)

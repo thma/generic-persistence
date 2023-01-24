@@ -10,7 +10,6 @@ where
 import           Data.List            (intercalate)
 import           TypeInfo
 import           Entity         
-import GHC.Data.Maybe (expectJust)
 import Data.Data (fromConstr)
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
@@ -22,15 +21,20 @@ preparedInsertStmtFor x =
   "INSERT INTO "
   ++ tableName x
   ++ " ("
-  ++ intercalate ", " colNames
+  ++ intercalate ", " (columnNamesFor x)
   ++ ") VALUES ("
-  ++ intercalate ", " params
+  ++ intercalate ", " (params x)
   ++ ");"
+
+
+columnNamesFor :: Entity a => a -> [String]
+columnNamesFor x = map (columnNameFor x) fields
   where
     ti = typeInfo x
-    fNames = fieldNames ti
-    colNames = map (columnNameFor x) fNames
-    params = replicate (length fNames) "?"
+    fields = fieldNames ti
+
+params :: Entity a => a -> [String]
+params x = replicate (length (fieldNames (typeInfo x))) "?"
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Data.
 preparedUpdateStmtFor :: Entity a => a -> String
@@ -40,51 +44,37 @@ preparedUpdateStmtFor x =
     ++ " SET "
     ++ intercalate ", " updatePairs
     ++ " WHERE "
-    ++ idCol
+    ++ idColumn x
     ++ " = ?"
     ++ ";"
   where
-    ti = typeInfo x
-    fNames = fieldNames ti
-    colNames = map (columnNameFor x) fNames
-    updatePairs = map (++ " = ?") colNames
-    idx = idField x
-    idCol = expectJust 
-      ("preparedUpdateStmtFor: " ++ toString x ++ " has no column mapping for " ++ idx) 
-      (maybeColumnNameFor x idx)
+    updatePairs = map (++ " = ?") (columnNamesFor x)
 
+idColumn :: Entity a => a -> String
+idColumn x = columnNameFor x (idField x)
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
 preparedSelectStmtFor :: forall a . (Entity a) => TypeInfo a -> String
 preparedSelectStmtFor ti =
   "SELECT "
-    ++ intercalate ", " colNames
+    ++ intercalate ", " (columnNamesFor proxy)
     ++ " FROM "
     ++ tableName proxy
     ++ " WHERE "
-    ++ idCol
+    ++ idColumn proxy
     ++ " = ?;"
   where
     proxy = fromConstr (typeConstructor ti) :: a
-    tName = typeName ti
-    fNames = fieldNames ti
-    colNames = map (columnNameFor proxy) fNames
-    idx = idField proxy
-    idCol = expectJust 
-      ("preparedSelectStmtFor: " ++ tName ++ " has no column mapping for " ++ idx) 
-      (maybeColumnNameFor proxy idx)
 
 selectAllStmtFor :: forall a . (Entity a) => TypeInfo a -> String
 selectAllStmtFor ti =
   "SELECT "
-    ++ intercalate ", " colNames
+    ++ intercalate ", " (columnNamesFor proxy)
     ++ " FROM "
     ++ tableName proxy
     ++ ";"
   where 
     proxy = fromConstr (typeConstructor ti) :: a
-    fNames = fieldNames ti
-    colNames = map (columnNameFor proxy) fNames
 
 
 preparedDeleteStmtFor :: Entity a => a -> String
@@ -92,13 +82,9 @@ preparedDeleteStmtFor x =
   "DELETE FROM "
     ++ tableName x
     ++ " WHERE "
-    ++ idCol
+    ++ idColumn x
     ++ " = ?;"
-  where
-    idx = idField x
-    idCol = expectJust 
-      ("preparedDeleteStmtFor: " ++ toString x ++ " has no column mapping for " ++ idx) 
-      (maybeColumnNameFor x idx)
+
 
 -- "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
 {--

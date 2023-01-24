@@ -33,7 +33,7 @@ typeInfoFromContext =
   let dt = dataTypeOf (undefined :: a)   -- This is the trick to get the type from the context. 
       constr = case dataTypeConstrs dt of
         [cnstr] -> cnstr
-        _       -> error "typeInfoFromContext: Only types with one constructor are supported"
+        _       -> error $ "typeInfoFromContext: Only types with one constructor are supported (" ++ show dt ++ ")"
       evidence = fromConstr constr :: a  -- this is evidence for the compiler that we have a value of type a
   in typeInfo evidence
 
@@ -50,4 +50,4 @@ fieldNamesOf x = names
     constrs = gmapQ toConstr x
     names = if length candidates == length constrs
       then candidates
-      else error "fieldNamesOf: Type does not have named fields"
+      else error $ "fieldNamesOf: Type " ++ show (typeOf x) ++ " does not have named fields"
