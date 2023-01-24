@@ -3,13 +3,10 @@ module GenericPersistence
     retrieveAll,
     persist,
     delete,
-    Entity,
-    fromRow,
-    toRow
+    Entity (..),
   )
 where
 
-import           Data.Data            ( Data )
 import           Database.HDBC        (IConnection, commit, quickQuery, run, SqlValue, toSql)
 import           GHC.Data.Maybe       (expectJust)
 import           RecordtypeReflection 
@@ -88,8 +85,8 @@ persist conn entity = do
     preparedUpdateStmt = preparedUpdateStmtFor entity
     
 -- | A function that returns the primary key value of an entity as a String.    
-entityId :: forall d. (Data d) => d -> SqlValue
-entityId x = fieldValue x (idColumn (typeInfo x))    
+entityId :: forall a. (Entity a) => a -> SqlValue
+entityId x = fieldValue x (idField x)    
 
 delete :: (IConnection conn, Entity a) => conn -> a -> IO ()
 delete conn entity = do
@@ -101,5 +98,3 @@ delete conn entity = do
 trace :: String -> IO ()
 trace = putStrLn
 
-toString :: (Entity a) => a -> String
-toString x = typeName (typeInfo x) ++ " " ++ show (toRow x)

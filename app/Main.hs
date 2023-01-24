@@ -4,7 +4,7 @@ module Main (main, main1) where
 
 import Data.Data ( Data )
 import GenericPersistence
-import Database.HDBC (disconnect, runRaw, commit) 
+import Database.HDBC (disconnect, runRaw, commit, fromSql, toSql) 
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 
 
@@ -16,12 +16,29 @@ data Person = Person
   , address :: String
   } deriving (Data, Entity, Show)
 
+data Book = Book
+  { book_id :: Int
+  , title :: String
+  , author :: String
+  , year :: Int
+  } deriving (Data, Show)
+
+instance Entity Book where
+  idField _ = "book_id"
+  fieldsToColumns _ = [("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("book_id", "bookId")]
+  tableName _ = "BOOK_TBL"
+  fromRow row = Book (col 0) (col 1) (col 2) (col 3)
+    where col i = fromSql (row !! i)
+  toRow b = map toSql [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+
+
 main :: IO ()
 main = do
     -- initialize Person table
     conn <- connectSqlite3 "sqlite.db"
     runRaw conn "DROP TABLE IF EXISTS Person;"
     runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
+
     commit conn
   
     -- create a Person entity
@@ -47,6 +64,9 @@ main = do
 p :: Person
 p = Person 123456 "Alice" 25 "123 Main St"
 
+book :: Book
+book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
+
 main1 :: IO ()
 main1 = do
 
@@ -54,6 +74,9 @@ main1 = do
   conn <- connectSqlite3 "sqlite.db"
   runRaw conn "DROP TABLE IF EXISTS Person;"
   runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
+
+  runRaw conn "DROP TABLE IF EXISTS BOOK_TBL;"
+  runRaw conn "CREATE TABLE IF NOT EXISTS BOOK_TBL (bookId INT PRIMARY KEY, bookTitle TEXT, bookAuthor TEXT, bookYear INT);"
   commit conn
   
   -- insert a Person into a database
@@ -79,6 +102,19 @@ main1 = do
   -- select all Persons from a database
   allPersons' <- retrieveAll conn :: IO [Person]
   print allPersons'
+
+  let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
+
+  persist conn book
+  persist conn book2 
+  allBooks <- retrieveAll conn :: IO [Book]
+  print allBooks
+
+  persist conn book2 {title="The Lord of the Rings"}
+  delete conn book
+
+  allBooks' <- retrieveAll conn :: IO [Book]
+  print allBooks'
 
   -- close connection
   disconnect conn
