@@ -1,18 +1,19 @@
 {-# LANGUAGE DefaultSignatures #-}
-module Entity 
-  (
-    Entity (..),
+
+module Entity
+  ( Entity (..),
     columnNameFor,
     toString,
-  ) where
+  )
+where
 
-import Data.Data ( Data )
-import Database.HDBC ( SqlValue, fromSql )
-import RecordtypeReflection ( gFromRow, gToRow )    
-import TypeInfo
-import Data.Char (toLower)
-import GHC.Data.Maybe (expectJust)
-
+import           Data.Char            (toLower)
+import           Data.Data            (Data)
+import           Database.HDBC        (SqlValue, fromSql)
+import           GHC.Data.Maybe       (expectJust)
+import           RecordtypeReflection (gFromRow, gToRow)
+import           TypeInfo             (TypeInfo (fieldNames), typeInfo,
+                                       typeName)
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping between a Haskell product type in record notation and a database table.
@@ -51,11 +52,10 @@ instance Entity Book where
     where col i = fromSql (row !! i)
   toRow b = map toSql [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
-
 Please note the following constraints, that are not explicietly encoded in the type class definition:
 
 - The type must be a product type in record notation.
-- The type must have exactly one constructor. 
+- The type must have exactly one constructor.
 - There must be single primary key field, compund primary keys are not supported.
 
 --}
@@ -84,10 +84,13 @@ class (Data a) => Entity a where
   default toRow :: a -> [SqlValue]
   toRow = gToRow
 
-  -- | default implementation: the ID field is the field with the same name 
+  -- | default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
   default idField :: a -> String
   idField = idFieldName . typeInfo
+    where
+      idFieldName :: TypeInfo a -> String
+      idFieldName ti = map toLower (typeName ti) ++ "ID"
 
   -- | default implementation: the field names are used as column names
   default fieldsToColumns :: a -> [(String, String)]
@@ -97,23 +100,18 @@ class (Data a) => Entity a where
   default tableName :: a -> String
   tableName = typeName . typeInfo
 
--- | A function that returns the name of the primary key column for a type 'a'.
---   By convention we are using the following name: convert the type name to lower case and append "ID".
-idFieldName :: TypeInfo a -> String
-idFieldName ti = map toLower (typeName ti) ++ "ID"
-
-
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: Entity a => a -> String -> String
-columnNameFor x fieldName = expectJust 
-    ("columnNameFor: " ++ toString x ++ " has no column mapping for " ++ fieldName) 
+columnNameFor x fieldName =
+  expectJust
+    ("columnNameFor: " ++ toString x ++ " has no column mapping for " ++ fieldName)
     (maybeColumnNameFor x fieldName)
   where
     maybeColumnNameFor :: Entity a => a -> String -> Maybe String
-    maybeColumnNameFor x fieldName = lookup fieldName (fieldsToColumns x)
+    maybeColumnNameFor a field = lookup field (fieldsToColumns a)
 
 -- | Returns a string representation of a value of type 'a'.
 toString :: (Entity a) => a -> String
-toString x = typeName (typeInfo x) ++ " " ++ unwords mappedRow 
-    where
-        mappedRow = map fromSql (toRow x)
+toString x = typeName (typeInfo x) ++ " " ++ unwords mappedRow
+  where
+    mappedRow = map fromSql (toRow x)

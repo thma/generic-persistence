@@ -11,26 +11,25 @@ where
 
 import           Control.Monad                  (zipWithM)
 import           Control.Monad.Trans.Class      (lift)
-import           Control.Monad.Trans.State.Lazy ( StateT(..) ) 
+import           Control.Monad.Trans.State.Lazy (StateT (..))
+import qualified Data.ByteString                as B
 import           Data.Data                      hiding (typeRep)
 import           Data.Dynamic                   (Dynamic, fromDynamic, toDyn)
+import           Data.Int                       (Int32, Int64)
 import           Data.List                      (elemIndex, uncons)
+import           Data.Ratio                     (Ratio)
+import qualified Data.Text                      as TS
+import qualified Data.Text.Lazy                 as TL
+import           Data.Time                      (Day, LocalTime,
+                                                 NominalDiffTime, TimeOfDay,
+                                                 UTCTime, ZonedTime)
+import           Data.Time.Clock.POSIX          (POSIXTime)
+import           Data.Word                      (Word32, Word64)
 import           Database.HDBC                  (SqlValue, fromSql, toSql)
 import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
-import           TypeInfo                       
-
-import qualified Data.ByteString as B
-import Data.Word ( Word32, Word64 )
-import Data.Int ( Int32, Int64 )
-import Data.Time
-    ( NominalDiffTime, Day, LocalTime, TimeOfDay, UTCTime, ZonedTime ) 
-import Data.Time.Clock.POSIX ( POSIXTime )
-import Data.Ratio ( Ratio )
-import qualified Data.Text as TS
-import qualified Data.Text.Lazy as TL
-
+import           TypeInfo
 
 -- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
 --  Example: fieldValue (Person "John" 42) "name" = SqlString "John"
@@ -58,10 +57,9 @@ gFromRow row = expectJust ("can't construct an " ++ tName ++ " instance from " +
     ti = typeInfoFromContext
     tName = typeName ti
 
-
 gToRow :: (Data a) => a -> [SqlValue]
 gToRow x = zipWith convertToSqlValue types values
-  where 
+  where
     ti = typeInfo x
     types = fieldTypes ti
     values = fieldValues x

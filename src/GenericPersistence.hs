@@ -7,14 +7,14 @@ module GenericPersistence
   )
 where
 
-import           Database.HDBC        (IConnection, commit, quickQuery, run, SqlValue, toSql)
+import           Data.Convertible
+import           Database.HDBC        (IConnection, SqlValue, commit,
+                                       quickQuery, run, toSql)
+import           Entity
 import           GHC.Data.Maybe       (expectJust)
-import           RecordtypeReflection 
-import           SqlGenerator         
-import           TypeInfo             
-import Data.Convertible
-import Entity
-
+import           RecordtypeReflection
+import           SqlGenerator
+import           TypeInfo
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -23,7 +23,6 @@ import Entity
  The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
  HDBC is used to access the RDBMS.
 --}
-
 
 -- | A function that retrieves an entity from a database.
 -- The function takes an HDBC connection and an entity id as parameters.
@@ -36,16 +35,15 @@ retrieveById conn idx = do
   case resultRowsSqlValues of
     [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
     [singleRowSqlValues] -> do
-      return $ 
-        expectJust 
-          ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid) 
+      return $
+        expectJust
+          ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid)
           (buildFromRecord ti singleRowSqlValues :: Maybe a)
     _ -> error $ "More than one entity found for id " ++ show eid
   where
-    ti = typeInfoFromContext 
+    ti = typeInfoFromContext
     stmt = preparedSelectStmtFor ti
     eid = toSql idx
-  
 
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
@@ -55,7 +53,7 @@ retrieveAll conn = do
   trace $ "Retrieve all " ++ typeName ti ++ "s"
   resultRowsSqlValues <- quickQuery conn stmt []
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
-  where 
+  where
     ti = typeInfoFromContext
     stmt = selectAllStmtFor ti
 
@@ -67,26 +65,29 @@ persist :: (IConnection conn, Entity a) => conn -> a -> IO ()
 persist conn entity = do
   resultRows <- quickQuery conn preparedSelectStmt [eid]
   case resultRows of
-    [] -> do
-      trace $ "Inserting " ++ toString entity
-      _rowcount <- run conn preparedInsertStmt (toRow entity)
-      commit conn
-    [_singleRow] -> do
-      trace $ "Updating " ++ toString entity
-      let args = toRow entity ++ [eid]
-      _rowcount <- run conn preparedUpdateStmt args
-      commit conn
-    _ -> error $ "More than one entity found for id " ++ show eid
+    []           -> insert conn entity
+    [_singleRow] -> update conn entity
+    _            -> error $ "More than one entity found for id " ++ show eid
   where
     ti = typeInfo entity
     eid = entityId entity
     preparedSelectStmt = preparedSelectStmtFor ti
-    preparedInsertStmt = preparedInsertStmtFor entity
-    preparedUpdateStmt = preparedUpdateStmtFor entity
-    
--- | A function that returns the primary key value of an entity as a String.    
+
+insert :: (IConnection conn, Entity a) => conn -> a -> IO ()
+insert conn entity = do
+  trace $ "Inserting " ++ toString entity
+  _rowcount <- run conn (preparedInsertStmtFor entity) (toRow entity)
+  commit conn
+
+update :: (IConnection conn, Entity a) => conn -> a -> IO ()
+update conn entity = do
+  trace $ "Updating " ++ toString entity
+  _rowcount <- run conn (preparedUpdateStmtFor entity) (toRow entity ++ [entityId entity])
+  commit conn
+
+-- | A function that returns the primary key value of an entity as a String.
 entityId :: forall a. (Entity a) => a -> SqlValue
-entityId x = fieldValue x (idField x)    
+entityId x = fieldValue x (idField x)
 
 delete :: (IConnection conn, Entity a) => conn -> a -> IO ()
 delete conn entity = do
@@ -97,4 +98,3 @@ delete conn entity = do
 -- | A function that traces a string to the console.
 trace :: String -> IO ()
 trace = putStrLn
-

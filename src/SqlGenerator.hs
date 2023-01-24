@@ -7,10 +7,10 @@ module SqlGenerator
   )
 where
 
-import           Data.List            (intercalate)
+import           Data.Data (fromConstr)
+import           Data.List (intercalate)
+import           Entity
 import           TypeInfo
-import           Entity         
-import Data.Data (fromConstr)
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -19,13 +19,12 @@ import Data.Data (fromConstr)
 preparedInsertStmtFor :: Entity a => a -> String
 preparedInsertStmtFor x =
   "INSERT INTO "
-  ++ tableName x
-  ++ " ("
-  ++ intercalate ", " (columnNamesFor x)
-  ++ ") VALUES ("
-  ++ intercalate ", " (params x)
-  ++ ");"
-
+    ++ tableName x
+    ++ " ("
+    ++ intercalate ", " (columnNamesFor x)
+    ++ ") VALUES ("
+    ++ intercalate ", " (params x)
+    ++ ");"
 
 columnNamesFor :: Entity a => a -> [String]
 columnNamesFor x = map (columnNameFor x) fields
@@ -36,7 +35,7 @@ columnNamesFor x = map (columnNameFor x) fields
 params :: Entity a => a -> [String]
 params x = replicate (length (fieldNames (typeInfo x))) "?"
 
--- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Data.
+-- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Entity.
 preparedUpdateStmtFor :: Entity a => a -> String
 preparedUpdateStmtFor x =
   "UPDATE "
@@ -54,28 +53,27 @@ idColumn :: Entity a => a -> String
 idColumn x = columnNameFor x (idField x)
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
-preparedSelectStmtFor :: forall a . (Entity a) => TypeInfo a -> String
+preparedSelectStmtFor :: forall a. (Entity a) => TypeInfo a -> String
 preparedSelectStmtFor ti =
   "SELECT "
-    ++ intercalate ", " (columnNamesFor proxy)
+    ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
-    ++ tableName proxy
+    ++ tableName x
     ++ " WHERE "
-    ++ idColumn proxy
+    ++ idColumn x
     ++ " = ?;"
   where
-    proxy = fromConstr (typeConstructor ti) :: a
+    x = fromConstr (typeConstructor ti) :: a
 
-selectAllStmtFor :: forall a . (Entity a) => TypeInfo a -> String
+selectAllStmtFor :: forall a. (Entity a) => TypeInfo a -> String
 selectAllStmtFor ti =
   "SELECT "
-    ++ intercalate ", " (columnNamesFor proxy)
+    ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
-    ++ tableName proxy
+    ++ tableName x
     ++ ";"
-  where 
-    proxy = fromConstr (typeConstructor ti) :: a
-
+  where
+    x = fromConstr (typeConstructor ti) :: a
 
 preparedDeleteStmtFor :: Entity a => a -> String
 preparedDeleteStmtFor x =
@@ -84,17 +82,4 @@ preparedDeleteStmtFor x =
     ++ " WHERE "
     ++ idColumn x
     ++ " = ?;"
-
-
--- "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
-{--
-createTableStmtFor :: TypeInfo -> String
-createTableStmtFor ti =
-  "CREATE TABLE IF NOT EXISTS "
-    ++ show (typeName ti)
-    ++ " ("
-    ++ intercalate ", " (zipWith (\n t -> n ++ " " ++ t) (fieldNamesFromTypeInfo ti) (fieldTypesFromTypeInfo ti))
-    ++ ");"
---}
-
 
