@@ -1,65 +1,67 @@
-{-# LANGUAGE DeriveDataTypeable#-}
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass     #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE FlexibleContexts   #-}
+
 module Main (main, main1) where
 
-import Data.Data ( Data )
-import GenericPersistence
-import Database.HDBC (disconnect, runRaw, commit, fromSql, toSql) 
-import Database.HDBC.Sqlite3 ( connectSqlite3 )
-
+import           Data.Data             (Data)
+import           Database.HDBC         (commit, disconnect, fromSql, runRaw, toSql)
+import           Database.HDBC.Sqlite3 (connectSqlite3)
+import           GenericPersistence
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
-  { personID :: Int
-  , name :: String
-  , age :: Int
-  , address :: String
-  } deriving (Data, Entity, Show)
+  { personID :: Int,
+    name     :: String,
+    age      :: Int,
+    address  :: String
+  }
+  deriving (Data, Entity, Show)
 
 data Book = Book
-  { book_id :: Int
-  , title :: String
-  , author :: String
-  , year :: Int
-  } deriving (Data, Show)
+  { book_id :: Int,
+    title   :: String,
+    author  :: String,
+    year    :: Int
+  }
+  deriving (Data, Show)
 
 instance Entity Book where
   idField _ = "book_id"
   fieldsToColumns _ = [("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("book_id", "bookId")]
   tableName _ = "BOOK_TBL"
   fromRow row = Book (col 0) (col 1) (col 2) (col 3)
-    where col i = fromSql (row !! i)
-  toRow b = map toSql [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
-
+    where
+      col i = fromSql (row !! i)
+  toRow b = [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do
-    -- initialize Person table
-    conn <- connectSqlite3 "sqlite.db"
-    runRaw conn "DROP TABLE IF EXISTS Person;"
-    runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
+  -- initialize Person table
+  conn <- connectSqlite3 "sqlite.db"
+  runRaw conn "DROP TABLE IF EXISTS Person;"
+  runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
 
-    commit conn
-  
-    -- create a Person entity
-    let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
+  commit conn
 
-    -- insert a Person into a database
-    persist conn alice
+  -- create a Person entity
+  let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
-    -- update a Person
-    persist conn alice {address = "Main Street 200"}  
-    
-    -- select a Person from a database
-    -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
-    alice' <- retrieveById conn "123456" :: IO Person
+  -- insert a Person into a database
+  persist conn alice
 
-    -- delete a Person from a database
-    delete conn alice'
-    
-    -- close connection
-    disconnect conn
+  -- update a Person
+  persist conn alice {address = "Main Street 200"}
 
+  -- select a Person from a database
+  -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
+  alice' <- retrieveById conn "123456" :: IO Person
+
+  -- delete a Person from a database
+  delete conn alice'
+
+  -- close connection
+  disconnect conn
 
 p :: Person
 p = Person 123456 "Alice" 25 "123 Main St"
@@ -69,7 +71,6 @@ book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
 
 main1 :: IO ()
 main1 = do
-
   -- initialize Person table
   conn <- connectSqlite3 "sqlite.db"
   runRaw conn "DROP TABLE IF EXISTS Person;"
@@ -78,16 +79,16 @@ main1 = do
   runRaw conn "DROP TABLE IF EXISTS BOOK_TBL;"
   runRaw conn "CREATE TABLE IF NOT EXISTS BOOK_TBL (bookId INT PRIMARY KEY, bookTitle TEXT, bookAuthor TEXT, bookYear INT);"
   commit conn
-  
+
   -- insert a Person into a database
   persist conn p
-  
+
   -- insert a second Person in a database
   persist conn p {personID = 123457, name = "Bob"}
-  
+
   -- update a Person
-  persist conn p {address = "Elmstreet 1"}  
-  
+  persist conn p {address = "Elmstreet 1"}
+
   -- select a Person from a database
   alice <- retrieveById conn (123456 :: Int) :: IO Person
   print alice
@@ -98,7 +99,7 @@ main1 = do
 
   -- delete a Person from a database
   delete conn alice
-  
+
   -- select all Persons from a database
   allPersons' <- retrieveAll conn :: IO [Person]
   print allPersons'
@@ -106,11 +107,11 @@ main1 = do
   let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
 
   persist conn book
-  persist conn book2 
+  persist conn book2
   allBooks <- retrieveAll conn :: IO [Book]
   print allBooks
 
-  persist conn book2 {title="The Lord of the Rings"}
+  persist conn book2 {title = "The Lord of the Rings"}
   delete conn book
 
   allBooks' <- retrieveAll conn :: IO [Book]
@@ -118,5 +119,3 @@ main1 = do
 
   -- close connection
   disconnect conn
-
-

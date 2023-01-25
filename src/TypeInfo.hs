@@ -1,3 +1,6 @@
+{-# LANGUAGE RankNTypes           #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+
 module TypeInfo
   ( TypeInfo (..),
     typeName,

@@ -1,3 +1,8 @@
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE FlexibleContexts      #-}
+
 module GenericPersistence
   ( retrieveById,
     retrieveAll,
@@ -55,7 +60,9 @@ retrieveAll conn = do
   return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
   where
     ti = typeInfoFromContext
-    stmt = selectAllStmtFor ti
+    
+    stmt
+     = selectAllStmtFor ti
 
 -- | A function that persists an entity  to a database.
 -- The function takes an HDBC connection and an entity as parameters.
