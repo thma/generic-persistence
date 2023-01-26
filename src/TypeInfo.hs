@@ -1,100 +1,82 @@
-{-# LANGUAGE AllowAmbiguousTypes  #-}
-{-# LANGUAGE ExtendedDefaultRules #-}
-{-# LANGUAGE GADTs                #-}
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 
 module TypeInfo
-  ( TypeInfo (..),
-    FieldInfo (..),
+  ( TypeInfo,
+    typeConstructor,
+    fieldNames,
+    fieldTypes,
     typeName,
     typeInfo,
     typeInfoFromContext,
-    tiTypeName,
-    fieldInfo,
-    fieldNames,
-    fieldNamesFromTypeInfo
   )
 where
 
-import           Data.Data            
-import           GHC.Data.Maybe        (expectJust)
+import Data.Data
+    ( Data(toConstr, dataTypeOf, gmapQ),
+      Constr,
+      constrFields,
+      constrType,
+      dataTypeConstrs,
+      dataTypeName,
+      fromConstr,
+      typeOf,
+      DataType,
+      TypeRep )
 
-{--
-
-https://chrisdone.com/posts/data-typeable/
-
---}
-
--- | A data type that holding information about a type. The Phantom type parameter `a` ensures type safety.
+-- | A data type holding meta-data about a type. 
+--   The Phantom type parameter `a` ensures type safety for reflective functions
+--   that use this type to create type instances (See module RecordtypeReflection).
 data TypeInfo a = TypeInfo
-  { -- | The constructors of the type.
-    typeConstructor :: Constr,
-    -- | The fields of the type.
-    typeFields      :: [FieldInfo]
+  { typeConstructor :: Constr,
+    fieldNames      :: [String],
+    fieldTypes      :: [TypeRep]
   }
   deriving (Show)
 
+-- | this function is a smart constructor for TypeInfo objects.
+--   It takes a value of type `a` and returns a `TypeInfo a` object.
+--   If the type has no named fields, an error is thrown.
+--   If the type has more than one constructor, an error is thrown.
 typeInfo :: Data a => a -> TypeInfo a
 typeInfo x =
   TypeInfo
-    { typeConstructor = toConstr x,
-      typeFields = fieldInfo x
+    { typeConstructor = ensureSingleConstructor (dataTypeOf x),
+      fieldNames = fieldNamesOf x,
+      fieldTypes = gmapQ typeOf x
     }
 
+-- | This function ensures that the type of `a` has exactly one constructor.
+--   If the type has exactly one constructor, the constructor is returned.
+--   otherwise, an error is thrown.
+ensureSingleConstructor :: DataType -> Constr
+ensureSingleConstructor dt =
+  case dataTypeConstrs dt of
+    [cnstr] -> cnstr
+    _ -> error $ "ensureSingleConstructor: Only types with one constructor are supported (" ++ show dt ++ ")"
+
 -- | This function creates a TypeInfo object from the context of a function call.
---   The Phantom Type parameter `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.  
+--   The Phantom Type parameter `a` is used to convince the compiler that the `TypeInfo a` object really describes type `a`.
 --   See also https://stackoverflow.com/questions/75171829/how-to-obtain-a-data-data-constr-etc-from-a-type-representation
-typeInfoFromContext :: forall a . Data a => TypeInfo a
-typeInfoFromContext = 
-  let dt = dataTypeOf (undefined :: a)   -- This is the trick to get the type from the context. 
-      constr = case dataTypeConstrs dt of
-        [cnstr] -> cnstr
-        _       -> error "typeInfoFromContext: Only types with one constructor are supported"
-      evidence = fromConstr constr :: a  -- this is evidence for the compiler that we have a value of type a
-  in typeInfo evidence
+typeInfoFromContext :: forall a. Data a => TypeInfo a
+typeInfoFromContext =
+  let dt = dataTypeOf (undefined :: a)    -- This is the trick to get the type a from the context.
+      constr = ensureSingleConstructor dt
+      evidence = fromConstr constr :: a   -- this is evidence for the compiler that we have a value of type a
+   in typeInfo evidence
 
--- | A function that returns the (unqualified) type name of an entity.
-typeName :: (Data a) => a -> String
-typeName = dataTypeName . dataTypeOf
+-- | This function returns the (unqualified) type name of `a` from a `TypeInfo a` object.
+typeName :: TypeInfo a -> String
+typeName = dataTypeName . constrType . typeConstructor
 
--- | A function that returns the (unqualified) type name of `a` from a `TypeInfo a` object.
-tiTypeName :: TypeInfo a -> String
-tiTypeName = dataTypeName . constrType . typeConstructor
-
--- | A data type that holds information about a field of a data type.
-data FieldInfo = FieldInfo
-  { -- | The name of the field, Nothing if it has none.
-    fieldName        :: Maybe String,
-    -- | The constr of the field.
-    fieldConstructor :: Constr,
-    -- | The type of the field.
-    fieldType        :: TypeRep
-  }
-  deriving (Show)
-
--- | A function that returns a list of FieldInfos representing the name, constructor and type of each field in the data type `a`.
-fieldInfo :: (Data a) => a -> [FieldInfo]
-fieldInfo x = zipWith3 FieldInfo names constrs types
+-- | This function returns the list of field names of an entity of type `a`.
+fieldNamesOf :: (Data a) => a -> [String]
+fieldNamesOf x = names
   where
     constructor = toConstr x
     candidates = constrFields constructor
     constrs = gmapQ toConstr x
-    types = gmapQ typeOf x
-    names :: [Maybe String] =
+    names =
       if length candidates == length constrs
-        then map Just candidates
-        else replicate (length constrs) Nothing
-
--- | A function that returns the list of field names of an entity of type `a`.  
-fieldNames :: (Data a) => a -> [String]
-fieldNames = fieldNamesFromTypeInfo . typeInfo
-
--- | A function that returns the list of field names of a `TypeInfo a` object.
---   An error is thrown if the type does not have named fields.
-fieldNamesFromTypeInfo :: TypeInfo a -> [String]
-fieldNamesFromTypeInfo ti = map (expectJust errMsg . fieldName) (typeFields ti)
-  where
-    errMsg = "Type " ++ tiTypeName ti ++ " does not have named fields"
-
-
+        then candidates
+        else error $ "fieldNamesOf: Type " ++ show (typeOf x) ++ " does not have named fields"
