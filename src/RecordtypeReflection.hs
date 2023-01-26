@@ -109,8 +109,6 @@ convert (SomeTypeRep rep) val
   | Just HRefl <- eqTypeRep rep (typeRep @TS.Text) = Just $ toDyn (fromSql val :: TS.Text)
   | otherwise = Nothing
 
-
-
 -- | Generic show: taken from syb package and https://chrisdone.com/posts/data-typeable/
 gshow :: Data a => a -> String
 gshow x = gshows x ""
