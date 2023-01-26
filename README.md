@@ -1,5 +1,7 @@
 # GenericPersistence - A Haskell persistence layer using Generics and Reflection
 
+![GP Logo](gp-logo-300.png)
+
 ## Introduction
 
 GenericPersistence is a minimalistic Haskell persistence layer (on top of HDBC). 
