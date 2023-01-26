@@ -25,7 +25,7 @@ A lot of things are still missing:
 
 - A query language
 - Handling of relationships between entities (1:1, 1:n, n:m)
-- Handling of transactions
+- Handling of nested transactions
 - Handling of database schemas and migrations
 - Handling auto-incrementing primary keys
 - Caching
@@ -75,7 +75,7 @@ instance Entity Book where
   idField _ = "book_id" -- we use a different naming for the primary key field
   fieldsToColumns _ = [("title", "bookTitle"), ("author", "bookAuthor"), -- we provide our own mapping 
                        ("year", "bookYear"), ("book_id", "bookId")]      -- of field names to column names
-  tableName _ = "BOOK_TBL" -- we use a different naiming for the table name
+  tableName _ = "BOOK_TBL" -- we use a different naming for the table name
 
   -- It is also possible to the encoding/decoding of the entity manually.
   -- in this case we have to implement the following methods:

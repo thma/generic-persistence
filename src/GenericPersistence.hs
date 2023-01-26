@@ -1,8 +1,3 @@
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE FlexibleContexts      #-}
-
 module GenericPersistence
   ( retrieveById,
     retrieveAll,

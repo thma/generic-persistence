@@ -1,6 +1,4 @@
 {-# LANGUAGE TypeFamilies     #-}
-{-# LANGUAGE RankNTypes       #-}
-{-# LANGUAGE TypeApplications #-}
 
 module RecordtypeReflection
   ( 

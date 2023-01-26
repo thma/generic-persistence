@@ -1,7 +1,4 @@
-{-# LANGUAGE DeriveAnyClass     #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE FlexibleContexts   #-}
-
+{-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
 module Main (main, main1) where
 
 import           Data.Data             (Data)

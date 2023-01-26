@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
 module SqlGenerator
   ( insertStmtFor,
     updateStmtFor,

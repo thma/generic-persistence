@@ -1,6 +1,5 @@
-{-# LANGUAGE RankNTypes           #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-
+--{-# LANGUAGE RankNTypes           #-}
+--{-# LANGUAGE ScopedTypeVariables  #-}
 module TypeInfo
   ( TypeInfo,
     typeConstructor,
