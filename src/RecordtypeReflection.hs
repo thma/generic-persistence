@@ -3,8 +3,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module RecordtypeReflection
-  ( buildFromRecord,
-    applyConstr,
+  ( 
     fieldValue,
     gFromRow,
     gToRow,

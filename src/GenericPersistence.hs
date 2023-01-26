@@ -7,16 +7,17 @@ module GenericPersistence
   ( retrieveById,
     retrieveAll,
     persist,
+    insert,
+    update,
     delete,
     Entity (..),
   )
 where
 
-import           Data.Convertible
+import Data.Convertible ( Convertible )
 import           Database.HDBC        (IConnection, SqlValue, commit,
                                        quickQuery, run, toSql)
 import           Entity
-import           GHC.Data.Maybe       (expectJust)
 import           RecordtypeReflection
 import           SqlGenerator
 import           TypeInfo
@@ -35,19 +36,14 @@ import           TypeInfo
 -- An error is thrown if no such entity exists or if there are more than one entity with the given id.
 retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id SqlValue) => conn -> id -> IO a
 retrieveById conn idx = do
-  trace $ "Retrieve " ++ typeName ti ++ " with id " ++ show eid
   resultRowsSqlValues <- quickQuery conn stmt [eid]
   case resultRowsSqlValues of
     [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
-    [singleRowSqlValues] -> do
-      return $
-        expectJust
-          ("No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid)
-          (buildFromRecord ti singleRowSqlValues :: Maybe a)
+    [singleRow] -> pure $ fromRow singleRow
     _ -> error $ "More than one entity found for id " ++ show eid
   where
-    ti = typeInfoFromContext
-    stmt = preparedSelectStmtFor ti
+    ti = typeInfoFromContext :: TypeInfo a
+    stmt = selectStmtFor ti
     eid = toSql idx
 
 -- | This function retrieves all entities of type `a` from a database.
@@ -55,14 +51,12 @@ retrieveById conn idx = do
 --  The type `a` is determined by the context of the function call.
 retrieveAll :: forall a conn. (Entity a, IConnection conn) => conn -> IO [a]
 retrieveAll conn = do
-  trace $ "Retrieve all " ++ typeName ti ++ "s"
-  resultRowsSqlValues <- quickQuery conn stmt []
-  return $ map (expectJust "No entity found") (map (buildFromRecord ti) resultRowsSqlValues :: [Maybe a])
+  resultRows <- quickQuery conn stmt []
+  pure $ map fromRow resultRows
   where
-    ti = typeInfoFromContext
-    
-    stmt
-     = selectAllStmtFor ti
+    ti = typeInfoFromContext :: TypeInfo a
+    stmt = selectAllStmtFor ti 
+
 
 -- | A function that persists an entity  to a database.
 -- The function takes an HDBC connection and an entity as parameters.
@@ -78,18 +72,16 @@ persist conn entity = do
   where
     ti = typeInfo entity
     eid = entityId entity
-    preparedSelectStmt = preparedSelectStmtFor ti
+    preparedSelectStmt = selectStmtFor ti
 
 insert :: (IConnection conn, Entity a) => conn -> a -> IO ()
 insert conn entity = do
-  trace $ "Inserting " ++ toString entity
-  _rowcount <- run conn (preparedInsertStmtFor entity) (toRow entity)
+  _rowcount <- run conn (insertStmtFor entity) (toRow entity)
   commit conn
 
 update :: (IConnection conn, Entity a) => conn -> a -> IO ()
 update conn entity = do
-  trace $ "Updating " ++ toString entity
-  _rowcount <- run conn (preparedUpdateStmtFor entity) (toRow entity ++ [entityId entity])
+  _rowcount <- run conn (updateStmtFor entity) (toRow entity ++ [entityId entity])
   commit conn
 
 -- | A function that returns the primary key value of an entity as a String.
@@ -98,10 +90,6 @@ entityId x = fieldValue x (idField x)
 
 delete :: (IConnection conn, Entity a) => conn -> a -> IO ()
 delete conn entity = do
-  trace $ "Deleting " ++ typeName (typeInfo entity) ++ " with id " ++ show (entityId entity)
-  _rowCount <- run conn (preparedDeleteStmtFor entity) [entityId entity]
+  _rowCount <- run conn (deleteStmtFor entity) [entityId entity]
   commit conn
 
--- | A function that traces a string to the console.
-trace :: String -> IO ()
-trace = putStrLn

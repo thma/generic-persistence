@@ -67,3 +67,6 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - generic-attributes
+    - hspec
+    - hspec-discover
+    - QuickCheck

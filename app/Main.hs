@@ -7,7 +7,7 @@ module Main (main, main1) where
 import           Data.Data             (Data)
 import           Database.HDBC         (commit, disconnect, fromSql, runRaw, toSql)
 import           Database.HDBC.Sqlite3 (connectSqlite3)
-import           GenericPersistence
+import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..) )
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
@@ -63,11 +63,7 @@ main = do
   -- close connection
   disconnect conn
 
-p :: Person
-p = Person 123456 "Alice" 25 "123 Main St"
 
-book :: Book
-book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
 
 main1 :: IO ()
 main1 = do
@@ -80,18 +76,22 @@ main1 = do
   runRaw conn "CREATE TABLE IF NOT EXISTS BOOK_TBL (bookId INT PRIMARY KEY, bookTitle TEXT, bookAuthor TEXT, bookYear INT);"
   commit conn
 
+
+  let alice = Person 123456 "Alice" 25 "123 Main St"
+      book  = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
+
   -- insert a Person into a database
-  persist conn p
+  persist conn alice
 
   -- insert a second Person in a database
-  persist conn p {personID = 123457, name = "Bob"}
+  persist conn alice {personID = 123457, name = "Bob"}
 
   -- update a Person
-  persist conn p {address = "Elmstreet 1"}
+  persist conn alice {address = "Elmstreet 1"}
 
   -- select a Person from a database
-  alice <- retrieveById conn (123456 :: Int) :: IO Person
-  print alice
+  alice' <- retrieveById conn (123456 :: Int) :: IO Person
+  print alice'
 
   -- select all Persons from a database
   allPersons <- retrieveAll conn :: IO [Person]

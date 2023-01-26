@@ -74,6 +74,7 @@ test-suite generic-attributes-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      GenericPersistenceSpec
       Paths_generic_attributes
   hs-source-dirs:
       test
@@ -81,12 +82,15 @@ test-suite generic-attributes-test
   build-depends:
       HDBC
     , HDBC-sqlite3
+    , QuickCheck
     , base >=4.7 && <5
     , bytestring
     , convertible
     , generic-attributes
     , ghc
     , ghc-prim
+    , hspec
+    , hspec-discover
     , syb
     , text
     , time

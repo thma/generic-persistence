@@ -1,10 +1,10 @@
 {-# LANGUAGE RankNTypes           #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 module SqlGenerator
-  ( preparedInsertStmtFor,
-    preparedUpdateStmtFor,
-    preparedSelectStmtFor,
-    preparedDeleteStmtFor,
+  ( insertStmtFor,
+    updateStmtFor,
+    selectStmtFor,
+    deleteStmtFor,
     selectAllStmtFor,
   )
 where
@@ -18,8 +18,8 @@ import           TypeInfo
 -- The function will use the field names of the data type to generate the column names in the insert statement.
 -- The values of the fields will be used as the values in the insert statement.
 -- Output example: INSERT INTO Person (id, name, age, address) VALUES (123456, "Alice", 25, "123 Main St");
-preparedInsertStmtFor :: Entity a => a -> String
-preparedInsertStmtFor x =
+insertStmtFor :: Entity a => a -> String
+insertStmtFor x =
   "INSERT INTO "
     ++ tableName x
     ++ " ("
@@ -38,8 +38,8 @@ params :: Entity a => a -> [String]
 params x = replicate (length (fieldNames (typeInfo x))) "?"
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Entity.
-preparedUpdateStmtFor :: Entity a => a -> String
-preparedUpdateStmtFor x =
+updateStmtFor :: Entity a => a -> String
+updateStmtFor x =
   "UPDATE "
     ++ tableName x
     ++ " SET "
@@ -55,8 +55,8 @@ idColumn :: Entity a => a -> String
 idColumn x = columnNameFor x (idField x)
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
-preparedSelectStmtFor :: forall a. (Entity a) => TypeInfo a -> String
-preparedSelectStmtFor ti =
+selectStmtFor :: forall a. (Entity a) => TypeInfo a -> String
+selectStmtFor ti =
   "SELECT "
     ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
@@ -77,8 +77,8 @@ selectAllStmtFor ti =
   where
     x = fromConstr (typeConstructor ti) :: a
 
-preparedDeleteStmtFor :: Entity a => a -> String
-preparedDeleteStmtFor x =
+deleteStmtFor :: Entity a => a -> String
+deleteStmtFor x =
   "DELETE FROM "
     ++ tableName x
     ++ " WHERE "
