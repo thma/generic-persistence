@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: actions/setup-haskell@v1.1
+    - uses: actions/setup-haskell@v1.2
       with:
         ghc-version: 'latest'
         cabal-version: 'latest'
