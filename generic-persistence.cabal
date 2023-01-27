@@ -4,23 +4,25 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 
-name:           generic-attributes
-version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/generic-attributes#readme>
-homepage:       https://github.com/githubuser/generic-attributes#readme
-bug-reports:    https://github.com/githubuser/generic-attributes/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2022 Author name here
+name:           generic-persistence
+version:        0.2.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/generic-persistence#readme>
+homepage:       https://github.com/githubuser/generic-persistence#readme
+bug-reports:    https://github.com/githubuser/generic-persistence/issues
+author:         Thomas Mahler
+maintainer:     thma@apache.org
+copyright:      2023 Thomas Mahler
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
+tested-with:
+    GHC==9.2.2, GHC==9.0.2, GHC==8.10.7
 extra-source-files:
     README.md
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/generic-attributes
+  location: https://github.com/githubuser/generic-persistence
 
 library
   exposed-modules:
@@ -30,7 +32,7 @@ library
       SqlGenerator
       TypeInfo
   other-modules:
-      Paths_generic_attributes
+      Paths_generic_persistence
   hs-source-dirs:
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
@@ -48,10 +50,10 @@ library
     , transformers
   default-language: GHC2021
 
-executable generic-attributes-demo
+executable generic-persistence-demo
   main-is: Main.hs
   other-modules:
-      Paths_generic_attributes
+      Paths_generic_persistence
   hs-source-dirs:
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -61,7 +63,7 @@ executable generic-attributes-demo
     , base >=4.7 && <5
     , bytestring
     , convertible
-    , generic-attributes
+    , generic-persistence
     , ghc
     , ghc-prim
     , syb
@@ -70,12 +72,12 @@ executable generic-attributes-demo
     , transformers
   default-language: GHC2021
 
-test-suite generic-attributes-test
+test-suite generic-persistence-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
       GenericPersistenceSpec
-      Paths_generic_attributes
+      Paths_generic_persistence
   hs-source-dirs:
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
@@ -86,7 +88,7 @@ test-suite generic-attributes-test
     , base >=4.7 && <5
     , bytestring
     , convertible
-    , generic-attributes
+    , generic-persistence
     , ghc
     , ghc-prim
     , hspec

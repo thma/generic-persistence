@@ -1,10 +1,10 @@
-name:                generic-attributes
-version:             0.1.0.0
-github:              "githubuser/generic-attributes"
+name:                generic-persistence
+version:             0.2.0.0
+github:              "githubuser/generic-persistence"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2022 Author name here"
+author:              "Thomas Mahler"
+maintainer:          "thma@apache.org"
+copyright:           "2023 Thomas Mahler"
 
 extra-source-files:
 - README.md
@@ -16,9 +16,10 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/generic-attributes#readme>
+description:         Please see the README on GitHub at <https://github.com/githubuser/generic-persistence#readme>
 
 language: GHC2021    # See https://ghc-proposals.readthedocs.io/en/latest/proposals/0380-ghc2021.html
+tested-with: GHC==9.2.5, GHC==9.0.2, GHC==8.10.7
 
 dependencies:
 - base >= 4.7 && < 5
@@ -49,7 +50,7 @@ library:
   source-dirs: src
 
 executables:
-  generic-attributes-demo:
+  generic-persistence-demo:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -57,10 +58,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - generic-attributes
+    - generic-persistence
 
 tests:
-  generic-attributes-test:
+  generic-persistence-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -68,7 +69,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - generic-attributes
+    - generic-persistence
     - hspec
     - hspec-discover
     - QuickCheck
