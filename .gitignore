@@ -2,7 +2,7 @@
 *~
 .idea/
 sqlite.db
-#test.db
+test.db
 dist-newstyle/
 *.iml
 .DS_Store
