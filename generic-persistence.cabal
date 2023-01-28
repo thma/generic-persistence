@@ -53,6 +53,8 @@ library
 executable generic-persistence-demo
   main-is: Main.hs
   other-modules:
+      Embedded
+      Reference
       Paths_generic_persistence
   hs-source-dirs:
       app
