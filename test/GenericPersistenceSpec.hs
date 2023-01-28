@@ -43,7 +43,7 @@ data Book = Book
 
 instance Entity Book where
   idField _ = "book_id"
-  fieldsToColumns _ = [("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("book_id", "bookId")]
+  fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
   tableName _ = "BOOK_TBL"
   fromRow row = Book (col 0) (col 1) (col 2) (col 3)
     where

@@ -2,9 +2,10 @@
 module Main (main, main1) where
 
 import           Data.Data             (Data)
-import           Database.HDBC         (disconnect, fromSql, toSql)
+import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..), setupTableFor) 
+
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
@@ -25,11 +26,14 @@ data Book = Book
 
 instance Entity Book where
   idField _ = "book_id"
-  fieldsToColumns _ = [("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("book_id", "bookId")]
+  fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
   tableName _ = "BOOK_TBL"
+  fromRow :: [SqlValue] -> Book
   fromRow row = Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
+
+  toRow :: Book -> [SqlValue]
   toRow b = [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
@@ -68,8 +72,12 @@ main1 = do
   _ <- setupTableFor conn :: IO Person
   _ <- setupTableFor conn :: IO Book
 
+  print "OK"
+
   let alice = Person 123456 "Alice" 25 "123 Main St"
       book  = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
+
+  
 
   -- insert a Person into a database
   persist conn alice
@@ -95,6 +103,8 @@ main1 = do
   allPersons' <- retrieveAll conn :: IO [Person]
   print allPersons'
 
+ 
+
   let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
 
   persist conn book
@@ -110,3 +120,4 @@ main1 = do
 
   -- close connection
   disconnect conn
+

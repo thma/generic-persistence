@@ -22,19 +22,22 @@ insertStmtFor x =
   "INSERT INTO "
     ++ tableName x
     ++ " ("
-    ++ intercalate ", " (columnNamesFor x)
+    ++ intercalate ", " columns
     ++ ") VALUES ("
-    ++ intercalate ", " (params x)
+    ++ intercalate ", " (params (length columns))
     ++ ");"
+  where
+    columns = columnNamesFor x
+
 
 columnNamesFor :: Entity a => a -> [String]
-columnNamesFor x = map (columnNameFor x) fields
+columnNamesFor x =  columns 
   where
-    ti = typeInfo x
-    fields = fieldNames ti
+    fields = fieldsToColumns x 
+    columns = map snd fields
 
-params :: Entity a => a -> [String]
-params x = replicate (length (fieldNames (typeInfo x))) "?"
+params :: Int -> [String]
+params n = replicate n "?"
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Entity.
 updateStmtFor :: Entity a => a -> String
@@ -89,16 +92,17 @@ createTableStmtFor ti =
   "CREATE TABLE "
     ++ tableName x
     ++ " ("
-    ++ intercalate ", " (map (\f -> columnNameFor x f ++ " " ++ columnTypeFor x f ++ optionalPK f) (fieldNames ti))
+    ++ intercalate ", " (map (\(f,c) -> c ++ " " ++ columnTypeFor x f ++ optionalPK f) (fieldsToColumns x))
     ++ ");"
   where
     x = evidenceFrom ti :: a
     isIdField f = f == idField x
     optionalPK f = if isIdField f then " PRIMARY KEY" else ""
     
+    
 columnTypeFor :: forall a. (Entity a) => a -> String -> String
 columnTypeFor x field = 
-  case tn field of
+  case fType of
     "Int" -> "INT"
     "String" -> "TEXT"
     "Double" -> "REAL"
@@ -106,7 +110,9 @@ columnTypeFor x field =
     "Bool" -> "INT"
     _ -> "TEXT"
     where
-      tn f = show $ fieldTypeFor x f
+      maybeFType = maybeFieldTypeFor x field
+      fType = maybe "OTHER" show maybeFType
+
 
 dropTableStmtFor :: forall a. (Entity a) => TypeInfo a -> String
 dropTableStmtFor ti =

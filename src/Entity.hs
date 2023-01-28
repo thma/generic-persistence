@@ -4,6 +4,7 @@ module Entity
   ( Entity (..),
     columnNameFor,
     fieldTypeFor,
+    maybeFieldTypeFor,
     toString,
     evidence,
     evidenceFrom,
@@ -96,10 +97,10 @@ fieldTypeFor x fieldName =
     Just typeRep -> typeRep
     Nothing -> error ("fieldTypeFor: " ++ toString x ++ 
                       " has no field " ++ fieldName)
-  where
-    maybeFieldTypeFor :: Entity a => a -> String -> Maybe TypeRep
-    maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
 
+maybeFieldTypeFor :: Entity a => a -> String -> Maybe TypeRep
+maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
+  where
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]
     fieldsAndTypes ti = zip (fieldNames ti) (fieldTypes ti)
 
