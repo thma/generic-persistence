@@ -3,15 +3,18 @@
 module Entity
   ( Entity (..),
     columnNameFor,
+    fieldTypeFor,
     toString,
+    evidence,
+    evidenceFrom,
   )
 where
 
 import           Data.Char            (toLower)
-import           Data.Data            (Data)
+import           Data.Data            (Data, TypeRep, fromConstr)
 import           Database.HDBC        (SqlValue, fromSql)
 import           RecordtypeReflection (gFromRow, gToRow)
-import           TypeInfo             (TypeInfo (fieldNames), typeInfo, typeName)
+import           TypeInfo             (TypeInfo (fieldNames, fieldTypes, typeConstructor), typeInfo, typeName, typeInfoFromContext)
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping 
@@ -86,8 +89,33 @@ columnNameFor x fieldName =
     maybeColumnNameFor :: Entity a => a -> String -> Maybe String
     maybeColumnNameFor a field = lookup field (fieldsToColumns a)
 
+-- | A convenience function: returns the TypeRep of a field of a type 'a'.  
+fieldTypeFor :: Entity a => a -> String -> TypeRep
+fieldTypeFor x fieldName =
+  case maybeFieldTypeFor x fieldName of
+    Just typeRep -> typeRep
+    Nothing -> error ("fieldTypeFor: " ++ toString x ++ 
+                      " has no field " ++ fieldName)
+  where
+    maybeFieldTypeFor :: Entity a => a -> String -> Maybe TypeRep
+    maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
+
+    fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]
+    fieldsAndTypes ti = zip (fieldNames ti) (fieldTypes ti)
+
 -- | Returns a string representation of a value of type 'a'.
 toString :: (Entity a) => a -> String
 toString x = typeName (typeInfo x) ++ " " ++ unwords mappedRow
   where
     mappedRow = map fromSql (toRow x)
+
+-- | A convenience function: returns an evidence instance of type 'a'.
+--   This is useful for type inference where no instance is available.
+evidence :: forall a. (Entity a) => a 
+evidence = evidenceFrom ti
+  where 
+    ti = typeInfoFromContext :: TypeInfo a
+
+
+evidenceFrom :: forall a. (Entity a) => TypeInfo a -> a
+evidenceFrom = fromConstr . typeConstructor

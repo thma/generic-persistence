@@ -17,7 +17,6 @@ import           Entity
 import           RecordtypeReflection
 import           SqlGenerator
 import           TypeInfo
-import Data.Data (fromConstr)
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -101,4 +100,4 @@ setupTableFor conn = do
   return x
   where
     ti = typeInfoFromContext :: TypeInfo a
-    x = fromConstr (typeConstructor ti) :: a
+    x = evidenceFrom ti :: a

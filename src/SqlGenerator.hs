@@ -9,12 +9,9 @@ module SqlGenerator
   )
 where
 
-import           Data.Data (fromConstr)
 import           Data.List (intercalate)
 import           Entity
 import           TypeInfo
-import Data.Maybe (fromJust)
-import Control.Applicative (optional)
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -67,7 +64,7 @@ selectStmtFor ti =
     ++ idColumn x
     ++ " = ?;"
   where
-    x = fromConstr (typeConstructor ti) :: a
+    x = evidenceFrom ti :: a
 
 selectAllStmtFor :: forall a. (Entity a) => TypeInfo a -> String
 selectAllStmtFor ti =
@@ -77,7 +74,7 @@ selectAllStmtFor ti =
     ++ tableName x
     ++ ";"
   where
-    x = fromConstr (typeConstructor ti) :: a
+    x = evidenceFrom ti :: a
 
 deleteStmtFor :: Entity a => a -> String
 deleteStmtFor x =
@@ -95,13 +92,13 @@ createTableStmtFor ti =
     ++ intercalate ", " (map (\f -> columnNameFor x f ++ " " ++ columnTypeFor x f ++ optionalPK f) (fieldNames ti))
     ++ ");"
   where
-    x = fromConstr (typeConstructor ti) :: a
+    x = evidenceFrom ti :: a
     isIdField f = f == idField x
     optionalPK f = if isIdField f then " PRIMARY KEY" else ""
     
-columnTypeFor :: Entity a => a -> String -> String
-columnTypeFor x f = 
-  case typeName f of
+columnTypeFor :: forall a. (Entity a) => a -> String -> String
+columnTypeFor x field = 
+  case tn field of
     "Int" -> "INT"
     "String" -> "TEXT"
     "Double" -> "REAL"
@@ -109,10 +106,7 @@ columnTypeFor x f =
     "Bool" -> "INT"
     _ -> "TEXT"
     where
-      ti = typeInfo x
-      fieldsAndTypes = zip (fieldNames ti) (fieldTypes ti)
-      fieldType f = lookup f fieldsAndTypes
-      typeName f = show $ fromJust $ fieldType f
+      tn f = show $ fieldTypeFor x f
 
 dropTableStmtFor :: forall a. (Entity a) => TypeInfo a -> String
 dropTableStmtFor ti =
@@ -120,4 +114,4 @@ dropTableStmtFor ti =
     ++ tableName x
     ++ ";"
   where
-    x = fromConstr (typeConstructor ti) :: a
+    x = evidenceFrom ti :: a
