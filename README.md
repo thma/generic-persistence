@@ -28,7 +28,6 @@ A lot of things are still missing:
 - A query language
 - Handling of relationships between entities (1:1, 1:n, n:m)
 - Handling of nested transactions
-- Handling of database schemas and migrations
 - Handling auto-incrementing primary keys
 - Caching
 - ...
@@ -39,66 +38,51 @@ A lot of things are still missing:
 Here now follows a short demo that shows how the library looks and feels from the user's point of view.
 
 ```haskell
-{-# LANGUAGE DeriveAnyClass     #-}  -- for automatic deriving from Entity type class
-{-# LANGUAGE DeriveDataTypeable #-}  -- for automatic deriving from Data type class
-{-# LANGUAGE FlexibleContexts   #-}  -- needed by HDBC Convertible instances
-
+{-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
 module Main (main) where
 
 import           Data.Data             (Data)
-import           Database.HDBC         (commit, disconnect, fromSql, runRaw, toSql)
+import           Database.HDBC         (disconnect, fromSql, toSql)
 import           Database.HDBC.Sqlite3 (connectSqlite3)
-import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..) )
+import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..), setupTableFor) 
 
--- | A record data type. This Entity data type will use automatic deriving from Data and Entity type class.
---   Using automatic deriving will result in
---   - the primary key field being named "personID"
---   - the table name being the same as the type name (Person)
---   - the field names being the same as the attribute names (personID, name, age, address)
+-- | A data type with several fields, using record syntax.
 data Person = Person
   { personID :: Int,
     name     :: String,
     age      :: Int,
     address  :: String
   }
-  deriving (Data, Entity, Show) -- deriving from Data and Entity type class
+  deriving (Data, Entity, Show)
 
--- | Another record data type. This Entity data type will use manual deriving from Entity type class.
 data Book = Book
   { book_id :: Int,
     title   :: String,
     author  :: String,
     year    :: Int
   }
-  deriving (Data, Show) 
+  deriving (Data, Show)
 
--- | We now define our own instance of Entity type class for Book.
 instance Entity Book where
-  idField _ = "book_id" -- we use a different naming for the primary key field
-  fieldsToColumns _ = [("title", "bookTitle"), ("author", "bookAuthor"), -- we provide our own mapping 
-                       ("year", "bookYear"), ("book_id", "bookId")]      -- of field names to column names
-  tableName _ = "BOOK_TBL" -- we use a different naming for the table name
-
-  -- It is also possible to the encoding/decoding of the entity manually.
-  -- in this case we have to implement the following methods:
+  idField _ = "book_id"
+  fieldsToColumns _ = [("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("book_id", "bookId")]
+  tableName _ = "BOOK_TBL"
   fromRow row = Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
   toRow b = [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 
--- | Now we can use the library to insert, update, delete and query entities:
 main :: IO ()
 main = do
-  -- initialize Person and book table
+  -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
-  runRaw conn "DROP TABLE IF EXISTS Person;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
 
-  runRaw conn "DROP TABLE IF EXISTS BOOK_TBL;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS BOOK_TBL (bookId INT PRIMARY KEY, bookTitle TEXT, bookAuthor TEXT, bookYear INT);"
-  commit conn
+  -- set up tables for Person and Book
+  _ <- setupTableFor conn :: IO Person
+  _ <- setupTableFor conn :: IO Book
 
+  -- create some demo data
   let alice = Person 123456 "Alice" 25 "123 Main St"
       book  = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
 
@@ -141,6 +125,7 @@ main = do
 
   -- close connection
   disconnect conn
+
 ```
 
 ## The Entity type class

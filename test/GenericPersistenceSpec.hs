@@ -1,35 +1,27 @@
 {-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
 module GenericPersistenceSpec
-  ( main
+  ( test
   , spec
   ) where
 
 
-import Test.Hspec
---import Test.Hspec.QuickCheck
---import Test.QuickCheck
-
+import           Test.Hspec
 import           Data.Data             (Data)
-import           Database.HDBC         (commit, disconnect, fromSql, runRaw, toSql)
+import           Database.HDBC         (disconnect, fromSql, runRaw, toSql)
 import           Database.HDBC.Sqlite3
 import           GenericPersistence
---import           Control.Monad.IO.Class
 
 
--- `main` is here so that this module can be run from GHCi on its own.  It is
+-- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
-main :: IO ()
-main = hspec spec
+test :: IO ()
+test = hspec spec
 
 prepareDatabase :: IO Connection
 prepareDatabase = do
   conn <- connectSqlite3 "test.db"
-  runRaw conn "DROP TABLE IF EXISTS Person;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
-
-  runRaw conn "DROP TABLE IF EXISTS BOOK_TBL;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS BOOK_TBL (bookId INT PRIMARY KEY, bookTitle TEXT, bookAuthor TEXT, bookYear INT);"
-  commit conn
+  _ <- setupTableFor conn :: IO Person
+  _ <- setupTableFor conn :: IO Book
   return conn
 
 -- | A data type with several fields, using record syntax.
@@ -58,13 +50,20 @@ instance Entity Book where
       col i = fromSql (row !! i)
   toRow b = [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
+data Book1 = Book1 Int String String Int
+  deriving (Data, Show, Eq)
+
+instance Entity Book1 where
+  tableName _ = "BOOK_TBL"
+
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"
 
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
 
-
+book1 :: Book1
+book1 = Book1 2 "The Hobbit" "J.R.R. Tolkien" 1937
 
 
 spec :: Spec
@@ -94,6 +93,18 @@ spec = do
       book' <- retrieveById conn (1 :: Int) :: IO Book
       disconnect conn
       book' `shouldBe` hobbit
+--    it "retrieves Entities without field names" $ do
+--      conn <- prepareDatabase
+--      let hobbit = Book1 2 "The Hobbit" "J.R.R. Tolkien" 1937
+--      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937);"
+--      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955);"
+--      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967);"
+--      allBooks <- retrieveAll conn :: IO [Book1]
+--      length allBooks `shouldBe` 3
+--      head allBooks `shouldBe` hobbit
+--      book' <- retrieveById conn (2 :: Int) :: IO Book1
+--      disconnect conn
+--      book' `shouldBe` hobbit
     it "persists new Entities using Generics" $ do
       conn <- prepareDatabase
       allPersons <- retrieveAll conn :: IO [Person]

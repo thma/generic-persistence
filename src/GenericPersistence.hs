@@ -5,17 +5,19 @@ module GenericPersistence
     insert,
     update,
     delete,
+    setupTableFor,
     Entity (..),
   )
 where
 
 import Data.Convertible ( Convertible )
 import           Database.HDBC        (IConnection, SqlValue, commit,
-                                       quickQuery, run, toSql)
+                                       quickQuery, run, toSql, runRaw)
 import           Entity
 import           RecordtypeReflection
 import           SqlGenerator
 import           TypeInfo
+import Data.Data (fromConstr)
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -33,9 +35,9 @@ retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id Sq
 retrieveById conn idx = do
   resultRowsSqlValues <- quickQuery conn stmt [eid]
   case resultRowsSqlValues of
-    [] -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
+    []          -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
     [singleRow] -> pure $ fromRow singleRow
-    _ -> error $ "More than one entity found for id " ++ show eid
+    _ -> error $ "More than one" ++ show (typeConstructor ti) ++ " found for id " ++ show eid
   where
     ti = typeInfoFromContext :: TypeInfo a
     stmt = selectStmtFor ti
@@ -53,7 +55,7 @@ retrieveAll conn = do
     stmt = selectAllStmtFor ti 
 
 
--- | A function that persists an entity  to a database.
+-- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
@@ -69,11 +71,13 @@ persist conn entity = do
     eid = entityId entity
     preparedSelectStmt = selectStmtFor ti
 
+-- | A function that explicitely inserts an entity into a database.
 insert :: (IConnection conn, Entity a) => conn -> a -> IO ()
 insert conn entity = do
   _rowcount <- run conn (insertStmtFor entity) (toRow entity)
   commit conn
 
+-- | A function that explicitely updates an entity in a database.
 update :: (IConnection conn, Entity a) => conn -> a -> IO ()
 update conn entity = do
   _rowcount <- run conn (updateStmtFor entity) (toRow entity ++ [entityId entity])
@@ -88,3 +92,13 @@ delete conn entity = do
   _rowCount <- run conn (deleteStmtFor entity) [entityId entity]
   commit conn
 
+-- | set up a table for a given entity type. The table is dropped and recreated.
+setupTableFor :: forall a conn. (Entity a, IConnection conn) => conn -> IO a
+setupTableFor conn = do
+  _ <- runRaw conn (dropTableStmtFor ti)
+  _ <- runRaw conn (createTableStmtFor ti)
+  commit conn
+  return x
+  where
+    ti = typeInfoFromContext :: TypeInfo a
+    x = fromConstr (typeConstructor ti) :: a

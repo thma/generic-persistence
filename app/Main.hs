@@ -2,9 +2,9 @@
 module Main (main, main1) where
 
 import           Data.Data             (Data)
-import           Database.HDBC         (commit, disconnect, fromSql, runRaw, toSql)
+import           Database.HDBC         (disconnect, fromSql, toSql)
 import           Database.HDBC.Sqlite3 (connectSqlite3)
-import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..) )
+import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..), setupTableFor) 
 
 -- | A data type with several fields, using record syntax.
 data Person = Person
@@ -34,16 +34,15 @@ instance Entity Book where
 
 main :: IO ()
 main = do
-  -- initialize Person table
+  -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
-  runRaw conn "DROP TABLE IF EXISTS Person;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
 
-  commit conn
-
+  -- initialize Person table
+  _ <- setupTableFor conn :: IO Person
+  
   -- create a Person entity
   let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
-
+  
   -- insert a Person into a database
   persist conn alice
 
@@ -66,13 +65,8 @@ main1 :: IO ()
 main1 = do
   -- initialize Person table
   conn <- connectSqlite3 "sqlite.db"
-  runRaw conn "DROP TABLE IF EXISTS Person;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS Person (personID INT PRIMARY KEY, name TEXT, age INT, address TEXT);"
-
-  runRaw conn "DROP TABLE IF EXISTS BOOK_TBL;"
-  runRaw conn "CREATE TABLE IF NOT EXISTS BOOK_TBL (bookId INT PRIMARY KEY, bookTitle TEXT, bookAuthor TEXT, bookYear INT);"
-  commit conn
-
+  _ <- setupTableFor conn :: IO Person
+  _ <- setupTableFor conn :: IO Book
 
   let alice = Person 123456 "Alice" 25 "123 Main St"
       book  = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937

@@ -4,6 +4,8 @@ module SqlGenerator
     selectStmtFor,
     deleteStmtFor,
     selectAllStmtFor,
+    createTableStmtFor,
+    dropTableStmtFor,
   )
 where
 
@@ -11,6 +13,8 @@ import           Data.Data (fromConstr)
 import           Data.List (intercalate)
 import           Entity
 import           TypeInfo
+import Data.Maybe (fromJust)
+import Control.Applicative (optional)
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -83,3 +87,37 @@ deleteStmtFor x =
     ++ idColumn x
     ++ " = ?;"
 
+createTableStmtFor :: forall a. (Entity a) => TypeInfo a -> String
+createTableStmtFor ti =
+  "CREATE TABLE "
+    ++ tableName x
+    ++ " ("
+    ++ intercalate ", " (map (\f -> columnNameFor x f ++ " " ++ columnTypeFor x f ++ optionalPK f) (fieldNames ti))
+    ++ ");"
+  where
+    x = fromConstr (typeConstructor ti) :: a
+    isIdField f = f == idField x
+    optionalPK f = if isIdField f then " PRIMARY KEY" else ""
+    
+columnTypeFor :: Entity a => a -> String -> String
+columnTypeFor x f = 
+  case typeName f of
+    "Int" -> "INT"
+    "String" -> "TEXT"
+    "Double" -> "REAL"
+    "Float" -> "REAL"
+    "Bool" -> "INT"
+    _ -> "TEXT"
+    where
+      ti = typeInfo x
+      fieldsAndTypes = zip (fieldNames ti) (fieldTypes ti)
+      fieldType f = lookup f fieldsAndTypes
+      typeName f = show $ fromJust $ fieldType f
+
+dropTableStmtFor :: forall a. (Entity a) => TypeInfo a -> String
+dropTableStmtFor ti =
+  "DROP TABLE IF EXISTS "
+    ++ tableName x
+    ++ ";"
+  where
+    x = fromConstr (typeConstructor ti) :: a
