@@ -6,7 +6,8 @@ import           Database.HDBC
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
 import SqlGenerator (createTableStmtFor, dropTableStmtFor)
-import TypeInfo
+
+import           Data.Data
 
 data Article = Article
   { articleID :: Int,
@@ -14,7 +15,7 @@ data Article = Article
     author    :: Author,
     year      :: Int
   }
-  deriving (Data, Show)
+  deriving (Data, Show, Read)
 
 data Author = Author
   { authorID :: Int,
@@ -22,7 +23,7 @@ data Author = Author
     address  :: String,
     articles :: [Article]
   }
-  deriving (Data, Show)  
+  deriving (Data, Show, Read)  
 
 instance Entity Article where
   fieldsToColumns :: Article -> [(String, String)]
@@ -32,19 +33,36 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
- 
-  fromRow :: IConnection conn => conn -> [SqlValue] -> IO Article
-  fromRow conn row = do
-    --author <- retrieveById conn (row !! 2) :: IO Author
-    let author = Author (col 2) "" "" []
+  fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO Article
+  fromRow conn rc row = do
+    let rawAuthor = Author (col 2) "" "" []
+        rawArticle = Article (col 0) (col 1) rawAuthor (col 3)
+        rc'' = insertInCache rc rawArticle
+        rc' = insertInCache rc'' rawAuthor
+    let maybeAuthor = lookupInCache rc' rawAuthor
+    author <- case maybeAuthor of
+      Just a -> return a
+      Nothing -> do
+        retrieveById conn rc' (row !! 2) :: IO Author
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
       
-  toRow :: IConnection conn => conn -> Article -> IO [SqlValue]
-  toRow conn a = do 
+  toRow conn rc a = do 
     persist conn (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
+
+insertInCache :: (Show a, Entity a) => ResolutionCache -> a -> ResolutionCache
+insertInCache rc x = 
+  (show (typeOf x, idValue x), show x) : rc
+
+lookupInCache :: (Entity a, Read a) => ResolutionCache -> a -> Maybe a
+lookupInCache rc x = 
+  case lookup key rc of
+    Just str -> Just (read str)
+    Nothing -> Nothing
+  where
+    key = show (typeOf x, idValue x)
 
 instance Entity Author where
   fieldsToColumns :: Author -> [(String, String)]
@@ -53,16 +71,16 @@ instance Entity Author where
                        ("address", "address")
                       ]
 
-  fromRow :: IConnection conn => conn -> [SqlValue] -> IO Author
-  fromRow conn row = do
+  --fromRow :: IConnection conn => conn -> [SqlValue] -> IO Author
+  fromRow conn rc row = do
     let rawAuthor = Author (col 0) (col 1) (col 2) []
-    articlesByAuth <- retrieveAllWhere conn (idField rawAuthor) (idValue rawAuthor) :: IO [Article]
+    articlesByAuth <- retrieveAllWhere conn rc (idField rawAuthor) (idValue rawAuthor) :: IO [Article]
     pure $ rawAuthor {articles= articlesByAuth}
     where
       col i = fromSql (row !! i)
       
-  toRow :: IConnection conn => conn -> Author -> IO [SqlValue]
-  toRow conn a = do 
+  --toRow :: IConnection conn => conn -> Author -> IO [SqlValue]
+  toRow conn rc a = do 
     return [toSql (authorID a), toSql (name a), toSql (address a)]
 
 article1 :: Article
@@ -117,12 +135,11 @@ main = do
   insert conn article3
   persist conn arthur
 
-  article' <- retrieveById conn "1" :: IO Article
+  article' <- retrieveById conn emptyCache "1" :: IO Article
   print article'
 
-  arthur <- retrieveById conn "2" :: IO Author
+  arthur <- retrieveById conn emptyCache "2" :: IO Author
   print arthur
-
 
 
   -- close connection

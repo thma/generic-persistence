@@ -8,6 +8,8 @@ module Entity
     toString,
     evidence,
     evidenceFrom,
+    ResolutionCache,
+    emptyCache,
   )
 where
 
@@ -41,10 +43,10 @@ but that are not explicitely encoded in the type class definition:
 
 class (Data a) => Entity a where
   -- | Converts a database row to a value of type 'a'.
-  fromRow :: IConnection conn => conn -> [SqlValue] -> IO a
+  fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO a
 
   -- | Converts a value of type 'a' to a database row.
-  toRow :: IConnection conn => conn -> a -> IO [SqlValue]
+  toRow :: IConnection conn => conn -> ResolutionCache -> a -> IO [SqlValue]
 
   -- | Returns the name of the primary key field for a type 'a'.
   idField :: a -> String
@@ -56,12 +58,12 @@ class (Data a) => Entity a where
   tableName :: a -> String
 
   -- | generic default implementation
-  default fromRow :: conn -> [SqlValue] -> IO a
-  fromRow _c = pure . gFromRow
+  default fromRow :: conn -> ResolutionCache -> [SqlValue] -> IO a
+  fromRow _conn _cache = pure . gFromRow
 
   -- | generic default implementation
-  default toRow :: conn -> a -> IO [SqlValue]
-  toRow _c = pure . gToRow
+  default toRow :: conn -> ResolutionCache -> a -> IO [SqlValue]
+  toRow _conn _cache = pure . gToRow
 
   -- | default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
@@ -78,6 +80,11 @@ class (Data a) => Entity a where
   -- | default implementation: the type name is used as table name
   default tableName :: a -> String
   tableName = typeName . typeInfo
+
+type ResolutionCache = [(String, String)]
+
+emptyCache :: ResolutionCache
+emptyCache = []
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: Entity a => a -> String -> String

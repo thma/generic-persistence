@@ -9,6 +9,17 @@ module GenericPersistence
     setupTableFor,
     idValue,
     Entity (..),
+    columnNameFor,
+    fieldTypeFor,
+    maybeFieldTypeFor,
+    toString,
+    evidence,
+    evidenceFrom,
+    ResolutionCache,
+    emptyCache,
+    TypeInfo (..),
+    typeInfoFromContext,
+    typeInfo,
   )
 where
 
@@ -32,12 +43,12 @@ import           TypeInfo
 -- The function takes an HDBC connection and an entity id as parameters.
 -- It returns the entity of type `a` with the given id.
 -- An error is thrown if no such entity exists or if there are more than one entity with the given id.
-retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id SqlValue) => conn -> id -> IO a
-retrieveById conn idx = do
+retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id SqlValue) => conn -> ResolutionCache -> id -> IO a
+retrieveById conn rc idx = do
   resultRowsSqlValues <- quickQuery conn stmt [eid]
   case resultRowsSqlValues of
     []          -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
-    [singleRow] -> fromRow conn singleRow
+    [singleRow] -> fromRow conn rc singleRow
     _ -> error $ "More than one" ++ show (typeConstructor ti) ++ " found for id " ++ show eid
   where
     ti = typeInfoFromContext :: TypeInfo a
@@ -47,18 +58,18 @@ retrieveById conn idx = do
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
 --  The type `a` is determined by the context of the function call.
-retrieveAll :: forall a conn. (Entity a, IConnection conn) => conn -> IO [a]
-retrieveAll conn = do
+retrieveAll :: forall a conn. (Entity a, IConnection conn) => conn -> ResolutionCache -> IO [a]
+retrieveAll conn rc = do
   resultRows <- quickQuery conn stmt []
-  mapM (fromRow conn) resultRows
+  mapM (fromRow conn rc) resultRows
   where
     ti = typeInfoFromContext :: TypeInfo a
     stmt = selectAllStmtFor ti 
 
-retrieveAllWhere :: forall a conn. (Entity a, IConnection conn) => conn -> String -> SqlValue -> IO [a]
-retrieveAllWhere conn field val = do
+retrieveAllWhere :: forall a conn. (Entity a, IConnection conn) => conn -> ResolutionCache -> String -> SqlValue -> IO [a]
+retrieveAllWhere conn rc field val = do
   resultRows <- quickQuery conn stmt [val]
-  mapM (fromRow conn) resultRows
+  mapM (fromRow conn rc) resultRows
   where
     ti = typeInfoFromContext :: TypeInfo a
     stmt = selectAllWhereStmtFor ti field
@@ -82,14 +93,14 @@ persist conn entity = do
 -- | A function that explicitely inserts an entity into a database.
 insert :: (IConnection conn, Entity a) => conn -> a -> IO ()
 insert conn entity = do
-  row <- toRow conn entity
+  row <- toRow conn [] entity
   _rowcount <- run conn (insertStmtFor entity) row
   commit conn
 
 -- | A function that explicitely updates an entity in a database.
 update :: (IConnection conn, Entity a) => conn -> a -> IO ()
 update conn entity = do
-  row <- toRow conn entity
+  row <- toRow conn [] entity
   _rowcount <- run conn (updateStmtFor entity) (row ++ [idValue entity])
   commit conn
 

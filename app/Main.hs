@@ -5,6 +5,7 @@ import           Data.Data             (Data)
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..), setupTableFor) 
+import           Entity
 
 
 -- | A data type with several fields, using record syntax.
@@ -29,12 +30,12 @@ instance Entity Book where
   fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
   tableName _ = "BOOK_TBL"
   --fromRow :: [SqlValue] -> Book
-  fromRow conn row = return $ Book (col 0) (col 1) (col 2) (col 3)
+  fromRow conn rc row = return $ Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
 
   --toRow :: Book -> [SqlValue]
-  toRow conn b = return $ [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+  toRow conn rc b = return $ [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do
@@ -55,7 +56,7 @@ main = do
 
   -- select a Person from a database
   -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
-  alice' <- retrieveById conn "123456" :: IO Person
+  alice' <- retrieveById conn emptyCache "123456" :: IO Person
 
   -- delete a Person from a database
   delete conn alice'
@@ -89,18 +90,18 @@ main1 = do
   persist conn alice {address = "Elmstreet 1"}
 
   -- select a Person from a database
-  alice' <- retrieveById conn (123456 :: Int) :: IO Person
+  alice' <- retrieveById conn emptyCache (123456 :: Int) :: IO Person
   print alice'
 
   -- select all Persons from a database
-  allPersons <- retrieveAll conn :: IO [Person]
+  allPersons <- retrieveAll conn emptyCache :: IO [Person]
   print allPersons
 
   -- delete a Person from a database
   delete conn alice
 
   -- select all Persons from a database
-  allPersons' <- retrieveAll conn :: IO [Person]
+  allPersons' <- retrieveAll conn emptyCache :: IO [Person]
   print allPersons'
 
  
@@ -109,13 +110,13 @@ main1 = do
 
   persist conn book
   persist conn book2
-  allBooks <- retrieveAll conn :: IO [Book]
+  allBooks <- retrieveAll conn emptyCache :: IO [Book]
   print allBooks
 
   persist conn book2 {title = "The Lord of the Rings"}
   delete conn book
 
-  allBooks' <- retrieveAll conn :: IO [Book]
+  allBooks' <- retrieveAll conn emptyCache :: IO [Book]
   print allBooks'
 
   -- close connection

@@ -7,6 +7,7 @@ import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
 import SqlGenerator (createTableStmtFor, dropTableStmtFor)
 import TypeInfo
+import Entity
 
 data Article = Article
   { articleID :: Int,
@@ -32,16 +33,16 @@ instance Entity Article where
                       ]
 
  
-  fromRow :: IConnection conn => conn -> [SqlValue] -> IO Article
-  fromRow conn row = do
-    author <- retrieveById conn (row !! 2) :: IO Author
+  --fromRow :: IConnection conn => conn -> [SqlValue] -> IO Article
+  fromRow conn rc row = do
+    author <- retrieveById conn rc (row !! 2) :: IO Author
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
       
 
-  toRow :: IConnection conn => conn -> Article -> IO [SqlValue]
-  toRow conn a = do 
+  --toRow :: IConnection conn => conn -> Article -> IO [SqlValue]
+  toRow conn rc a = do 
     persist conn (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
@@ -71,12 +72,12 @@ main = do
   insert conn article
   putStrLn "OK"
 
-  article' <- retrieveById conn "1" :: IO Article
+  article' <- retrieveById conn emptyCache "1" :: IO Article
   print article'
 
   persist conn article {title = "Persistence without Boilerplate (updated)"}
 
-  article'' <- retrieveById conn "1" :: IO Article
+  article'' <- retrieveById conn emptyCache "1" :: IO Article
   print article''
 
   print $ dropTableStmtFor (typeInfo article)
@@ -84,7 +85,7 @@ main = do
 
   delete conn article''
 
-  allArticles <- retrieveAll conn :: IO [Article]
+  allArticles <- retrieveAll conn emptyCache :: IO [Article]
   print allArticles
 
   -- close connection
