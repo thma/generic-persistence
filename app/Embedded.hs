@@ -35,14 +35,14 @@ instance Entity Article where
                       ]
   --tableName _ = "ARTICLE_TBL"
 
-  fromRow :: [SqlValue] -> Article
-  fromRow row = Article (col 0) (col 1) author (col 5)
+  --fromRow :: [SqlValue] -> Article
+  fromRow conn row = return $ Article (col 0) (col 1) author (col 5)
     where
       col i = fromSql (row !! i)
       author = Author (col 2) (col 3) (col 4)
 
-  toRow :: Article -> [SqlValue]
-  toRow a = [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
+  --toRow :: Article -> [SqlValue]
+  toRow conn a = return $ [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
     where 
       authID = authorID (author a)
       authorName = name (author a)

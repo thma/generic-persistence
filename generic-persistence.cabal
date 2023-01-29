@@ -54,6 +54,7 @@ executable generic-persistence-demo
   main-is: Main.hs
   other-modules:
       Embedded
+      One2Many
       Reference
       Paths_generic_persistence
   hs-source-dirs:

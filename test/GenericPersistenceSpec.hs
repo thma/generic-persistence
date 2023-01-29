@@ -45,25 +45,17 @@ instance Entity Book where
   idField _ = "book_id"
   fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
   tableName _ = "BOOK_TBL"
-  fromRow row = Book (col 0) (col 1) (col 2) (col 3)
+  fromRow _ row = pure $ Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
-  toRow b = [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+  toRow _ b = pure $ [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
-data Book1 = Book1 Int String String Int
-  deriving (Data, Show, Eq)
-
-instance Entity Book1 where
-  tableName _ = "BOOK_TBL"
 
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"
 
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
-
-book1 :: Book1
-book1 = Book1 2 "The Hobbit" "J.R.R. Tolkien" 1937
 
 
 spec :: Spec
@@ -93,18 +85,6 @@ spec = do
       book' <- retrieveById conn (1 :: Int) :: IO Book
       disconnect conn
       book' `shouldBe` hobbit
---    it "retrieves Entities without field names" $ do
---      conn <- prepareDatabase
---      let hobbit = Book1 2 "The Hobbit" "J.R.R. Tolkien" 1937
---      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937);"
---      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955);"
---      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967);"
---      allBooks <- retrieveAll conn :: IO [Book1]
---      length allBooks `shouldBe` 3
---      head allBooks `shouldBe` hobbit
---      book' <- retrieveById conn (2 :: Int) :: IO Book1
---      disconnect conn
---      book' `shouldBe` hobbit
     it "persists new Entities using Generics" $ do
       conn <- prepareDatabase
       allPersons <- retrieveAll conn :: IO [Person]

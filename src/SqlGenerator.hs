@@ -4,6 +4,7 @@ module SqlGenerator
     selectStmtFor,
     deleteStmtFor,
     selectAllStmtFor,
+    selectAllWhereStmtFor,
     createTableStmtFor,
     dropTableStmtFor,
   )
@@ -31,10 +32,10 @@ insertStmtFor x =
 
 
 columnNamesFor :: Entity a => a -> [String]
-columnNamesFor x =  columns 
+columnNamesFor x =  map snd fieldColumnPairs
   where
-    fields = fieldsToColumns x 
-    columns = map snd fields
+    fieldColumnPairs = fieldsToColumns x 
+
 
 params :: Int -> [String]
 params n = replicate n "?"
@@ -78,6 +79,19 @@ selectAllStmtFor ti =
     ++ ";"
   where
     x = evidenceFrom ti :: a
+
+selectAllWhereStmtFor :: forall a. (Entity a) => TypeInfo a -> String -> String
+selectAllWhereStmtFor ti field =
+  "SELECT "
+    ++ intercalate ", " (columnNamesFor x)
+    ++ " FROM "
+    ++ tableName x
+    ++ " WHERE "
+    ++ column
+    ++ " = ?;"
+  where
+    x = evidenceFrom ti :: a
+    column = columnNameFor x field
 
 deleteStmtFor :: Entity a => a -> String
 deleteStmtFor x =

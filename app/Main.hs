@@ -28,13 +28,13 @@ instance Entity Book where
   idField _ = "book_id"
   fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
   tableName _ = "BOOK_TBL"
-  fromRow :: [SqlValue] -> Book
-  fromRow row = Book (col 0) (col 1) (col 2) (col 3)
+  --fromRow :: [SqlValue] -> Book
+  fromRow conn row = return $ Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
 
-  toRow :: Book -> [SqlValue]
-  toRow b = [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+  --toRow :: Book -> [SqlValue]
+  toRow conn b = return $ [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do

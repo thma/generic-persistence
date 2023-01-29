@@ -13,7 +13,7 @@ where
 
 import           Data.Char            (toLower)
 import           Data.Data            (Data, TypeRep, fromConstr)
-import           Database.HDBC        (SqlValue, fromSql)
+import           Database.HDBC        (SqlValue, fromSql, IConnection)
 import           RecordtypeReflection (gFromRow, gToRow)
 import           TypeInfo             (TypeInfo (fieldNames, fieldTypes, typeConstructor), typeInfo, typeName, typeInfoFromContext)
 
@@ -41,10 +41,10 @@ but that are not explicitely encoded in the type class definition:
 
 class (Data a) => Entity a where
   -- | Converts a database row to a value of type 'a'.
-  fromRow :: [SqlValue] -> a
+  fromRow :: IConnection conn => conn -> [SqlValue] -> IO a
 
   -- | Converts a value of type 'a' to a database row.
-  toRow :: a -> [SqlValue]
+  toRow :: IConnection conn => conn -> a -> IO [SqlValue]
 
   -- | Returns the name of the primary key field for a type 'a'.
   idField :: a -> String
@@ -56,12 +56,12 @@ class (Data a) => Entity a where
   tableName :: a -> String
 
   -- | generic default implementation
-  default fromRow :: [SqlValue] -> a
-  fromRow = gFromRow
+  default fromRow :: conn -> [SqlValue] -> IO a
+  fromRow _c = pure . gFromRow
 
   -- | generic default implementation
-  default toRow :: a -> [SqlValue]
-  toRow = gToRow
+  default toRow :: conn -> a -> IO [SqlValue]
+  toRow _c = pure . gToRow
 
   -- | default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
@@ -108,7 +108,7 @@ maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
 toString :: (Entity a) => a -> String
 toString x = typeName (typeInfo x) ++ " " ++ unwords mappedRow
   where
-    mappedRow = map fromSql (toRow x)
+    mappedRow = map fromSql (gToRow x)
 
 -- | A convenience function: returns an evidence instance of type 'a'.
 --   This is useful for type inference where no instance is available.

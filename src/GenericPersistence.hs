@@ -1,11 +1,13 @@
 module GenericPersistence
   ( retrieveById,
     retrieveAll,
+    retrieveAllWhere,
     persist,
     insert,
     update,
     delete,
     setupTableFor,
+    idValue,
     Entity (..),
   )
 where
@@ -35,7 +37,7 @@ retrieveById conn idx = do
   resultRowsSqlValues <- quickQuery conn stmt [eid]
   case resultRowsSqlValues of
     []          -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
-    [singleRow] -> pure $ fromRow singleRow
+    [singleRow] -> fromRow conn singleRow
     _ -> error $ "More than one" ++ show (typeConstructor ti) ++ " found for id " ++ show eid
   where
     ti = typeInfoFromContext :: TypeInfo a
@@ -48,11 +50,18 @@ retrieveById conn idx = do
 retrieveAll :: forall a conn. (Entity a, IConnection conn) => conn -> IO [a]
 retrieveAll conn = do
   resultRows <- quickQuery conn stmt []
-  pure $ map fromRow resultRows
+  mapM (fromRow conn) resultRows
   where
     ti = typeInfoFromContext :: TypeInfo a
     stmt = selectAllStmtFor ti 
 
+retrieveAllWhere :: forall a conn. (Entity a, IConnection conn) => conn -> String -> SqlValue -> IO [a]
+retrieveAllWhere conn field val = do
+  resultRows <- quickQuery conn stmt [val]
+  mapM (fromRow conn) resultRows
+  where
+    ti = typeInfoFromContext :: TypeInfo a
+    stmt = selectAllWhereStmtFor ti field
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
@@ -67,28 +76,30 @@ persist conn entity = do
     _            -> error $ "More than one entity found for id " ++ show eid
   where
     ti = typeInfo entity
-    eid = entityId entity
+    eid = idValue entity
     preparedSelectStmt = selectStmtFor ti
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: (IConnection conn, Entity a) => conn -> a -> IO ()
 insert conn entity = do
-  _rowcount <- run conn (insertStmtFor entity) (toRow entity)
+  row <- toRow conn entity
+  _rowcount <- run conn (insertStmtFor entity) row
   commit conn
 
 -- | A function that explicitely updates an entity in a database.
 update :: (IConnection conn, Entity a) => conn -> a -> IO ()
 update conn entity = do
-  _rowcount <- run conn (updateStmtFor entity) (toRow entity ++ [entityId entity])
+  row <- toRow conn entity
+  _rowcount <- run conn (updateStmtFor entity) (row ++ [idValue entity])
   commit conn
 
--- | A function that returns the primary key value of an entity as a String.
-entityId :: forall a. (Entity a) => a -> SqlValue
-entityId x = fieldValue x (idField x)
+-- | A function that returns the primary key value of an entity as a SqlValue.
+idValue :: forall a. (Entity a) => a -> SqlValue
+idValue x = fieldValue x (idField x)
 
 delete :: (IConnection conn, Entity a) => conn -> a -> IO ()
 delete conn entity = do
-  _rowCount <- run conn (deleteStmtFor entity) [entityId entity]
+  _rowCount <- run conn (deleteStmtFor entity) [idValue entity]
   commit conn
 
 -- | set up a table for a given entity type. The table is dropped and recreated.

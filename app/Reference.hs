@@ -31,27 +31,30 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
-  fromRow :: [SqlValue] -> Article
-  fromRow row = Article (col 0) (col 1) author (col 3)
+ 
+  fromRow :: IConnection conn => conn -> [SqlValue] -> IO Article
+  fromRow conn row = do
+    author <- retrieveById conn (row !! 2) :: IO Author
+    pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
-      author = undefined --retrieveById conn (col 2) :: Author
+      
 
-  toRow :: Article -> [SqlValue]
-  toRow a = [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
-    where 
-      authID = authorID (author a)
-      authorName = name (author a)
-      authorAddress = address (author a)
+  toRow :: IConnection conn => conn -> Article -> IO [SqlValue]
+  toRow conn a = do 
+    persist conn (author a)
+    return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
+
+
 
 article :: Article
 article = Article 
   { articleID = 1, 
     title = "Persistence without Boilerplate", 
     author = Author 
-      {authorID = 1, 
-      name = "Arthur Dent", 
-      address = "Earth"}, 
+      {authorID = 2, 
+      name = "Arthur Miller", 
+      address = "Mars Colonies"}, 
     year = 2018}
 
 main :: IO ()
@@ -60,9 +63,13 @@ main = do
   conn <- connectSqlite3 "sqlite.db"
 
   runRaw conn "DROP TABLE IF EXISTS Article"
-  runRaw conn "CREATE TABLE Article (articleID INTEGER PRIMARY KEY, title TEXT, authorID INTEGER, authorName TEXT, authorAddress TEXT, year INTEGER)"
+  runRaw conn "CREATE TABLE Article (articleID INTEGER PRIMARY KEY, title TEXT, authorID INTEGER, year INTEGER)"
+  runRaw conn "DROP TABLE IF EXISTS Author"
+  runRaw conn "CREATE TABLE Author (authorID INTEGER PRIMARY KEY, name TEXT, address TEXT)"
+
 
   insert conn article
+  putStrLn "OK"
 
   article' <- retrieveById conn "1" :: IO Article
   print article'
