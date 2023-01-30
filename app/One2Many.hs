@@ -1,13 +1,16 @@
 {-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
+{-# LANGUAGE TypeApplications   #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module One2Many (main) where
 
-import           Data.Data             (Data)
+import           Data.Data             
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
-import SqlGenerator (createTableStmtFor, dropTableStmtFor)
 
-import           Data.Data
+
+
+
 
 data Article = Article
   { articleID :: Int,
@@ -15,7 +18,7 @@ data Article = Article
     author    :: Author,
     year      :: Int
   }
-  deriving (Data, Show, Read)
+  deriving (Data, Typeable, Show, Read)
 
 data Author = Author
   { authorID :: Int,
@@ -23,7 +26,7 @@ data Author = Author
     address  :: String,
     articles :: [Article]
   }
-  deriving (Data, Show, Read)  
+  deriving (Data, Typeable, Show, Read)  
 
 instance Entity Article where
   fieldsToColumns :: Article -> [(String, String)]
@@ -35,34 +38,36 @@ instance Entity Article where
 
   fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO Article
   fromRow conn rc row = do
-    let rawAuthor = Author (col 2) "" "" []
-        rawArticle = Article (col 0) (col 1) rawAuthor (col 3)
-        rc'' = insertInCache rc rawArticle
-        rc' = insertInCache rc'' rawAuthor
-    let maybeAuthor = lookupInCache rc' rawAuthor
-    author <- case maybeAuthor of
-      Just a -> return a
-      Nothing -> do
-        retrieveById conn rc' (row !! 2) :: IO Author
+    author <- cachedElseRetrieve conn rc' (typeRep (Proxy @Author), col 2)
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
+      rawAuthor = (evidence :: Author) {authorID = col 2}
+      rawArticle = Article (col 0) (col 1) rawAuthor (col 3)
+      rc' = insertInCache rc rawArticle
       
+  toRow :: IConnection conn => conn -> ResolutionCache -> Article -> IO [SqlValue]
   toRow conn rc a = do 
     persist conn (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
+
+cachedElseRetrieve :: forall a conn . (Read a, IConnection conn, Entity a) => conn -> ResolutionCache -> EntityId -> IO a
+cachedElseRetrieve conn rc eid@(tr,keyVal) =
+  case lookupInCache rc eid of
+    Just e  -> pure e
+    Nothing -> retrieveById conn rc keyVal :: IO a
+
 insertInCache :: (Show a, Entity a) => ResolutionCache -> a -> ResolutionCache
 insertInCache rc x = 
-  (show (typeOf x, idValue x), show x) : rc
+  ((typeOf x, idValue x), show x) : rc
 
-lookupInCache :: (Entity a, Read a) => ResolutionCache -> a -> Maybe a
-lookupInCache rc x = 
-  case lookup key rc of
+lookupInCache :: (Entity a, Read a) => ResolutionCache -> EntityId -> Maybe a
+lookupInCache rc eid = 
+  case lookup eid rc of
     Just str -> Just (read str)
     Nothing -> Nothing
-  where
-    key = show (typeOf x, idValue x)
+
 
 instance Entity Author where
   fieldsToColumns :: Author -> [(String, String)]
@@ -71,15 +76,16 @@ instance Entity Author where
                        ("address", "address")
                       ]
 
-  --fromRow :: IConnection conn => conn -> [SqlValue] -> IO Author
+  fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO Author
   fromRow conn rc row = do
-    let rawAuthor = Author (col 0) (col 1) (col 2) []
-    articlesByAuth <- retrieveAllWhere conn rc (idField rawAuthor) (idValue rawAuthor) :: IO [Article]
+    articlesByAuth <- retrieveAllWhere conn rc' (idField rawAuthor) (idValue rawAuthor) :: IO [Article]
     pure $ rawAuthor {articles= articlesByAuth}
     where
       col i = fromSql (row !! i)
+      rawAuthor = Author (col 0) (col 1) (col 2) []
+      rc' = insertInCache rc rawAuthor
       
-  --toRow :: IConnection conn => conn -> Author -> IO [SqlValue]
+  toRow :: IConnection conn => conn -> ResolutionCache -> Author -> IO [SqlValue]
   toRow conn rc a = do 
     return [toSql (authorID a), toSql (name a), toSql (address a)]
 

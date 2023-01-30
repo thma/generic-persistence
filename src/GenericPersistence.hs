@@ -17,6 +17,7 @@ module GenericPersistence
     evidenceFrom,
     ResolutionCache,
     emptyCache,
+    EntityId,
     TypeInfo (..),
     typeInfoFromContext,
     typeInfo,

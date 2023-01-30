@@ -10,6 +10,7 @@ module Entity
     evidenceFrom,
     ResolutionCache,
     emptyCache,
+    EntityId,
   )
 where
 
@@ -81,7 +82,8 @@ class (Data a) => Entity a where
   default tableName :: a -> String
   tableName = typeName . typeInfo
 
-type ResolutionCache = [(String, String)]
+type EntityId = (TypeRep, SqlValue)
+type ResolutionCache = [(EntityId, String)]
 
 emptyCache :: ResolutionCache
 emptyCache = []
