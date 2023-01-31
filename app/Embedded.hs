@@ -34,14 +34,14 @@ instance Entity Article where
                       ]
   --tableName _ = "ARTICLE_TBL"
 
-  --fromRow :: [SqlValue] -> Article
-  fromRow conn rc row = return $ Article (col 0) (col 1) author (col 5)
+  fromRow :: conn -> ResolutionCache -> [SqlValue] -> IO Article
+  fromRow _conn _rc row = return $ Article (col 0) (col 1) author (col 5)
     where
       col i = fromSql (row !! i)
       author = Author (col 2) (col 3) (col 4)
 
-  --toRow :: Article -> [SqlValue]
-  toRow conn rc a = return $ [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
+  toRow :: conn -> ResolutionCache -> Article -> IO [SqlValue]
+  toRow _conn _rc a = return $ [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
     where 
       authID = authorID (author a)
       authorName = name (author a)
@@ -67,12 +67,12 @@ main = do
 
   insert conn article
 
-  article' <- retrieveById conn emptyCache "1" :: IO Article
+  article' <- retrieveById conn mempty "1" :: IO Article
   print article'
 
   persist conn article {title = "Persistence without Boilerplate (updated)"}
 
-  article'' <- retrieveById conn emptyCache "1" :: IO Article
+  article'' <- retrieveById conn mempty "1" :: IO Article
   print article''
 
   print $ dropTableStmtFor (typeInfo article)
@@ -80,7 +80,7 @@ main = do
 
   delete conn article''
 
-  allArticles <- retrieveAll conn emptyCache :: IO [Article]
+  allArticles <- retrieveAll conn mempty :: IO [Article]
   print allArticles
 
   -- close connection

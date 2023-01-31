@@ -1,14 +1,11 @@
 {-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
-{-# LANGUAGE TypeApplications   #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+
 module One2Many (main) where
 
-import           Data.Data             
+import           Data.Data          
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
-
-
 
 
 
@@ -18,7 +15,7 @@ data Article = Article
     author    :: Author,
     year      :: Int
   }
-  deriving (Data, Typeable, Show, Read)
+  deriving (Data, Show)
 
 data Author = Author
   { authorID :: Int,
@@ -26,7 +23,7 @@ data Author = Author
     address  :: String,
     articles :: [Article]
   }
-  deriving (Data, Typeable, Show, Read)  
+  deriving (Data, Show)  
 
 instance Entity Article where
   fieldsToColumns :: Article -> [(String, String)]
@@ -38,35 +35,19 @@ instance Entity Article where
 
   fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO Article
   fromRow conn rc row = do
-    author <- cachedElseRetrieve conn rc' (typeRep (Proxy @Author), col 2)
+    author <- getElseRetrieve conn rc' (entityId rawAuthor)
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
       rawAuthor = (evidence :: Author) {authorID = col 2}
       rawArticle = Article (col 0) (col 1) rawAuthor (col 3)
-      rc' = insertInCache rc rawArticle
+      rc' = put rc rawArticle
       
   toRow :: IConnection conn => conn -> ResolutionCache -> Article -> IO [SqlValue]
-  toRow conn rc a = do 
+  toRow conn _rc a = do 
     persist conn (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
-
-cachedElseRetrieve :: forall a conn . (Read a, IConnection conn, Entity a) => conn -> ResolutionCache -> EntityId -> IO a
-cachedElseRetrieve conn rc eid@(tr,keyVal) =
-  case lookupInCache rc eid of
-    Just e  -> pure e
-    Nothing -> retrieveById conn rc keyVal :: IO a
-
-insertInCache :: (Show a, Entity a) => ResolutionCache -> a -> ResolutionCache
-insertInCache rc x = 
-  ((typeOf x, idValue x), show x) : rc
-
-lookupInCache :: (Entity a, Read a) => ResolutionCache -> EntityId -> Maybe a
-lookupInCache rc eid = 
-  case lookup eid rc of
-    Just str -> Just (read str)
-    Nothing -> Nothing
 
 
 instance Entity Author where
@@ -83,10 +64,10 @@ instance Entity Author where
     where
       col i = fromSql (row !! i)
       rawAuthor = Author (col 0) (col 1) (col 2) []
-      rc' = insertInCache rc rawAuthor
+      rc' = put rc rawAuthor
       
-  toRow :: IConnection conn => conn -> ResolutionCache -> Author -> IO [SqlValue]
-  toRow conn rc a = do 
+  toRow :: conn -> ResolutionCache -> Author -> IO [SqlValue]
+  toRow _conn _rc a = do 
     return [toSql (authorID a), toSql (name a), toSql (address a)]
 
 article1 :: Article
@@ -96,7 +77,8 @@ article1 = Article
     author = Author 
       {authorID = 1, 
       name = "Arthur Dent", 
-      address = "Earth"}, 
+      address = "Earth",
+      articles = []}, 
     year = 2018}
 
 article2 :: Article
@@ -106,7 +88,8 @@ article2 = Article
     author = Author 
       {authorID = 2, 
       name = "Arthur Miller", 
-      address = "Mars Colonies"}, 
+      address = "Mars Colonies",
+      articles = []}, 
     year = 2020}
 
 article3 :: Article
@@ -116,14 +99,16 @@ article3 = Article
     author = Author 
       {authorID = 2, 
       name = "Arthur Miller", 
-      address = "Mars Colonies"}, 
+      address = "Mars Colonies",
+      articles = []}, 
     year = 2022}
 
 arthur :: Author
 arthur = Author 
   {authorID = 2, 
   name = "Arthur Miller", 
-  address = "Mars Colonies"}    
+  address = "Mars Colonies", 
+  articles = [article2, article3]}    
 
 main :: IO ()
 main = do
@@ -141,18 +126,11 @@ main = do
   insert conn article3
   persist conn arthur
 
-  article' <- retrieveById conn emptyCache "1" :: IO Article
+  article' <- retrieveById conn mempty "1" :: IO Article
   print article'
 
-  arthur <- retrieveById conn emptyCache "2" :: IO Author
-  print arthur
-
+  arthur' <- retrieveById conn mempty "2" :: IO Author
+  print arthur'
 
   -- close connection
   disconnect conn
-
-
-
-
-
-

@@ -16,8 +16,10 @@ module GenericPersistence
     evidence,
     evidenceFrom,
     ResolutionCache,
-    emptyCache,
     EntityId,
+    entityId,
+    put,
+    getElseRetrieve,
     TypeInfo (..),
     typeInfoFromContext,
     typeInfo,
@@ -31,6 +33,8 @@ import           Entity
 import           RecordtypeReflection
 import           SqlGenerator
 import           TypeInfo
+import           Data.Dynamic (toDyn, fromDynamic)
+import           Data.Data 
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -105,10 +109,6 @@ update conn entity = do
   _rowcount <- run conn (updateStmtFor entity) (row ++ [idValue entity])
   commit conn
 
--- | A function that returns the primary key value of an entity as a SqlValue.
-idValue :: forall a. (Entity a) => a -> SqlValue
-idValue x = fieldValue x (idField x)
-
 delete :: (IConnection conn, Entity a) => conn -> a -> IO ()
 delete conn entity = do
   _rowCount <- run conn (deleteStmtFor entity) [idValue entity]
@@ -124,3 +124,29 @@ setupTableFor conn = do
   where
     ti = typeInfoFromContext :: TypeInfo a
     x = evidenceFrom ti :: a
+
+
+-- | Lookup an entity in the cache, or retrieve it from the database.
+--   The Entity is identified by its EntityId, which is a (typeRep, idValue) tuple.
+getElseRetrieve :: forall a conn . (IConnection conn, Entity a) => conn -> ResolutionCache -> EntityId -> IO a
+getElseRetrieve conn rc eid@(_tr,pk) =
+  case lookup eid rc of
+    Just dyn -> case fromDynamic dyn :: Maybe a of
+      Just e -> pure e
+      Nothing -> error "should not be possible" 
+    Nothing -> retrieveById conn rc pk :: IO a
+
+-- | Place an entity in the cache. 
+--   The Entity is identified by its EntityId, which is a (typeRep, idValue) tuple.
+--   The Entity is stored as a Dynamic value to provide polymorphism.
+put :: (Entity a) => ResolutionCache -> a -> ResolutionCache
+put rc x = (entityId x, toDyn x) : rc
+
+-- | Computes the EntityId of an entity.
+--   The EntityId of an entity is a (typeRep, idValue) tuple.
+entityId :: (Entity a) => a -> EntityId
+entityId x = (typeOf x, idValue x)
+
+-- | A function that returns the primary key value of an entity as a SqlValue.
+idValue :: forall a. (Entity a) => a -> SqlValue
+idValue x = fieldValue x (idField x)

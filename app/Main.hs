@@ -4,7 +4,7 @@ module Main (main, main1) where
 import           Data.Data             (Data)
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
-import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, Entity(..), setupTableFor) 
+import           GenericPersistence    (delete, persist, retrieveAll, retrieveById, setupTableFor) 
 import           Entity
 
 
@@ -29,13 +29,15 @@ instance Entity Book where
   idField _ = "book_id"
   fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
   tableName _ = "BOOK_TBL"
-  --fromRow :: [SqlValue] -> Book
-  fromRow conn rc row = return $ Book (col 0) (col 1) (col 2) (col 3)
+
+  fromRow :: conn -> ResolutionCache -> [SqlValue] -> IO Book
+  fromRow _conn _rc row = return $ Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
 
-  --toRow :: Book -> [SqlValue]
-  toRow conn rc b = return $ [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+
+  toRow :: conn -> ResolutionCache -> Book -> IO [SqlValue]
+  toRow _conn _rc b = return $ [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do
@@ -56,7 +58,7 @@ main = do
 
   -- select a Person from a database
   -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
-  alice' <- retrieveById conn emptyCache "123456" :: IO Person
+  alice' <- retrieveById conn mempty "123456" :: IO Person
 
   -- delete a Person from a database
   delete conn alice'
@@ -78,8 +80,6 @@ main1 = do
   let alice = Person 123456 "Alice" 25 "123 Main St"
       book  = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
 
-  
-
   -- insert a Person into a database
   persist conn alice
 
@@ -90,33 +90,32 @@ main1 = do
   persist conn alice {address = "Elmstreet 1"}
 
   -- select a Person from a database
-  alice' <- retrieveById conn emptyCache (123456 :: Int) :: IO Person
+  alice' <- retrieveById conn mempty (123456 :: Int) :: IO Person
   print alice'
 
   -- select all Persons from a database
-  allPersons <- retrieveAll conn emptyCache :: IO [Person]
+  allPersons <- retrieveAll conn mempty :: IO [Person]
   print allPersons
 
   -- delete a Person from a database
   delete conn alice
 
   -- select all Persons from a database
-  allPersons' <- retrieveAll conn emptyCache :: IO [Person]
+  allPersons' <- retrieveAll conn mempty :: IO [Person]
   print allPersons'
 
  
-
   let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
 
   persist conn book
   persist conn book2
-  allBooks <- retrieveAll conn emptyCache :: IO [Book]
+  allBooks <- retrieveAll conn mempty :: IO [Book]
   print allBooks
 
   persist conn book2 {title = "The Lord of the Rings"}
   delete conn book
 
-  allBooks' <- retrieveAll conn emptyCache :: IO [Book]
+  allBooks' <- retrieveAll conn mempty :: IO [Book]
   print allBooks'
 
   -- close connection

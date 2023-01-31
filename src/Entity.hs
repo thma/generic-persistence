@@ -9,7 +9,6 @@ module Entity
     evidence,
     evidenceFrom,
     ResolutionCache,
-    emptyCache,
     EntityId,
   )
 where
@@ -19,6 +18,7 @@ import           Data.Data            (Data, TypeRep, fromConstr)
 import           Database.HDBC        (SqlValue, fromSql, IConnection)
 import           RecordtypeReflection (gFromRow, gToRow)
 import           TypeInfo             (TypeInfo (fieldNames, fieldTypes, typeConstructor), typeInfo, typeName, typeInfoFromContext)
+import Data.Dynamic
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping 
@@ -82,11 +82,13 @@ class (Data a) => Entity a where
   default tableName :: a -> String
   tableName = typeName . typeInfo
 
+-- | The EntityId is a tuple of the TypeRep and the primary key value of an Entity.
+--   It is used as a key in the resolution cache.
 type EntityId = (TypeRep, SqlValue)
-type ResolutionCache = [(EntityId, String)]
 
-emptyCache :: ResolutionCache
-emptyCache = []
+-- | The resolution cache maps an EntityId to a Dynamic value (representing an Entity).
+--   It is used to resolve circular references during loading and storing of Entities.
+type ResolutionCache = [(EntityId, Dynamic)]
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: Entity a => a -> String -> String

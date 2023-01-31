@@ -67,10 +67,10 @@ spec = do
       runRaw conn "INSERT INTO Person (personID, name, age, address) VALUES (1, \"Bob\", 36, \"7 West Street\");"
       runRaw conn "INSERT INTO Person (personID, name, age, address) VALUES (2, \"Alice\", 25, \"7 West Street\");"
       runRaw conn "INSERT INTO Person (personID, name, age, address) VALUES (3, \"Frank\", 56, \"7 West Street\");"
-      allPersons <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons <- retrieveAll conn mempty :: IO [Person]
       length allPersons `shouldBe` 3
       head allPersons `shouldBe` bob
-      person' <- retrieveById conn emptyCache (1 :: Int) :: IO Person
+      person' <- retrieveById conn mempty (1 :: Int) :: IO Person
       disconnect conn
       person' `shouldBe` bob
     it "retrieves Entities using user implementation" $ do
@@ -79,103 +79,103 @@ spec = do
       runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937);"
       runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955);"
       runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967);"
-      allBooks <- retrieveAll conn emptyCache :: IO [Book]
+      allBooks <- retrieveAll conn mempty :: IO [Book]
       length allBooks `shouldBe` 3
       head allBooks `shouldBe` hobbit
-      book' <- retrieveById conn emptyCache (1 :: Int) :: IO Book
+      book' <- retrieveById conn mempty (1 :: Int) :: IO Book
       disconnect conn
       book' `shouldBe` hobbit
     it "persists new Entities using Generics" $ do
       conn <- prepareDatabase
-      allPersons <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons <- retrieveAll conn mempty :: IO [Person]
       length allPersons `shouldBe` 0
       persist conn person
-      allPersons' <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons' <- retrieveAll conn mempty :: IO [Person]
       length allPersons' `shouldBe` 1
-      person' <- retrieveById conn emptyCache (123456 :: Int) :: IO Person
+      person' <- retrieveById conn mempty (123456 :: Int) :: IO Person
       disconnect conn
       person' `shouldBe` person
     it "persists new Entities using user implementation" $ do
       conn <- prepareDatabase
-      allbooks <- retrieveAll conn emptyCache :: IO [Book]
+      allbooks <- retrieveAll conn mempty :: IO [Book]
       length allbooks `shouldBe` 0
       persist conn book
-      allbooks' <- retrieveAll conn emptyCache :: IO [Book]
+      allbooks' <- retrieveAll conn mempty :: IO [Book]
       length allbooks' `shouldBe` 1
-      book' <- retrieveById conn emptyCache (1 :: Int) :: IO Book
+      book' <- retrieveById conn mempty (1 :: Int) :: IO Book
       disconnect conn
       book' `shouldBe` book
     it "persists existing Entities using Generics" $ do
       conn <- prepareDatabase
-      allPersons <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons <- retrieveAll conn mempty :: IO [Person]
       length allPersons `shouldBe` 0
       persist conn person
-      allPersons' <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons' <- retrieveAll conn mempty :: IO [Person]
       length allPersons' `shouldBe` 1
       persist conn person {age = 26}
-      person' <- retrieveById conn emptyCache (123456 :: Int) :: IO Person
+      person' <- retrieveById conn mempty (123456 :: Int) :: IO Person
       disconnect conn
       person' `shouldBe` person {age = 26}
     it "persists existing Entities using user implementation" $ do
       conn <- prepareDatabase
-      allbooks <- retrieveAll conn emptyCache :: IO [Book]
+      allbooks <- retrieveAll conn mempty :: IO [Book]
       length allbooks `shouldBe` 0
       persist conn book
-      allbooks' <- retrieveAll conn emptyCache :: IO [Book]
+      allbooks' <- retrieveAll conn mempty :: IO [Book]
       length allbooks' `shouldBe` 1
       persist conn book {year = 1938}
-      book' <- retrieveById conn emptyCache (1 :: Int) :: IO Book
+      book' <- retrieveById conn mempty (1 :: Int) :: IO Book
       disconnect conn
       book' `shouldBe` book {year = 1938}
     it "inserts Entities using Generics" $ do
       conn <- prepareDatabase
-      allPersons <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons <- retrieveAll conn mempty :: IO [Person]
       length allPersons `shouldBe` 0
       insert conn person
-      allPersons' <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons' <- retrieveAll conn mempty :: IO [Person]
       length allPersons' `shouldBe` 1
-      person' <- retrieveById conn emptyCache (123456 :: Int) :: IO Person
+      person' <- retrieveById conn mempty (123456 :: Int) :: IO Person
       disconnect conn
       person' `shouldBe` person
     it "inserts Entities using user implementation" $ do
       conn <- prepareDatabase
-      allbooks <- retrieveAll conn emptyCache :: IO [Book]
+      allbooks <- retrieveAll conn mempty :: IO [Book]
       length allbooks `shouldBe` 0
       insert conn book
-      allbooks' <- retrieveAll conn emptyCache :: IO [Book]
+      allbooks' <- retrieveAll conn mempty :: IO [Book]
       length allbooks' `shouldBe` 1
-      book' <- retrieveById conn emptyCache (1 :: Int) :: IO Book
+      book' <- retrieveById conn mempty (1 :: Int) :: IO Book
       disconnect conn
       book' `shouldBe` book
     it "updates Entities using Generics" $ do
       conn <- prepareDatabase
       insert conn person
       update conn person {name = "Bob"}
-      person' <- retrieveById conn emptyCache (123456 :: Int) :: IO Person
+      person' <- retrieveById conn mempty (123456 :: Int) :: IO Person
       disconnect conn
       person' `shouldBe` person {name = "Bob"}
     it "updates Entities using user implementation" $ do
       conn <- prepareDatabase
       insert conn book
       update conn book {title = "The Lord of the Rings"}
-      book' <- retrieveById conn emptyCache (1 :: Int) :: IO Book
+      book' <- retrieveById conn mempty (1 :: Int) :: IO Book
       disconnect conn
       book' `shouldBe` book {title = "The Lord of the Rings"}
     it "deletes Entities using Generics" $ do
       conn <- prepareDatabase
       insert conn person
-      allPersons <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons <- retrieveAll conn mempty :: IO [Person]
       length allPersons `shouldBe` 1
       delete conn person
-      allPersons' <- retrieveAll conn emptyCache :: IO [Person]
+      allPersons' <- retrieveAll conn mempty :: IO [Person]
       length allPersons' `shouldBe` 0
       disconnect conn
     it "deletes Entities using user implementation" $ do
       conn <- prepareDatabase
       insert conn book
-      allBooks <- retrieveAll conn emptyCache :: IO [Book]
+      allBooks <- retrieveAll conn mempty :: IO [Book]
       length allBooks `shouldBe` 1
       delete conn book
-      allBooks' <- retrieveAll conn emptyCache :: IO [Book]
+      allBooks' <- retrieveAll conn mempty :: IO [Book]
       length allBooks' `shouldBe` 0
       disconnect conn
