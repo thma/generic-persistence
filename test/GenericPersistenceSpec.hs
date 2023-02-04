@@ -6,11 +6,11 @@ module GenericPersistenceSpec
 
 
 import           Test.Hspec
-import           Data.Data             (Data)
-import           Database.HDBC         (disconnect, fromSql, runRaw, toSql, SqlValue)
+import           Data.Data             
+import           Database.HDBC         
 import           Database.HDBC.Sqlite3
 import           GenericPersistence
-import           Data.Convertible 
+
 
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
@@ -22,7 +22,9 @@ prepareDatabase :: IO Connection
 prepareDatabase = do
   conn <- connectSqlite3 ":memory:"
   _ <- setupTableFor conn :: IO Person
-  _ <- setupTableFor conn :: IO Book
+  runRaw conn "DROP TABLE IF EXISTS BOOK_TBL;"
+  runRaw conn "CREATE TABLE BOOK_TBL (bookId INT PRIMARY KEY, bookTitle TEXT, bookAuthor TEXT, bookYear INT, bookCategory INT);"
+  --_ <- setupTableFor conn :: IO Book
   return conn
 
 -- | A data type with several fields, using record syntax.
@@ -44,13 +46,11 @@ data Book = Book
   deriving (Data, Show, Eq)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Data, Read, Show, Eq)
+  deriving (Data, Read, Show, Eq, Enum)
 
-instance Convertible SqlValue BookCategory where
-  safeConvert = return . read . fromSql
 
-instance Convertible BookCategory SqlValue where
-  safeConvert = return . toSql . show
+
+
 
   
 instance Entity Book where
@@ -88,9 +88,9 @@ spec = do
     it "retrieves Entities using user implementation" $ do
       conn <- prepareDatabase
       let hobbit = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
-      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937, \"Fiction\");"
-      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955, \"Fiction\");"
-      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967, \"Fiction\");"
+      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937, 0);"
+      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955, 0);"
+      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967, 0);"
       allBooks <- retrieveAll conn mempty :: IO [Book]
       length allBooks `shouldBe` 3
       head allBooks `shouldBe` hobbit

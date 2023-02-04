@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-orphans #-}
 module GenericPersistence
   ( retrieveById,
     retrieveAll,
@@ -26,15 +27,16 @@ module GenericPersistence
   )
 where
 
-import Data.Convertible ( Convertible )
+import Data.Convertible ( Convertible, ConvertResult )
 import           Database.HDBC        (IConnection, SqlValue, commit,
-                                       quickQuery, run, toSql, runRaw)
+                                       quickQuery, run, toSql, runRaw, fromSql)
 import           Entity
 import           RecordtypeReflection
 import           SqlGenerator
 import           TypeInfo
 import           Data.Dynamic (toDyn, fromDynamic)
 import           Data.Data 
+import Data.Convertible.Base (Convertible(safeConvert))
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -150,3 +152,12 @@ entityId x = (typeOf x, idValue x)
 -- | A function that returns the primary key value of an entity as a SqlValue.
 idValue :: forall a. (Entity a) => a -> SqlValue
 idValue x = fieldValue x (idField x)
+
+-- These instances are needed to make the Convertible type class work with Enum types out of the box.
+instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible SqlValue a where
+  safeConvert :: SqlValue -> ConvertResult a
+  safeConvert val = return $ toEnum (fromSql val)
+
+instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible a SqlValue where
+  safeConvert :: a -> ConvertResult SqlValue
+  safeConvert val = return $ toSql (fromEnum val)  
