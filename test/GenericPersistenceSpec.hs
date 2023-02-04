@@ -7,9 +7,10 @@ module GenericPersistenceSpec
 
 import           Test.Hspec
 import           Data.Data             (Data)
-import           Database.HDBC         (disconnect, fromSql, runRaw, toSql)
+import           Database.HDBC         (disconnect, fromSql, runRaw, toSql, SqlValue)
 import           Database.HDBC.Sqlite3
 import           GenericPersistence
+import           Data.Convertible 
 
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
@@ -19,7 +20,7 @@ test = hspec spec
 
 prepareDatabase :: IO Connection
 prepareDatabase = do
-  conn <- connectSqlite3 "test.db"
+  conn <- connectSqlite3 ":memory:"
   _ <- setupTableFor conn :: IO Person
   _ <- setupTableFor conn :: IO Book
   return conn
@@ -37,25 +38,36 @@ data Book = Book
   { book_id :: Int,
     title   :: String,
     author  :: String,
-    year    :: Int
+    year    :: Int,
+    category :: BookCategory
   }
   deriving (Data, Show, Eq)
 
+data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
+  deriving (Data, Read, Show, Eq)
+
+instance Convertible SqlValue BookCategory where
+  safeConvert = return . read . fromSql
+
+instance Convertible BookCategory SqlValue where
+  safeConvert = return . toSql . show
+
+  
 instance Entity Book where
   idField _ = "book_id"
-  fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
+  fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("category", "bookCategory")]
   tableName _ = "BOOK_TBL"
-  fromRow _ _ row = pure $ Book (col 0) (col 1) (col 2) (col 3)
+  fromRow _ _ row = pure $ Book (col 0) (col 1) (col 2) (col 3) (col 4)
     where
       col i = fromSql (row !! i)
-  toRow _ _ b = pure $ [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+  toRow _ _ b = pure [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
 
 
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"
 
 book :: Book
-book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
+book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
 
 
 spec :: Spec
@@ -75,10 +87,10 @@ spec = do
       person' `shouldBe` bob
     it "retrieves Entities using user implementation" $ do
       conn <- prepareDatabase
-      let hobbit = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
-      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937);"
-      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955);"
-      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967);"
+      let hobbit = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
+      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937, \"Fiction\");"
+      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955, \"Fiction\");"
+      runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967, \"Fiction\");"
       allBooks <- retrieveAll conn mempty :: IO [Book]
       length allBooks `shouldBe` 3
       head allBooks `shouldBe` hobbit
