@@ -50,12 +50,12 @@ import Data.Convertible.Base (Convertible(safeConvert))
 -- The function takes an HDBC connection and an entity id as parameters.
 -- It returns the entity of type `a` with the given id.
 -- An error is thrown if no such entity exists or if there are more than one entity with the given id.
-retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id SqlValue) => conn -> ResolutionCache -> id -> IO a
+retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id SqlValue) => conn -> ResolutionCache -> id -> IO (Maybe a)
 retrieveById conn rc idx = do
   resultRowsSqlValues <- quickQuery conn stmt [eid]
   case resultRowsSqlValues of
-    []          -> error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
-    [singleRow] -> fromRow conn rc singleRow
+    []          -> pure Nothing --error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
+    [singleRow] -> fmap Just (fromRow conn rc singleRow)
     _ -> error $ "More than one" ++ show (typeConstructor ti) ++ " found for id " ++ show eid
   where
     ti = typeInfoFromContext :: TypeInfo a
@@ -130,13 +130,13 @@ setupTableFor conn = do
 
 -- | Lookup an entity in the cache, or retrieve it from the database.
 --   The Entity is identified by its EntityId, which is a (typeRep, idValue) tuple.
-getElseRetrieve :: forall a conn . (IConnection conn, Entity a) => conn -> ResolutionCache -> EntityId -> IO a
+getElseRetrieve :: forall a conn . (IConnection conn, Entity a) => conn -> ResolutionCache -> EntityId -> IO (Maybe a)
 getElseRetrieve conn rc eid@(_tr,pk) =
   case lookup eid rc of
     Just dyn -> case fromDynamic dyn :: Maybe a of
-      Just e -> pure e
+      Just e -> pure (Just e)
       Nothing -> error "should not be possible" 
-    Nothing -> retrieveById conn rc pk :: IO a
+    Nothing -> retrieveById conn rc pk :: IO (Maybe a)
 
 -- | Place an entity in the cache. 
 --   The Entity is identified by its EntityId, which is a (typeRep, idValue) tuple.

@@ -66,15 +66,15 @@ main = do
 
   insert conn article
 
-  article' <- retrieveById conn mempty "1" :: IO Article
+  article' <- retrieveById conn mempty "1" :: IO (Maybe Article)
   print article'
 
   persist conn article {title = "Persistence without Boilerplate (updated)"}
 
-  article'' <- retrieveById conn mempty "1" :: IO Article
+  article'' <- retrieveById conn mempty "1" :: IO (Maybe Article)
   print article''
 
-  delete conn article''
+  delete conn article
 
   allArticles <- retrieveAll conn mempty :: IO [Article]
   print allArticles

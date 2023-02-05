@@ -58,10 +58,11 @@ main = do
 
   -- select a Person from a database
   -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
-  alice' <- retrieveById conn mempty "123456" :: IO Person
+  alice' <- retrieveById conn mempty "123456" :: IO (Maybe Person)
+  print alice'
 
   -- delete a Person from a database
-  delete conn alice'
+  delete conn alice
 
   -- close connection
   disconnect conn
@@ -90,7 +91,7 @@ main1 = do
   persist conn alice {address = "Elmstreet 1"}
 
   -- select a Person from a database
-  alice' <- retrieveById conn mempty (123456 :: Int) :: IO Person
+  alice' <- retrieveById conn mempty (123456 :: Int) :: IO (Maybe Person)
   print alice'
 
   -- select all Persons from a database

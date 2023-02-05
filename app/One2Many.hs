@@ -6,6 +6,7 @@ import           Data.Data
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
+import Data.Maybe (fromMaybe)
 
 
 
@@ -35,7 +36,8 @@ instance Entity Article where
 
   fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO Article
   fromRow conn rc row = do
-    author <- getElseRetrieve conn rc' (entityId rawAuthor)
+    maybeAuthor <- getElseRetrieve conn rc' (entityId rawAuthor)
+    let author = fromMaybe (error "could not find author") maybeAuthor 
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
@@ -123,10 +125,10 @@ main = do
   insert conn article3
   persist conn arthur
 
-  article' <- retrieveById conn mempty "1" :: IO Article
+  article' <- retrieveById conn mempty "1" :: IO (Maybe Article)
   print article'
 
-  arthur' <- retrieveById conn mempty "2" :: IO Author
+  arthur' <- retrieveById conn mempty "2" :: IO (Maybe Author)
   print arthur'
 
   -- close connection

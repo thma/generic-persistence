@@ -6,6 +6,7 @@ import           Database.HDBC
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
 import SqlGenerator (createTableStmtFor, dropTableStmtFor)
+import Data.Maybe
 
 
 data Article = Article
@@ -32,7 +33,8 @@ instance Entity Article where
                       ]
 
   fromRow conn rc row = do
-    author <- retrieveById conn rc (row !! 2) :: IO Author
+    maybeAuthor <- retrieveById conn rc (row !! 2) :: IO (Maybe Author)
+    let author = fromMaybe (error "Author not found") maybeAuthor
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
@@ -65,18 +67,18 @@ main = do
   insert conn article
   putStrLn "OK"
 
-  article' <- retrieveById conn mempty "1" :: IO Article
+  article' <- retrieveById conn mempty "1" :: IO (Maybe Article)
   print article'
 
   persist conn article {title = "Persistence without Boilerplate (updated)"}
 
-  article'' <- retrieveById conn mempty "1" :: IO Article
+  article'' <- retrieveById conn mempty "1" :: IO (Maybe Article)
   print article''
 
   print $ dropTableStmtFor (typeInfo article)
   print $ createTableStmtFor (typeInfo article)
 
-  delete conn article''
+  delete conn article
 
   allArticles <- retrieveAll conn mempty :: IO [Article]
   print allArticles
