@@ -31,8 +31,6 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
- 
-  --fromRow :: IConnection conn => conn -> [SqlValue] -> IO Article
   fromRow conn rc row = do
     author <- retrieveById conn rc (row !! 2) :: IO Author
     pure $ Article (col 0) (col 1) author (col 3)
@@ -40,7 +38,6 @@ instance Entity Article where
       col i = fromSql (row !! i)
       
 
-  --toRow :: IConnection conn => conn -> Article -> IO [SqlValue]
   toRow conn _rc a = do 
     persist conn (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
@@ -54,7 +51,7 @@ article = Article
     author = Author 
       {authorID = 2, 
       name = "Arthur Miller", 
-      address = "Mars Colonies"}, 
+      address = "Denver"}, 
     year = 2018}
 
 main :: IO ()
@@ -62,11 +59,8 @@ main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
 
-  runRaw conn "DROP TABLE IF EXISTS Article"
-  runRaw conn "CREATE TABLE Article (articleID INTEGER PRIMARY KEY, title TEXT, authorID INTEGER, year INTEGER)"
-  runRaw conn "DROP TABLE IF EXISTS Author"
-  runRaw conn "CREATE TABLE Author (authorID INTEGER PRIMARY KEY, name TEXT, address TEXT)"
-
+  _ <- setupTableFor conn :: IO Article
+  _ <- setupTableFor conn :: IO Author
 
   insert conn article
   putStrLn "OK"

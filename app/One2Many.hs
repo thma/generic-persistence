@@ -115,11 +115,8 @@ main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
 
-  runRaw conn "DROP TABLE IF EXISTS Article"
-  runRaw conn "CREATE TABLE Article (articleID INTEGER PRIMARY KEY, title TEXT, authorID INTEGER, year INTEGER)"
-  runRaw conn "DROP TABLE IF EXISTS Author"
-  runRaw conn "CREATE TABLE Author (authorID INTEGER PRIMARY KEY, name TEXT, address TEXT)"
-
+  _ <- setupTableFor conn :: IO Article
+  _ <- setupTableFor conn :: IO Author
 
   insert conn article1
   insert conn article2
