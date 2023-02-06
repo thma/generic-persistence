@@ -117,7 +117,7 @@ createTableStmtFor ti =
 columnTypeFor :: forall a. (Entity a) => a -> String -> String
 columnTypeFor x field = 
   case fType of
-    "Int" -> "INT"
+    "Int" -> "INTEGER"
     "String" -> "TEXT"
     "Double" -> "REAL"
     "Float" -> "REAL"
