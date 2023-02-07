@@ -26,6 +26,7 @@ module GenericPersistence
     Ctx (..),
     GP,
     extendCtxCache,
+    runGP,
 
   )
 where
@@ -176,6 +177,9 @@ askConnection = connection <$> ask
 
 askCache :: GP ResolutionCache
 askCache = cache <$> ask
+
+runGP :: (MonadIO m, IConnection conn) => conn -> RIO Ctx a -> m a
+runGP conn = runRIO (Ctx (ConnWrapper conn) mempty)
 
 -- These instances are needed to make the Convertible type class work with Enum types out of the box.
 instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible SqlValue a where

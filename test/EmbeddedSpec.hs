@@ -1,13 +1,27 @@
 {-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
+module EmbeddedSpec
+  ( test
+  , spec
+  ) where
 
-module Embedded (main) where
+import          Test.Hspec
+import          Data.Data
+import          Database.HDBC
+import          Database.HDBC.Sqlite3
+import          GenericPersistence
+import          RIO    
 
---import           Data.Data             (Data)
-import           Database.HDBC         
-import           Database.HDBC.Sqlite3 (connectSqlite3)
-import           GenericPersistence    
-import           RIO
+-- `test` is here so that this module can be run from GHCi on its own.  It is
+-- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
+test :: IO ()
+test = hspec spec
 
+withDatabase :: RIO Ctx a -> IO a
+withDatabase action = do
+  conn <- connectSqlite3 ":memory:"
+  runGP conn $ do
+    _ <- setupTableFor :: GP Article
+    action
 
 data Article = Article
   { articleID :: Int,
@@ -15,14 +29,14 @@ data Article = Article
     author    :: Author,
     year      :: Int
   }
-  deriving (Data, Show)
+  deriving (Data, Show, Eq)
 
 data Author = Author
   { authorID :: Int,
     name     :: String,
     address  :: String
   }
-  deriving (Data, Show)  
+  deriving (Data, Show, Eq)  
 
 instance Entity Article where
 
@@ -56,35 +70,15 @@ article = Article
       address = "Boston"}, 
     year = 2018}
 
-main :: IO ()
-main = do
-  -- connect to a database
-  conn <- connectSqlite3 "sqlite.db"
-  let ctx = Ctx (ConnWrapper conn) mempty
-  runRIO ctx $ do
-
-    _ <- setupTableFor :: GP Article
-  
-    insert article
-  
-    article' <- retrieveById "1" :: GP (Maybe Article)
-    liftIO $ print article'
-  
-    persist article {title = "Persistence without Boilerplate (updated)"}
-  
-    article'' <- retrieveById "1" :: GP (Maybe Article)
-    liftIO $ print article''
-  
-    delete article
-  
-    allArticles <- retrieveAll :: GP [Article]
-    liftIO $ print allArticles
-
-  -- close connection
-  disconnect conn
-
-
-
-
+spec :: Spec
+spec = do
+  describe "Handling of Embedded Objects" $ do
+    it "works like a charm" $ 
+      withDatabase $ do
+        insert article
+        article' <- retrieveById "1" :: GP (Maybe Article)
+        liftIO $ article' `shouldBe` Just article
+        allArticles <- retrieveAll :: GP [Article]
+        liftIO $ allArticles `shouldBe` [article]
 
 

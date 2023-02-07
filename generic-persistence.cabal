@@ -83,6 +83,7 @@ test-suite generic-persistence-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      EmbeddedSpec
       GenericPersistenceSpec
       Paths_generic_persistence
   hs-source-dirs:

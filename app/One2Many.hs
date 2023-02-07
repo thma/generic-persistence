@@ -6,8 +6,6 @@ import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
 import RIO
 import Data.Maybe (fromJust)
-import Data.Dynamic
-
 
 
 data Article = Article
@@ -108,8 +106,6 @@ arthur = Author
   address = "Mars Colonies", 
   articles = [article2, article3]}    
 
-runGP :: (MonadIO m, IConnection conn) => conn -> RIO Ctx a -> m a
-runGP conn = runRIO (Ctx (ConnWrapper conn) mempty)
 
 main :: IO ()
 main = do
