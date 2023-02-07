@@ -27,6 +27,7 @@ dependencies:
 - ghc-prim
 - syb
 - transformers
+- exceptions
 - HDBC-sqlite3 #>= 2.3.3.1
 - convertible
 - HDBC #>= 2.4.0.4
@@ -34,7 +35,6 @@ dependencies:
 - time
 - text
 - rio
-
 
 ghc-options:
 - -Wall

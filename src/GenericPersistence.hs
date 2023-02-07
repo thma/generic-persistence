@@ -36,7 +36,7 @@ import           Entity
 import           RecordtypeReflection
 import           SqlGenerator
 import           TypeInfo
-import           Data.Dynamic (toDyn, fromDynamic, Dynamic)
+import           Data.Dynamic (toDyn, fromDynamic)
 import           Data.Data 
 import Data.Convertible.Base (Convertible(safeConvert))
 import           RIO
@@ -59,7 +59,7 @@ import           RIO
 -- An error is thrown if there are more than one entity with the given id.
 retrieveById :: forall a id. (Entity a, Convertible id SqlValue) => id -> GP (Maybe a)
 retrieveById idx = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   resultRowsSqlValues <- liftIO $ quickQuery conn stmt [eid]
   case resultRowsSqlValues of
     []          -> pure Nothing
@@ -76,7 +76,7 @@ retrieveById idx = do
 --  The type `a` is determined by the context of the function call.
 retrieveAll :: forall a. (Entity a) => GP [a]
 retrieveAll = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   resultRows <- liftIO $ quickQuery conn stmt []
   mapM fromRow resultRows
   where
@@ -85,7 +85,7 @@ retrieveAll = do
 
 retrieveAllWhere :: forall a. (Entity a) => String -> SqlValue -> GP [a]
 retrieveAllWhere field val = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   resultRows <- liftIO $ quickQuery conn stmt [val]
   mapM fromRow resultRows
   where
@@ -98,7 +98,7 @@ retrieveAllWhere field val = do
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: (Entity a) => a -> GP ()
 persist entity = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   resultRows <- liftIO $ quickQuery conn preparedSelectStmt [eid]
   case resultRows of
     []           -> insert entity
@@ -112,7 +112,7 @@ persist entity = do
 -- | A function that explicitely inserts an entity into a database.
 insert :: (Entity a) => a -> GP ()
 insert entity = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   row <- toRow entity
   _rowcount <- liftIO $ run conn (insertStmtFor entity) row
   liftIO $ commit conn
@@ -120,21 +120,21 @@ insert entity = do
 -- | A function that explicitely updates an entity in a database.
 update :: (Entity a) => a -> GP ()
 update entity = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   row <- toRow entity
   _rowcount <- liftIO $ run conn (updateStmtFor entity) (row ++ [idValue entity])
   liftIO $ commit conn
 
 delete :: (Entity a) => a -> GP ()
 delete entity = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   _rowCount <- liftIO $ run conn (deleteStmtFor entity) [idValue entity]
   liftIO $ commit conn
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
-setupTableFor :: forall a. (Entity a) =>  GP a
+setupTableFor :: forall a. (Entity a) => GP a
 setupTableFor = do
-  Ctx conn _rc <- ask
+  conn <- askConnection
   _ <- liftIO $ runRaw conn (dropTableStmtFor ti)
   _ <- liftIO $ runRaw conn (createTableStmtFor ti)
   liftIO $ commit conn
@@ -148,7 +148,7 @@ setupTableFor = do
 --   The Entity is identified by its EntityId, which is a (typeRep, idValue) tuple.
 getElseRetrieve :: forall a . (Entity a) => EntityId -> GP (Maybe a)
 getElseRetrieve eid@(_tr,pk) = do
-  Ctx _conn rc <- ask
+  rc <- askCache
   case lookup eid rc of
     Just dyn -> case fromDynamic dyn :: Maybe a of
       Just e -> pure (Just e)
@@ -157,10 +157,9 @@ getElseRetrieve eid@(_tr,pk) = do
 
 
 extendCtxCache :: Entity a => a -> Ctx -> Ctx
-extendCtxCache x (Ctx conn rc) = Ctx conn (toCachePair x:rc)
+extendCtxCache x (Ctx conn rc) = Ctx conn (cacheEntry : rc)
   where
-    toCachePair :: (Entity a) => a -> (EntityId, Dynamic)
-    toCachePair a = (entityId a, toDyn a)
+    cacheEntry = (entityId x, toDyn x)
 
 
 -- | Computes the EntityId of an entity.
@@ -171,6 +170,12 @@ entityId x = (typeOf x, idValue x)
 -- | A function that returns the primary key value of an entity as a SqlValue.
 idValue :: forall a. (Entity a) => a -> SqlValue
 idValue x = fieldValue x (idField x)
+
+askConnection :: GP ConnWrapper
+askConnection = connection <$> ask
+
+askCache :: GP ResolutionCache
+askCache = cache <$> ask
 
 -- These instances are needed to make the Convertible type class work with Enum types out of the box.
 instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible SqlValue a where

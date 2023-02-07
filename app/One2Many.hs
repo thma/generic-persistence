@@ -5,6 +5,8 @@ import           Database.HDBC
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
 import RIO
+import Data.Maybe (fromJust)
+import Data.Dynamic
 
 
 
@@ -32,9 +34,10 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
+  fromRow :: [SqlValue] -> GP Article
   fromRow row = local (extendCtxCache rawArticle) $ do
-    maybeAuthor <- retrieveById (row !! 2) :: GP (Maybe Author)
-    let author = fromMaybe (error "Author not found") maybeAuthor
+    maybeAuthor <- getElseRetrieve (entityId rawAuthor)
+    let author = fromJust maybeAuthor
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
@@ -53,6 +56,7 @@ instance Entity Author where
                        ("address", "address")
                       ]
 
+  fromRow :: [SqlValue] -> GP Author
   fromRow row = local (extendCtxCache rawAuthor) $ do
     articlesByAuth <- retrieveAllWhere (idField rawAuthor) (idValue rawAuthor) :: GP [Article]
     pure $ rawAuthor {articles= articlesByAuth}
@@ -60,6 +64,7 @@ instance Entity Author where
       col i = fromSql (row !! i)
       rawAuthor = Author (col 0) (col 1) (col 2) []
 
+  toRow :: Author -> GP [SqlValue]
   toRow a = do 
     return [toSql (authorID a), toSql (name a), toSql (address a)]
 
@@ -103,12 +108,14 @@ arthur = Author
   address = "Mars Colonies", 
   articles = [article2, article3]}    
 
+runGP :: (MonadIO m, IConnection conn) => conn -> RIO Ctx a -> m a
+runGP conn = runRIO (Ctx (ConnWrapper conn) mempty)
+
 main :: IO ()
 main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
-  let ctx = Ctx (ConnWrapper conn) mempty 
-  runRIO ctx $ do
+  runGP conn $ do
 
     _ <- setupTableFor :: GP Article
     _ <- setupTableFor :: GP Author
@@ -117,6 +124,8 @@ main = do
     insert article2
     insert article3
     persist arthur
+
+    liftIO $ putStrLn "OK"
   
     article' <- retrieveById "1" :: GP(Maybe Article)
     liftIO $ print article'
