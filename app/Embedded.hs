@@ -2,10 +2,11 @@
 
 module Embedded (main) where
 
-import           Data.Data             (Data)
+--import           Data.Data             (Data)
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
+import           RIO
 
 
 data Article = Article
@@ -34,14 +35,12 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
-  fromRow :: conn -> ResolutionCache -> [SqlValue] -> IO Article
-  fromRow _conn _rc row = return $ Article (col 0) (col 1) author (col 5)
+  fromRow row = return $ Article (col 0) (col 1) author (col 5)
     where
       col i = fromSql (row !! i)
       author = Author (col 2) (col 3) (col 4)
 
-  toRow :: conn -> ResolutionCache -> Article -> IO [SqlValue]
-  toRow _conn _rc a = return [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
+  toRow  a = return [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
     where 
       authID = authorID (author a)
       authorName = name (author a)
@@ -61,23 +60,25 @@ main :: IO ()
 main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
+  let ctx = Ctx (ConnWrapper conn) mempty
+  runRIO ctx $ do
 
-  _ <- setupTableFor conn :: IO Article
-
-  insert conn article
-
-  article' <- retrieveById conn mempty "1" :: IO (Maybe Article)
-  print article'
-
-  persist conn article {title = "Persistence without Boilerplate (updated)"}
-
-  article'' <- retrieveById conn mempty "1" :: IO (Maybe Article)
-  print article''
-
-  delete conn article
-
-  allArticles <- retrieveAll conn mempty :: IO [Article]
-  print allArticles
+    _ <- setupTableFor :: GP Article
+  
+    insert article
+  
+    article' <- retrieveById "1" :: GP (Maybe Article)
+    liftIO $ print article'
+  
+    persist article {title = "Persistence without Boilerplate (updated)"}
+  
+    article'' <- retrieveById "1" :: GP (Maybe Article)
+    liftIO $ print article''
+  
+    delete article
+  
+    allArticles <- retrieveAll :: GP [Article]
+    liftIO $ print allArticles
 
   -- close connection
   disconnect conn

@@ -19,24 +19,27 @@ module GenericPersistence
     ResolutionCache,
     EntityId,
     entityId,
-    put,
     getElseRetrieve,
     TypeInfo (..),
     typeInfoFromContext,
     typeInfo,
+    Ctx (..),
+    GP,
+    extendCtxCache,
+
   )
 where
 
 import Data.Convertible ( Convertible, ConvertResult )
-import           Database.HDBC        (IConnection, SqlValue, commit,
-                                       quickQuery, run, toSql, runRaw, fromSql)
+import           Database.HDBC        
 import           Entity
 import           RecordtypeReflection
 import           SqlGenerator
 import           TypeInfo
-import           Data.Dynamic (toDyn, fromDynamic)
+import           Data.Dynamic (toDyn, fromDynamic, Dynamic)
 import           Data.Data 
 import Data.Convertible.Base (Convertible(safeConvert))
+import           RIO
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -46,37 +49,45 @@ import Data.Convertible.Base (Convertible(safeConvert))
  HDBC is used to access the RDBMS.
 --}
 
+
+
+
 -- | A function that retrieves an entity from a database.
--- The function takes an HDBC connection and an entity id as parameters.
--- It returns the entity of type `a` with the given id.
--- An error is thrown if no such entity exists or if there are more than one entity with the given id.
-retrieveById :: forall a conn id. (Entity a, IConnection conn, Convertible id SqlValue) => conn -> ResolutionCache -> id -> IO (Maybe a)
-retrieveById conn rc idx = do
-  resultRowsSqlValues <- quickQuery conn stmt [eid]
+-- The function takes entity id as parameter.
+-- If an entity with the given id exists in the database, it is returned as a Just value.
+-- If no such entity exists, Nothing is returned.
+-- An error is thrown if there are more than one entity with the given id.
+retrieveById :: forall a id. (Entity a, Convertible id SqlValue) => id -> GP (Maybe a)
+retrieveById idx = do
+  Ctx conn _rc <- ask
+  resultRowsSqlValues <- liftIO $ quickQuery conn stmt [eid]
   case resultRowsSqlValues of
-    []          -> pure Nothing --error $ "No " ++ show (typeConstructor ti) ++ " found for id " ++ show eid
-    [singleRow] -> fmap Just (fromRow conn rc singleRow)
+    []          -> pure Nothing
+    [singleRow] -> Just <$> fromRow singleRow
     _ -> error $ "More than one" ++ show (typeConstructor ti) ++ " found for id " ++ show eid
   where
     ti = typeInfoFromContext :: TypeInfo a
     stmt = selectStmtFor ti
     eid = toSql idx
 
+
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
 --  The type `a` is determined by the context of the function call.
-retrieveAll :: forall a conn. (Entity a, IConnection conn) => conn -> ResolutionCache -> IO [a]
-retrieveAll conn rc = do
-  resultRows <- quickQuery conn stmt []
-  mapM (fromRow conn rc) resultRows
+retrieveAll :: forall a. (Entity a) => GP [a]
+retrieveAll = do
+  Ctx conn _rc <- ask
+  resultRows <- liftIO $ quickQuery conn stmt []
+  mapM fromRow resultRows
   where
     ti = typeInfoFromContext :: TypeInfo a
     stmt = selectAllStmtFor ti 
 
-retrieveAllWhere :: forall a conn. (Entity a, IConnection conn) => conn -> ResolutionCache -> String -> SqlValue -> IO [a]
-retrieveAllWhere conn rc field val = do
-  resultRows <- quickQuery conn stmt [val]
-  mapM (fromRow conn rc) resultRows
+retrieveAllWhere :: forall a. (Entity a) => String -> SqlValue -> GP [a]
+retrieveAllWhere field val = do
+  Ctx conn _rc <- ask
+  resultRows <- liftIO $ quickQuery conn stmt [val]
+  mapM fromRow resultRows
   where
     ti = typeInfoFromContext :: TypeInfo a
     stmt = selectAllWhereStmtFor ti field
@@ -85,12 +96,13 @@ retrieveAllWhere conn rc field val = do
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
-persist :: (IConnection conn, Entity a) => conn -> a -> IO ()
-persist conn entity = do
-  resultRows <- quickQuery conn preparedSelectStmt [eid]
+persist :: (Entity a) => a -> GP ()
+persist entity = do
+  Ctx conn _rc <- ask
+  resultRows <- liftIO $ quickQuery conn preparedSelectStmt [eid]
   case resultRows of
-    []           -> insert conn entity
-    [_singleRow] -> update conn entity
+    []           -> insert entity
+    [_singleRow] -> update entity
     _            -> error $ "More than one entity found for id " ++ show eid
   where
     ti = typeInfo entity
@@ -98,30 +110,34 @@ persist conn entity = do
     preparedSelectStmt = selectStmtFor ti
 
 -- | A function that explicitely inserts an entity into a database.
-insert :: (IConnection conn, Entity a) => conn -> a -> IO ()
-insert conn entity = do
-  row <- toRow conn [] entity
-  _rowcount <- run conn (insertStmtFor entity) row
-  commit conn
+insert :: (Entity a) => a -> GP ()
+insert entity = do
+  Ctx conn _rc <- ask
+  row <- toRow entity
+  _rowcount <- liftIO $ run conn (insertStmtFor entity) row
+  liftIO $ commit conn
 
 -- | A function that explicitely updates an entity in a database.
-update :: (IConnection conn, Entity a) => conn -> a -> IO ()
-update conn entity = do
-  row <- toRow conn [] entity
-  _rowcount <- run conn (updateStmtFor entity) (row ++ [idValue entity])
-  commit conn
+update :: (Entity a) => a -> GP ()
+update entity = do
+  Ctx conn _rc <- ask
+  row <- toRow entity
+  _rowcount <- liftIO $ run conn (updateStmtFor entity) (row ++ [idValue entity])
+  liftIO $ commit conn
 
-delete :: (IConnection conn, Entity a) => conn -> a -> IO ()
-delete conn entity = do
-  _rowCount <- run conn (deleteStmtFor entity) [idValue entity]
-  commit conn
+delete :: (Entity a) => a -> GP ()
+delete entity = do
+  Ctx conn _rc <- ask
+  _rowCount <- liftIO $ run conn (deleteStmtFor entity) [idValue entity]
+  liftIO $ commit conn
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
-setupTableFor :: forall a conn. (Entity a, IConnection conn) => conn -> IO a
-setupTableFor conn = do
-  _ <- runRaw conn (dropTableStmtFor ti)
-  _ <- runRaw conn (createTableStmtFor ti)
-  commit conn
+setupTableFor :: forall a. (Entity a) =>  GP a
+setupTableFor = do
+  Ctx conn _rc <- ask
+  _ <- liftIO $ runRaw conn (dropTableStmtFor ti)
+  _ <- liftIO $ runRaw conn (createTableStmtFor ti)
+  liftIO $ commit conn
   return x
   where
     ti = typeInfoFromContext :: TypeInfo a
@@ -130,19 +146,22 @@ setupTableFor conn = do
 
 -- | Lookup an entity in the cache, or retrieve it from the database.
 --   The Entity is identified by its EntityId, which is a (typeRep, idValue) tuple.
-getElseRetrieve :: forall a conn . (IConnection conn, Entity a) => conn -> ResolutionCache -> EntityId -> IO (Maybe a)
-getElseRetrieve conn rc eid@(_tr,pk) =
+getElseRetrieve :: forall a . (Entity a) => EntityId -> GP (Maybe a)
+getElseRetrieve eid@(_tr,pk) = do
+  Ctx _conn rc <- ask
   case lookup eid rc of
     Just dyn -> case fromDynamic dyn :: Maybe a of
       Just e -> pure (Just e)
       Nothing -> error "should not be possible" 
-    Nothing -> retrieveById conn rc pk :: IO (Maybe a)
+    Nothing -> retrieveById pk :: GP (Maybe a)
 
--- | Place an entity in the cache. 
---   The Entity is identified by its EntityId, which is a (typeRep, idValue) tuple.
---   The Entity is stored as a Dynamic value to provide polymorphism.
-put :: (Entity a) => ResolutionCache -> a -> ResolutionCache
-put rc x = (entityId x, toDyn x) : rc
+
+extendCtxCache :: Entity a => a -> Ctx -> Ctx
+extendCtxCache x (Ctx conn rc) = Ctx conn (toCachePair x:rc)
+  where
+    toCachePair :: (Entity a) => a -> (EntityId, Dynamic)
+    toCachePair a = (entityId a, toDyn a)
+
 
 -- | Computes the EntityId of an entity.
 --   The EntityId of an entity is a (typeRep, idValue) tuple.

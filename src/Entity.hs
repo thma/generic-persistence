@@ -10,15 +10,18 @@ module Entity
     evidenceFrom,
     ResolutionCache,
     EntityId,
+    Ctx (..),
+    GP,
   )
 where
 
 import           Data.Char            (toLower)
-import           Data.Data            (Data, TypeRep, fromConstr)
-import           Database.HDBC        (SqlValue, fromSql, IConnection)
+import           Data.Data            
+import           Database.HDBC        (SqlValue, fromSql, ConnWrapper)
 import           RecordtypeReflection (gFromRow, gToRow)
-import           TypeInfo             (TypeInfo (fieldNames, fieldTypes, typeConstructor), typeInfo, typeName, typeInfoFromContext)
-import Data.Dynamic
+import           TypeInfo             
+import           Data.Dynamic
+import           RIO
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping 
@@ -44,10 +47,10 @@ but that are not explicitely encoded in the type class definition:
 
 class (Data a) => Entity a where
   -- | Converts a database row to a value of type 'a'.
-  fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO a
+  fromRow :: [SqlValue] -> GP a
 
   -- | Converts a value of type 'a' to a database row.
-  toRow :: IConnection conn => conn -> ResolutionCache -> a -> IO [SqlValue]
+  toRow :: a -> GP [SqlValue]
 
   -- | Returns the name of the primary key field for a type 'a'.
   idField :: a -> String
@@ -59,12 +62,12 @@ class (Data a) => Entity a where
   tableName :: a -> String
 
   -- | generic default implementation
-  default fromRow :: conn -> ResolutionCache -> [SqlValue] -> IO a
-  fromRow _conn _cache = pure . gFromRow
+  default fromRow :: [SqlValue] -> GP a
+  fromRow = pure . gFromRow
 
   -- | generic default implementation
-  default toRow :: conn -> ResolutionCache -> a -> IO [SqlValue]
-  toRow _conn _cache = pure . gToRow
+  default toRow :: a -> GP [SqlValue]
+  toRow = pure . gToRow
 
   -- | default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
@@ -81,6 +84,16 @@ class (Data a) => Entity a where
   -- | default implementation: the type name is used as table name
   default tableName :: a -> String
   tableName = typeName . typeInfo
+
+-- | type Ctx defines the context in which the persistence operations are executed.
+-- It contains a connection to the database and a resolution cache for circular lookups.
+data Ctx = 
+  Ctx
+    {connection :: ConnWrapper,
+     cache :: ResolutionCache
+    }
+
+type GP = RIO Ctx
 
 -- | The EntityId is a tuple of the TypeRep and the primary key value of an Entity.
 --   It is used as a key in the resolution cache.
@@ -105,7 +118,7 @@ columnNameFor x fieldName =
 fieldTypeFor :: Entity a => a -> String -> TypeRep
 fieldTypeFor x fieldName =
   case maybeFieldTypeFor x fieldName of
-    Just typeRep -> typeRep
+    Just tyRep -> tyRep
     Nothing -> error ("fieldTypeFor: " ++ toString x ++ 
                       " has no field " ++ fieldName)
 

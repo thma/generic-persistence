@@ -33,6 +33,7 @@ dependencies:
 - bytestring
 - time
 - text
+- rio
 
 
 ghc-options:

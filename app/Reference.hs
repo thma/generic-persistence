@@ -1,12 +1,13 @@
 {-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
 module Reference (main) where
 
-import           Data.Data             (Data)
+import           Data.Data             
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
 import SqlGenerator (createTableStmtFor, dropTableStmtFor)
 import Data.Maybe
+import RIO
 
 
 data Article = Article
@@ -32,16 +33,16 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
-  fromRow conn rc row = do
-    maybeAuthor <- retrieveById conn rc (row !! 2) :: IO (Maybe Author)
+  fromRow row = do
+    maybeAuthor <- retrieveById (row !! 2) :: GP (Maybe Author)
     let author = fromMaybe (error "Author not found") maybeAuthor
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
       
 
-  toRow conn _rc a = do 
-    persist conn (author a)
+  toRow a = do 
+    persist (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
 
@@ -60,28 +61,30 @@ main :: IO ()
 main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
+  let ctx = Ctx (ConnWrapper conn) mempty 
+  runRIO ctx $ do
 
-  _ <- setupTableFor conn :: IO Article
-  _ <- setupTableFor conn :: IO Author
-
-  insert conn article
-  putStrLn "OK"
-
-  article' <- retrieveById conn mempty "1" :: IO (Maybe Article)
-  print article'
-
-  persist conn article {title = "Persistence without Boilerplate (updated)"}
-
-  article'' <- retrieveById conn mempty "1" :: IO (Maybe Article)
-  print article''
-
-  print $ dropTableStmtFor (typeInfo article)
-  print $ createTableStmtFor (typeInfo article)
-
-  delete conn article
-
-  allArticles <- retrieveAll conn mempty :: IO [Article]
-  print allArticles
+    _ <- setupTableFor :: GP Article
+    _ <- setupTableFor :: GP Author
+  
+    insert article
+    liftIO $ putStrLn "OK"
+  
+    article' <- retrieveById "1" :: GP (Maybe Article)
+    liftIO $ print article'
+  
+    persist article {title = "Persistence without Boilerplate (updated)"}
+  
+    article'' <- retrieveById "1" :: GP (Maybe Article)
+    liftIO $ print article''
+  
+    liftIO $ print $ dropTableStmtFor (typeInfo article)
+    liftIO $ print $ createTableStmtFor (typeInfo article)
+  
+    delete article
+  
+    allArticles <- retrieveAll :: GP [Article]
+    liftIO $ print allArticles
 
   -- close connection
   disconnect conn

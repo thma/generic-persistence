@@ -1,12 +1,10 @@
-{-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
-
 module One2Many (main) where
 
 import           Data.Data          
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GenericPersistence    
-import Data.Maybe (fromMaybe)
+import RIO
 
 
 
@@ -34,22 +32,18 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
-  fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO Article
-  fromRow conn rc row = do
-    maybeAuthor <- getElseRetrieve conn rc' (entityId rawAuthor)
-    let author = fromMaybe (error "could not find author") maybeAuthor 
+  fromRow row = local (extendCtxCache rawArticle) $ do
+    maybeAuthor <- retrieveById (row !! 2) :: GP (Maybe Author)
+    let author = fromMaybe (error "Author not found") maybeAuthor
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
       rawAuthor = (evidence :: Author) {authorID = col 2}
       rawArticle = Article (col 0) (col 1) rawAuthor (col 3)
-      rc' = put rc rawArticle
-      
-  toRow :: IConnection conn => conn -> ResolutionCache -> Article -> IO [SqlValue]
-  toRow conn _rc a = do 
-    persist conn (author a)
+    
+  toRow a = do 
+    persist (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
-
 
 
 instance Entity Author where
@@ -59,17 +53,14 @@ instance Entity Author where
                        ("address", "address")
                       ]
 
-  fromRow :: IConnection conn => conn -> ResolutionCache -> [SqlValue] -> IO Author
-  fromRow conn rc row = do
-    articlesByAuth <- retrieveAllWhere conn rc' (idField rawAuthor) (idValue rawAuthor) :: IO [Article]
+  fromRow row = local (extendCtxCache rawAuthor) $ do
+    articlesByAuth <- retrieveAllWhere (idField rawAuthor) (idValue rawAuthor) :: GP [Article]
     pure $ rawAuthor {articles= articlesByAuth}
     where
       col i = fromSql (row !! i)
       rawAuthor = Author (col 0) (col 1) (col 2) []
-      rc' = put rc rawAuthor
-      
-  toRow :: conn -> ResolutionCache -> Author -> IO [SqlValue]
-  toRow _conn _rc a = do 
+
+  toRow a = do 
     return [toSql (authorID a), toSql (name a), toSql (address a)]
 
 article1 :: Article
@@ -116,20 +107,22 @@ main :: IO ()
 main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
+  let ctx = Ctx (ConnWrapper conn) mempty 
+  runRIO ctx $ do
 
-  _ <- setupTableFor conn :: IO Article
-  _ <- setupTableFor conn :: IO Author
-
-  insert conn article1
-  insert conn article2
-  insert conn article3
-  persist conn arthur
-
-  article' <- retrieveById conn mempty "1" :: IO (Maybe Article)
-  print article'
-
-  arthur' <- retrieveById conn mempty "2" :: IO (Maybe Author)
-  print arthur'
+    _ <- setupTableFor :: GP Article
+    _ <- setupTableFor :: GP Author
+  
+    insert article1
+    insert article2
+    insert article3
+    persist arthur
+  
+    article' <- retrieveById "1" :: GP(Maybe Article)
+    liftIO $ print article'
+  
+    arthur' <- retrieveById "2" :: GP (Maybe Author)
+    liftIO $ print arthur'
 
   -- close connection
   disconnect conn

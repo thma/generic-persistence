@@ -44,6 +44,7 @@ library
     , convertible
     , ghc
     , ghc-prim
+    , rio
     , syb
     , text
     , time
@@ -69,6 +70,7 @@ executable generic-persistence-demo
     , generic-persistence
     , ghc
     , ghc-prim
+    , rio
     , syb
     , text
     , time
@@ -96,6 +98,7 @@ test-suite generic-persistence-test
     , ghc-prim
     , hspec
     , hspec-discover
+    , rio
     , syb
     , text
     , time
