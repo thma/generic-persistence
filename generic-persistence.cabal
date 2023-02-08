@@ -26,6 +26,7 @@ source-repository head
 
 library
   exposed-modules:
+      Database.GP
       Database.GP.Entity
       Database.GP.GenericPersistence
       Database.GP.RecordtypeReflection
@@ -55,7 +56,6 @@ library
 executable generic-persistence-demo
   main-is: Main.hs
   other-modules:
-      One2Many
       Paths_generic_persistence
   hs-source-dirs:
       app
