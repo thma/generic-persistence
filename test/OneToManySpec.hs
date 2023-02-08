@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
-module ReferenceSpec
+module OneToManySpec
   ( test
   , spec
   ) where
@@ -10,6 +10,7 @@ import          Database.HDBC
 import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence
 import          RIO    
+import          Data.Maybe (fromJust)
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
@@ -35,9 +36,10 @@ data Article = Article
 data Author = Author
   { authorID :: Int,
     name     :: String,
-    address  :: String
+    address  :: String,
+    articles :: [Article]
   }
-  deriving (Data, Entity, Show, Eq)  
+  deriving (Data, Show, Eq)  
 
 instance Entity Article where
   fieldsToColumns :: Article -> [(String, String)]
@@ -47,42 +49,91 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
-  fromRow row = do
-    maybeAuthor <- retrieveById (row !! 2) :: GP (Maybe Author)
-    let author = fromMaybe (error "Author not found") maybeAuthor
+  fromRow :: [SqlValue] -> GP Article
+  fromRow row = local (extendCtxCache rawArticle) $ do
+    maybeAuthor <- getElseRetrieve (entityId rawAuthor)
+    let author = fromJust maybeAuthor
     pure $ Article (col 0) (col 1) author (col 3)
     where
       col i = fromSql (row !! i)
-      
+      rawAuthor = (evidence :: Author) {authorID = col 2}
+      rawArticle = Article (col 0) (col 1) rawAuthor (col 3)
+    
   toRow a = do 
     persist (author a)
     return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
-article :: Article
-article = Article 
+
+instance Entity Author where
+  fieldsToColumns :: Author -> [(String, String)]
+  fieldsToColumns _ = [("authorID", "authorID"),
+                       ("name", "name"), 
+                       ("address", "address")
+                      ]
+
+  fromRow :: [SqlValue] -> GP Author
+  fromRow row = local (extendCtxCache rawAuthor) $ do
+    articlesByAuth <- retrieveAllWhere (idField rawAuthor) (idValue rawAuthor) :: GP [Article]
+    pure $ rawAuthor {articles= articlesByAuth}
+    where
+      col i = fromSql (row !! i)
+      rawAuthor = Author (col 0) (col 1) (col 2) []
+
+  toRow :: Author -> GP [SqlValue]
+  toRow a = do 
+    return [toSql (authorID a), toSql (name a), toSql (address a)]
+
+article1 :: Article
+article1 = Article 
   { articleID = 1, 
     title = "Persistence without Boilerplate", 
-    author = arthur, 
+    author = Author 
+      {authorID = 1, 
+      name = "Max Millian", 
+      address = "Boston",
+      articles = []}, 
     year = 2018}
-    
+
+article2 :: Article
+article2 = Article 
+  { articleID = 2, 
+    title = "Boilerplate for Dummies", 
+    author = arthur, 
+    year = 2020}
+
+article3 :: Article
+article3 = Article 
+  { articleID = 3, 
+    title = "The return of the boilerplate", 
+    author = arthur, 
+    year = 2022}
+
 arthur :: Author
 arthur = Author 
   {authorID = 2, 
   name = "Arthur Miller", 
-  address = "Denver"}    
+  address = "Denver", 
+  articles = [article2, article3]}    
 
 spec :: Spec
 spec = do
-  describe "Handling of 1:1 References" $ do
+  describe "Handling of 1:N References" $ do
     it "works like a charm" $ 
       withDatabase $ do
-        insert article
+        insert article1
+        insert article2
+        insert article3
 
-        author' <- retrieveById "2" :: GP (Maybe Author)
-        liftIO $ author' `shouldBe` Just arthur
+        authors <- retrieveAll :: GP [Author]
+        liftIO $ length authors `shouldBe` 2
+        --liftIO $ print authors
+        articles <- retrieveAll :: GP [Article]
+        liftIO $ length articles `shouldBe` 3
         
-        article' <- retrieveById "1" :: GP (Maybe Article)
-        liftIO $ article' `shouldBe` Just article
+        article' <- retrieveById "3" :: GP (Maybe Article)
+        let art = fromJust article'
+        liftIO $ (name (author art)) `shouldBe` "Arthur Miller" 
+        
         
 
 
