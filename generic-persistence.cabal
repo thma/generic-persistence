@@ -56,7 +56,6 @@ executable generic-persistence-demo
   main-is: Main.hs
   other-modules:
       One2Many
-      Reference
       Paths_generic_persistence
   hs-source-dirs:
       app
@@ -84,6 +83,7 @@ test-suite generic-persistence-test
   other-modules:
       EmbeddedSpec
       GenericPersistenceSpec
+      ReferenceSpec
       Paths_generic_persistence
   hs-source-dirs:
       test
