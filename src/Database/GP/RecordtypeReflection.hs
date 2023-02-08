@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies     #-}
 
-module RecordtypeReflection
+module Database.GP.RecordtypeReflection
   ( 
     fieldValue,
     gFromRow,
@@ -28,7 +28,7 @@ import           Database.HDBC                  (SqlValue, fromSql, toSql)
 import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
-import           TypeInfo
+import           Database.GP.TypeInfo
 
 -- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
 --  Example: fieldValue (Person "John" 42) "name" = SqlString "John"

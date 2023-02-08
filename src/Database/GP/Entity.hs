@@ -1,6 +1,6 @@
 {-# LANGUAGE DefaultSignatures #-}
 
-module Entity
+module Database.GP.Entity
   ( Entity (..),
     columnNameFor,
     fieldTypeFor,
@@ -18,8 +18,8 @@ where
 import           Data.Char            (toLower)
 import           Data.Data            
 import           Database.HDBC        (SqlValue, fromSql, ConnWrapper)
-import           RecordtypeReflection (gFromRow, gToRow)
-import           TypeInfo             
+import           Database.GP.RecordtypeReflection (gFromRow, gToRow)
+import           Database.GP.TypeInfo             
 import           Data.Dynamic
 import           RIO
 

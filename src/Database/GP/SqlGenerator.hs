@@ -1,4 +1,4 @@
-module SqlGenerator
+module Database.GP.SqlGenerator
   ( insertStmtFor,
     updateStmtFor,
     selectStmtFor,
@@ -11,8 +11,8 @@ module SqlGenerator
 where
 
 import           Data.List (intercalate)
-import           Entity
-import           TypeInfo
+import           Database.GP.Entity
+import           Database.GP.TypeInfo
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.

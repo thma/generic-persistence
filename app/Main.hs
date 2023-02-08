@@ -1,11 +1,11 @@
 {-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
 module Main (main, main1) where
 
---import           Data.Data             (Data)
+import           Data.Data             (Data)
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3
-import           GenericPersistence    
-import           RIO
+import           Database.GP.GenericPersistence    
+--import           RIO
 
 
 -- | A data type with several fields, using record syntax.
@@ -41,9 +41,8 @@ main :: IO ()
 main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
-  let ctx = Ctx (ConnWrapper conn) mempty 
+  runGP conn $ do
 
-  runRIO ctx $ do 
     -- initialize Person table
     _ <- setupTableFor :: GP Person
     
@@ -75,10 +74,9 @@ main = do
 
 main1 :: IO ()
 main1 = do
-  -- initialize Person table
+  -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
-  let ctx = Ctx (ConnWrapper conn) mempty 
-  runRIO ctx $ do
+  runGP conn $ do
     
     _ <- setupTableFor :: GP Person
     _ <- setupTableFor :: GP Book

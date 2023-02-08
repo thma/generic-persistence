@@ -137,14 +137,11 @@ main = do
 
 ## The Entity type class
 
-[Entity](src/Entity.hs)
+[Entity](src/Database/GP/Entity.hs)
 
 ## Todo
 
-- test cases for embedded 
-- testcases for enums
 - testcases for 1.1
 - testcases for 1:n
-- How to hide the resolution cache from the user api?
 - resolution cache with proper Map
-- introduce nested module names like Database.GP.Entity
+

@@ -3,8 +3,8 @@ module One2Many (main) where
 import           Data.Data          
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
-import           GenericPersistence    
-import RIO
+import           Database.GP.GenericPersistence    
+--import RIO
 import Data.Maybe (fromJust)
 
 

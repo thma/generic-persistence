@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
-module GenericPersistence
+module Database.GP.GenericPersistence
   ( retrieveById,
     retrieveAll,
     retrieveAllWhere,
@@ -27,16 +27,18 @@ module GenericPersistence
     GP,
     extendCtxCache,
     runGP,
-
+    liftIO,
+    local,
+    ask,
   )
 where
 
 import Data.Convertible ( Convertible, ConvertResult )
 import           Database.HDBC        
-import           Entity
-import           RecordtypeReflection
-import           SqlGenerator
-import           TypeInfo
+import           Database.GP.Entity
+import           Database.GP.RecordtypeReflection
+import           Database.GP.SqlGenerator
+import           Database.GP.TypeInfo
 import           Data.Dynamic (toDyn, fromDynamic)
 import           Data.Data 
 import Data.Convertible.Base (Convertible(safeConvert))

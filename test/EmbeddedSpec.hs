@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
 module EmbeddedSpec
   ( test
   , spec
@@ -8,7 +7,7 @@ import          Test.Hspec
 import          Data.Data
 import          Database.HDBC
 import          Database.HDBC.Sqlite3
-import          GenericPersistence
+import          Database.GP.GenericPersistence
 import          RIO    
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is

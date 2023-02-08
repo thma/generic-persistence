@@ -26,11 +26,11 @@ source-repository head
 
 library
   exposed-modules:
-      Entity
-      GenericPersistence
-      RecordtypeReflection
-      SqlGenerator
-      TypeInfo
+      Database.GP.Entity
+      Database.GP.GenericPersistence
+      Database.GP.RecordtypeReflection
+      Database.GP.SqlGenerator
+      Database.GP.TypeInfo
   other-modules:
       Paths_generic_persistence
   hs-source-dirs:
@@ -55,7 +55,6 @@ library
 executable generic-persistence-demo
   main-is: Main.hs
   other-modules:
-      Embedded
       One2Many
       Reference
       Paths_generic_persistence

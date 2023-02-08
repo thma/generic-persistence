@@ -4,10 +4,10 @@ module Reference (main) where
 import           Data.Data             
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3 (connectSqlite3)
-import           GenericPersistence    
-import SqlGenerator (createTableStmtFor, dropTableStmtFor)
+import           Database.GP.GenericPersistence    
+import           Database.GP.SqlGenerator (createTableStmtFor, dropTableStmtFor)
 import Data.Maybe
-import RIO
+--import RIO
 
 
 data Article = Article
@@ -61,8 +61,7 @@ main :: IO ()
 main = do
   -- connect to a database
   conn <- connectSqlite3 "sqlite.db"
-  let ctx = Ctx (ConnWrapper conn) mempty 
-  runRIO ctx $ do
+  runGP conn $ do
 
     _ <- setupTableFor :: GP Article
     _ <- setupTableFor :: GP Author
