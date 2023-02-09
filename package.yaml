@@ -18,7 +18,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/generic-persistence#readme>
+description:         Please see the README on GitHub at <https://github.com/thma/generic-persistence#readme>
 
 language: GHC2021    # See https://ghc-proposals.readthedocs.io/en/latest/proposals/0380-ghc2021.html
 tested-with: GHC==9.2.5, GHC==9.0.2, GHC==8.10.7
