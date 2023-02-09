@@ -10,6 +10,7 @@ import          Database.HDBC
 import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence
 import          RIO    
+import          Data.Maybe
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)

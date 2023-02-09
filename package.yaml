@@ -1,5 +1,5 @@
 name:                generic-persistence
-version:             0.2.0.1
+version:             0.2.0.3
 github:              "thma/generic-persistence"
 license:             BSD3
 author:              "Thomas Mahler"
@@ -36,7 +36,9 @@ dependencies:
 - bytestring
 - time
 - text
-- rio
+#- rio
+- mtl
+- exceptions
 
 ghc-options:
 - -Wall

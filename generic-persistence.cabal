@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           generic-persistence
-version:        0.2.0.1
+version:        0.2.0.2
 synopsis:       Database persistence using generics
 description:    Please see the README on GitHub at <https://github.com/thma/generic-persistence#readme>
 category:       Database
@@ -34,6 +34,7 @@ library
       Database.GP.RecordtypeReflection
       Database.GP.SqlGenerator
       Database.GP.TypeInfo
+      RIO
   other-modules:
       Paths_generic_persistence
   hs-source-dirs:
@@ -48,7 +49,7 @@ library
     , exceptions
     , ghc
     , ghc-prim
-    , rio
+    , mtl
     , syb
     , text
     , time
@@ -72,7 +73,7 @@ executable generic-persistence-demo
     , generic-persistence
     , ghc
     , ghc-prim
-    , rio
+    , mtl
     , syb
     , text
     , time
@@ -105,7 +106,7 @@ test-suite generic-persistence-test
     , ghc-prim
     , hspec
     , hspec-discover
-    , rio
+    , mtl
     , syb
     , text
     , time
