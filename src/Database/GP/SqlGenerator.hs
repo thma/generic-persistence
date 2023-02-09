@@ -1,17 +1,18 @@
-module SqlGenerator
+module Database.GP.SqlGenerator
   ( insertStmtFor,
     updateStmtFor,
     selectStmtFor,
     deleteStmtFor,
     selectAllStmtFor,
+    selectAllWhereStmtFor,
     createTableStmtFor,
     dropTableStmtFor,
   )
 where
 
 import           Data.List (intercalate)
-import           Entity
-import           TypeInfo
+import           Database.GP.Entity
+import           Database.GP.TypeInfo
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -31,10 +32,10 @@ insertStmtFor x =
 
 
 columnNamesFor :: Entity a => a -> [String]
-columnNamesFor x =  columns 
+columnNamesFor x =  map snd fieldColumnPairs
   where
-    fields = fieldsToColumns x 
-    columns = map snd fields
+    fieldColumnPairs = fieldsToColumns x 
+
 
 params :: Int -> [String]
 params n = replicate n "?"
@@ -79,6 +80,19 @@ selectAllStmtFor ti =
   where
     x = evidenceFrom ti :: a
 
+selectAllWhereStmtFor :: forall a. (Entity a) => TypeInfo a -> String -> String
+selectAllWhereStmtFor ti field =
+  "SELECT "
+    ++ intercalate ", " (columnNamesFor x)
+    ++ " FROM "
+    ++ tableName x
+    ++ " WHERE "
+    ++ column
+    ++ " = ?;"
+  where
+    x = evidenceFrom ti :: a
+    column = columnNameFor x field
+
 deleteStmtFor :: Entity a => a -> String
 deleteStmtFor x =
   "DELETE FROM "
@@ -103,7 +117,7 @@ createTableStmtFor ti =
 columnTypeFor :: forall a. (Entity a) => a -> String -> String
 columnTypeFor x field = 
   case fType of
-    "Int" -> "INT"
+    "Int" -> "INTEGER"
     "String" -> "TEXT"
     "Double" -> "REAL"
     "Float" -> "REAL"

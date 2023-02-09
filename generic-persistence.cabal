@@ -26,11 +26,12 @@ source-repository head
 
 library
   exposed-modules:
-      Entity
-      GenericPersistence
-      RecordtypeReflection
-      SqlGenerator
-      TypeInfo
+      Database.GP
+      Database.GP.Entity
+      Database.GP.GenericPersistence
+      Database.GP.RecordtypeReflection
+      Database.GP.SqlGenerator
+      Database.GP.TypeInfo
   other-modules:
       Paths_generic_persistence
   hs-source-dirs:
@@ -42,8 +43,10 @@ library
     , base >=4.7 && <5
     , bytestring
     , convertible
+    , exceptions
     , ghc
     , ghc-prim
+    , rio
     , syb
     , text
     , time
@@ -53,8 +56,6 @@ library
 executable generic-persistence-demo
   main-is: Main.hs
   other-modules:
-      Embedded
-      Reference
       Paths_generic_persistence
   hs-source-dirs:
       app
@@ -65,9 +66,11 @@ executable generic-persistence-demo
     , base >=4.7 && <5
     , bytestring
     , convertible
+    , exceptions
     , generic-persistence
     , ghc
     , ghc-prim
+    , rio
     , syb
     , text
     , time
@@ -78,7 +81,11 @@ test-suite generic-persistence-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      EmbeddedSpec
+      EnumSpec
       GenericPersistenceSpec
+      OneToManySpec
+      ReferenceSpec
       Paths_generic_persistence
   hs-source-dirs:
       test
@@ -90,11 +97,13 @@ test-suite generic-persistence-test
     , base >=4.7 && <5
     , bytestring
     , convertible
+    , exceptions
     , generic-persistence
     , ghc
     , ghc-prim
     , hspec
     , hspec-discover
+    , rio
     , syb
     , text
     , time

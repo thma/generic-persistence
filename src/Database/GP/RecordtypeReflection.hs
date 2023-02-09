@@ -1,6 +1,9 @@
-{-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE GADTs     #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
-module RecordtypeReflection
+
+module Database.GP.RecordtypeReflection
   ( 
     fieldValue,
     gFromRow,
@@ -28,7 +31,7 @@ import           Database.HDBC                  (SqlValue, fromSql, toSql)
 import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
-import           TypeInfo
+import           Database.GP.TypeInfo
 
 -- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
 --  Example: fieldValue (Person "John" 42) "name" = SqlString "John"
@@ -51,10 +54,11 @@ fieldValues :: (Data a) => a -> [Dynamic]
 fieldValues = gmapQ toDyn
 
 gFromRow :: forall a. (Data a) => [SqlValue] -> a
-gFromRow row = expectJust ("can't construct an " ++ tName ++ " instance from " ++ show row) (buildFromRecord ti row)
+gFromRow row = expectJust errMsg (buildFromRecord ti row)
   where
     ti = typeInfoFromContext
     tName = typeName ti
+    errMsg = "can't construct an " ++ tName ++ " instance from " ++ show row
 
 gToRow :: (Data a) => a -> [SqlValue]
 gToRow x = zipWith convertToSqlValue types values

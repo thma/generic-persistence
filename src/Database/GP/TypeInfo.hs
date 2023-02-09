@@ -1,6 +1,6 @@
 --{-# LANGUAGE RankNTypes           #-}
 --{-# LANGUAGE ScopedTypeVariables  #-}
-module TypeInfo
+module Database.GP.TypeInfo
   ( TypeInfo,
     typeConstructor,
     fieldNames,
@@ -12,16 +12,6 @@ module TypeInfo
 where
 
 import Data.Data
-    ( Data(toConstr, dataTypeOf, gmapQ),
-      Constr,
-      constrFields,
-      constrType,
-      dataTypeConstrs,
-      dataTypeName,
-      fromConstr,
-      typeOf,
-      DataType,
-      TypeRep )
 
 -- | A data type holding meta-data about a type. 
 --   The Phantom type parameter `a` ensures type safety for reflective functions
