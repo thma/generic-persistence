@@ -1,4 +1,7 @@
-{-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE GADTs     #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 
 module Database.GP.RecordtypeReflection
   ( 
@@ -51,10 +54,11 @@ fieldValues :: (Data a) => a -> [Dynamic]
 fieldValues = gmapQ toDyn
 
 gFromRow :: forall a. (Data a) => [SqlValue] -> a
-gFromRow row = expectJust ("can't construct an " ++ tName ++ " instance from " ++ show row) (buildFromRecord ti row)
+gFromRow row = expectJust errMsg (buildFromRecord ti row)
   where
     ti = typeInfoFromContext
     tName = typeName ti
+    errMsg = "can't construct an " ++ tName ++ " instance from " ++ show row
 
 gToRow :: (Data a) => a -> [SqlValue]
 gToRow x = zipWith convertToSqlValue types values

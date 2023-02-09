@@ -82,6 +82,7 @@ test-suite generic-persistence-test
   main-is: Spec.hs
   other-modules:
       EmbeddedSpec
+      EnumSpec
       GenericPersistenceSpec
       OneToManySpec
       ReferenceSpec

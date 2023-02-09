@@ -186,8 +186,8 @@ runGP conn = runRIO (Ctx (ConnWrapper conn) mempty)
 -- These instances are needed to make the Convertible type class work with Enum types out of the box.
 instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible SqlValue a where
   safeConvert :: SqlValue -> ConvertResult a
-  safeConvert val = return $ toEnum (fromSql val)
+  safeConvert = Right . toEnum . fromSql
 
 instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible a SqlValue where
   safeConvert :: a -> ConvertResult SqlValue
-  safeConvert val = return $ toSql (fromEnum val)  
+  safeConvert = Right . toSql . fromEnum  
