@@ -6,7 +6,9 @@ cabal-version: 1.12
 
 name:           generic-persistence
 version:        0.2.0.0
+synopsis:       Database persistence using generics
 description:    Please see the README on GitHub at <https://github.com/githubuser/generic-persistence#readme>
+category:       Database
 homepage:       https://github.com/githubuser/generic-persistence#readme
 bug-reports:    https://github.com/githubuser/generic-persistence/issues
 author:         Thomas Mahler

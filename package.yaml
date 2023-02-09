@@ -1,10 +1,12 @@
 name:                generic-persistence
-version:             0.2.0.0
+version:             0.2.0.1
 github:              "githubuser/generic-persistence"
 license:             BSD3
 author:              "Thomas Mahler"
 maintainer:          "thma@apache.org"
 copyright:           "2023 Thomas Mahler"
+category:            Database
+synopsis:            Database persistence using generics
 
 extra-source-files:
 - README.md
@@ -74,3 +76,6 @@ tests:
     - hspec
     - hspec-discover
     - QuickCheck
+    verbatim:
+      build-tool-depends:
+        hspec-discover:hspec-discover == 2.*

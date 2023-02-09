@@ -1,5 +1,7 @@
 # GenericPersistence - A Haskell persistence layer using Generics and Reflection
 
+[![Actions Status](https://github.com/thma/generic-persistence/workflows/Haskell%20CI/badge.svg)](https://github.com/thma/generic-persistence/actions)
+
 ![GP Logo](gp-logo-300.png)
 
 ## Introduction
@@ -30,6 +32,16 @@ A lot of things are still missing:
 - Handling auto-incrementing primary keys
 - ...
 
+## Available on Hackage
+
+[https://hackage.haskell.org/package/generic-persistence](https://hackage.haskell.org/package/generic-persistence)
+
+Add the following to your `package.yaml` file:
+
+```yaml
+dependencies:
+- generic-persistence
+```
 
 ## Short demo
 
