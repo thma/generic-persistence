@@ -31,6 +31,7 @@ library
       Database.GP
       Database.GP.Entity
       Database.GP.GenericPersistence
+      Database.GP.Generics
       Database.GP.RecordtypeReflection
       Database.GP.SqlGenerator
       Database.GP.TypeInfo
