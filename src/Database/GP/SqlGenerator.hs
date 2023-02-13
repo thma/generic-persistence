@@ -10,7 +10,7 @@ module Database.GP.SqlGenerator
   )
 where
 
-import           Data.List (intercalate)
+import           Data.List            (intercalate)
 import           Database.GP.Entity
 import           Database.GP.TypeInfo
 
@@ -34,7 +34,7 @@ insertStmtFor x =
 columnNamesFor :: Entity a => a -> [String]
 columnNamesFor x =  map snd fieldColumnPairs
   where
-    fieldColumnPairs = fieldsToColumns x 
+    fieldColumnPairs = fieldsToColumns x
 
 
 params :: Int -> [String]
@@ -112,17 +112,17 @@ createTableStmtFor ti =
     x = evidenceFrom ti :: a
     isIdField f = f == idField x
     optionalPK f = if isIdField f then " PRIMARY KEY" else ""
-    
-    
+
+
 columnTypeFor :: forall a. (Entity a) => a -> String -> String
-columnTypeFor x field = 
+columnTypeFor x field =
   case fType of
-    "Int" -> "INTEGER"
+    "Int"    -> "INTEGER"
     "String" -> "TEXT"
     "Double" -> "REAL"
-    "Float" -> "REAL"
-    "Bool" -> "INT"
-    _ -> "TEXT"
+    "Float"  -> "REAL"
+    "Bool"   -> "INT"
+    _        -> "TEXT"
     where
       maybeFType = maybeFieldTypeFor x field
       fType = maybe "OTHER" show maybeFType

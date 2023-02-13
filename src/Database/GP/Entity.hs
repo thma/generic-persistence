@@ -15,28 +15,29 @@ module Database.GP.Entity
   )
 where
 
-import           Data.Char            (toLower)
-import           Data.Data            
-import           Database.HDBC        (SqlValue, fromSql, ConnWrapper)
-import           Database.GP.RecordtypeReflection (gFromRow, gToRow)
-import           Database.GP.TypeInfo             
+import           Data.Char                        (toLower)
+import           Data.Data
 import           Data.Dynamic
+import           Database.GP.RecordtypeReflection (gFromRow, gToRow)
+import           Database.GP.TypeInfo
+import           Database.HDBC                    (ConnWrapper, SqlValue,
+                                                   fromSql)
 import           RIO
 
 {--
-This is the Entity class. It is a type class that is used to define the mapping 
+This is the Entity class. It is a type class that is used to define the mapping
 between a Haskell product type in record notation and a database table.
-The class has a default implementation for all methods. 
+The class has a default implementation for all methods.
 The default implementation uses the type information to determine a simple 1:1 mapping.
 
-That means that 
-- the type name is used as the table name and the 
+That means that
+- the type name is used as the table name and the
 - field names are used as the column names.
 - A field named '<lowercase typeName>ID' is used as the primary key field.
 
 The default implementation can be overridden by defining a custom instance for a type.
 
-Please note the following constraints, which apply to all valid Entity type, 
+Please note the following constraints, which apply to all valid Entity type,
 but that are not explicitely encoded in the type class definition:
 
 - The type must be a product type in record notation.
@@ -87,10 +88,10 @@ class (Data a) => Entity a where
 
 -- | type Ctx defines the context in which the persistence operations are executed.
 -- It contains a connection to the database and a resolution cache for circular lookups.
-data Ctx = 
+data Ctx =
   Ctx
     {connection :: ConnWrapper,
-     cache :: ResolutionCache
+     cache      :: ResolutionCache
     }
 
 type GP = RIO Ctx
@@ -108,18 +109,18 @@ columnNameFor :: Entity a => a -> String -> String
 columnNameFor x fieldName =
   case maybeColumnNameFor x fieldName of
     Just columnName -> columnName
-    Nothing -> error ("columnNameFor: " ++ toString x ++ 
+    Nothing -> error ("columnNameFor: " ++ toString x ++
                       " has no column mapping for " ++ fieldName)
   where
     maybeColumnNameFor :: Entity a => a -> String -> Maybe String
     maybeColumnNameFor a field = lookup field (fieldsToColumns a)
 
--- | A convenience function: returns the TypeRep of a field of a type 'a'.  
+-- | A convenience function: returns the TypeRep of a field of a type 'a'.
 fieldTypeFor :: Entity a => a -> String -> TypeRep
 fieldTypeFor x fieldName =
   case maybeFieldTypeFor x fieldName of
     Just tyRep -> tyRep
-    Nothing -> error ("fieldTypeFor: " ++ toString x ++ 
+    Nothing -> error ("fieldTypeFor: " ++ toString x ++
                       " has no field " ++ fieldName)
 
 maybeFieldTypeFor :: Entity a => a -> String -> Maybe TypeRep
@@ -136,9 +137,9 @@ toString x = typeName (typeInfo x) ++ " " ++ unwords mappedRow
 
 -- | A convenience function: returns an evidence instance of type 'a'.
 --   This is useful for type inference where no instance is available.
-evidence :: forall a. (Entity a) => a 
+evidence :: forall a. (Entity a) => a
 evidence = evidenceFrom ti
-  where 
+  where
     ti = typeInfoFromContext :: TypeInfo a
 
 

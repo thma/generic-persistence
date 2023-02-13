@@ -1,10 +1,12 @@
-{-# LANGUAGE GADTs     #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE RankNTypes            #-}
+
+
 
 
 module Database.GP.RecordtypeReflection
-  ( 
+  (
     fieldValue,
     gFromRow,
     gToRow,
@@ -27,11 +29,12 @@ import           Data.Time                      (Day, LocalTime,
                                                  UTCTime, ZonedTime)
 import           Data.Time.Clock.POSIX          (POSIXTime)
 import           Data.Word                      (Word32, Word64)
+import           Database.GP.TypeInfo
 import           Database.HDBC                  (SqlValue, fromSql, toSql)
 import           GHC.Data.Maybe                 (expectJust)
 import           Type.Reflection                (SomeTypeRep (..), eqTypeRep,
                                                  typeRep)
-import           Database.GP.TypeInfo
+
 
 -- | A function that takes an entity and a field name as input parameters and returns the value of the field as a String.
 --  Example: fieldValue (Person "John" 42) "name" = SqlString "John"

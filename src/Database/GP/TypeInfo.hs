@@ -11,9 +11,9 @@ module Database.GP.TypeInfo
   )
 where
 
-import Data.Data
+import           Data.Data
 
--- | A data type holding meta-data about a type. 
+-- | A data type holding meta-data about a type.
 --   The Phantom type parameter `a` ensures type safety for reflective functions
 --   that use this type to create type instances (See module RecordtypeReflection).
 data TypeInfo a = TypeInfo

@@ -33,15 +33,15 @@ module Database.GP.GenericPersistence
   )
 where
 
-import Data.Convertible ( Convertible, ConvertResult )
-import           Database.HDBC        
+import           Data.Convertible                 (ConvertResult, Convertible)
+import           Data.Convertible.Base            (Convertible (safeConvert))
+import           Data.Data
+import           Data.Dynamic                     (fromDynamic, toDyn)
 import           Database.GP.Entity
 import           Database.GP.RecordtypeReflection
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
-import           Data.Dynamic (toDyn, fromDynamic)
-import           Data.Data 
-import Data.Convertible.Base (Convertible(safeConvert))
+import           Database.HDBC
 import           RIO
 
 {--
@@ -84,7 +84,7 @@ retrieveAll = do
   mapM fromRow resultRows
   where
     ti = typeInfoFromContext :: TypeInfo a
-    stmt = selectAllStmtFor ti 
+    stmt = selectAllStmtFor ti
 
 retrieveAllWhere :: forall a. (Entity a) => String -> SqlValue -> GP [a]
 retrieveAllWhere field val = do
@@ -154,8 +154,8 @@ getElseRetrieve eid@(_tr,pk) = do
   rc <- askCache
   case lookup eid rc of
     Just dyn -> case fromDynamic dyn :: Maybe a of
-      Just e -> pure (Just e)
-      Nothing -> error "should not be possible" 
+      Just e  -> pure (Just e)
+      Nothing -> error "should not be possible"
     Nothing -> retrieveById pk :: GP (Maybe a)
 
 
@@ -190,4 +190,4 @@ instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible SqlValue a where
 
 instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible a SqlValue where
   safeConvert :: a -> ConvertResult SqlValue
-  safeConvert = Right . toSql . fromEnum  
+  safeConvert = Right . toSql . fromEnum
