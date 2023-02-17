@@ -10,6 +10,7 @@ import           Database.GP           (Entity (..), GP, delete, insert, liftIO,
 import           Database.HDBC         (IConnection (disconnect), fromSql,
                                         toSql)
 import           Database.HDBC.Sqlite3 (connectSqlite3)
+import           GHC.Generics
 
 -- | An Entity data type with several fields, using record syntax.
 data Person = Person
@@ -18,7 +19,7 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Data, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
+  deriving (Generic, Data, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
 
 data Book = Book
   { book_id :: Int,
@@ -26,7 +27,7 @@ data Book = Book
     author  :: String,
     year    :: Int
   }
-  deriving (Data, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
+  deriving (Generic, Data, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
 
 instance Entity Book where
   -- this is the primary key field of the Book data type

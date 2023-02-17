@@ -38,11 +38,13 @@ import           Data.Convertible.Base            (Convertible (safeConvert))
 import           Data.Data
 import           Data.Dynamic                     (fromDynamic, toDyn)
 import           Database.GP.Entity
-import           Database.GP.RecordtypeReflection
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
 import           RIO
+import           Data.List                      (elemIndex)
+import           GHC.Data.Maybe (expectJust)
+--import           GHC.Generics
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -51,9 +53,6 @@ import           RIO
  The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
  HDBC is used to access the RDBMS.
 --}
-
-
-
 
 -- | A function that retrieves an entity from a database.
 -- The function takes entity id as parameter.
@@ -172,7 +171,22 @@ entityId x = (typeOf x, idValue x)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 idValue :: forall a. (Entity a) => a -> SqlValue
-idValue x = fieldValue x (idField x)
+idValue x = sqlValues !! idFieldIndex 
+  where
+    idFieldIndex = fieldIndex x (idField x)
+    sqlValues = toRowWoCtx x
+
+-- | returns the index of a field of an entity.
+--   The index is the position of the field in the list of fields of the entity.
+--   If no such field exists, an error is thrown.
+fieldIndex :: (Entity a) => a -> String -> Int
+fieldIndex x fieldName =
+  expectJust
+    ("Field " ++ fieldName ++ " is not present in type " ++ typeName ti)
+    (elemIndex fieldName fieldList) 
+  where
+    ti = typeInfo x
+    fieldList = fieldNames ti
 
 askConnection :: GP ConnWrapper
 askConnection = connection <$> ask

@@ -12,7 +12,7 @@ import           Database.HDBC
 import           Database.HDBC.Sqlite3
 import           Database.GP.GenericPersistence
 import           RIO
-
+import           GHC.Generics
 
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
@@ -36,7 +36,7 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Data, Entity, Show, Eq)
+  deriving (Generic, Data, Entity, Show, Eq)
 
 data Book = Book
   { book_id :: Int,
@@ -45,10 +45,10 @@ data Book = Book
     year    :: Int,
     category :: BookCategory
   }
-  deriving (Data, Show, Eq)
+  deriving (Generic, Data, Show, Eq)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Data, Read, Show, Eq, Enum)
+  deriving (Generic, Data, Read, Show, Eq, Enum)
 
   
 instance Entity Book where

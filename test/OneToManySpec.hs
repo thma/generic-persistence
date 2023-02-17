@@ -11,6 +11,7 @@ import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence
 import          RIO    
 import          Data.Maybe (fromJust)
+import          GHC.Generics
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
@@ -31,7 +32,7 @@ data Article = Article
     author    :: Author,
     year      :: Int
   }
-  deriving (Data, Show, Eq)
+  deriving (Generic, Data, Show, Eq)
 
 data Author = Author
   { authorID :: Int,
@@ -39,7 +40,7 @@ data Author = Author
     address  :: String,
     articles :: [Article]
   }
-  deriving (Data, Show, Eq)  
+  deriving (Generic, Data, Show, Eq)  
 
 instance Entity Article where
   fieldsToColumns :: Article -> [(String, String)]
@@ -61,7 +62,9 @@ instance Entity Article where
     
   toRow a = do 
     persist (author a)
-    return [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
+    return $ toRowWoCtx a --[toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
+
+  toRowWoCtx a = [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
 
 instance Entity Author where
@@ -80,8 +83,9 @@ instance Entity Author where
       rawAuthor = Author (col 0) (col 1) (col 2) []
 
   toRow :: Author -> GP [SqlValue]
-  toRow a = do 
-    return [toSql (authorID a), toSql (name a), toSql (address a)]
+  toRow = return . toRowWoCtx
+
+  toRowWoCtx a = [toSql (authorID a), toSql (name a), toSql (address a)]
 
 article1 :: Article
 article1 = Article 
