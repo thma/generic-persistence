@@ -11,6 +11,7 @@ import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence
 import          RIO    
 import          GHC.Generics
+import          Data.Convertible
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
@@ -31,23 +32,16 @@ data Book = Book
     year    :: Int,
     category :: BookCategory
   }
-  deriving (Generic, Data, Show, Eq)
+  deriving (Generic, Data, Show, Eq, Entity)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Generic, Data, Show, Read, Eq, Enum)
+  deriving (Generic, Data, Show, Read, Eq)
   
-instance Entity Book where
-  fromRow row = return $ Book (col 0) (col 1) (col 2) (col 3) (col 4)
-    where
-      col i = fromSql (row !! i)
-
-  toRow b = return [toSql (bookID b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
-
--- instance Convertible BookCategory SqlValue where
---   safeConvert = Right . toSql . show
+instance Convertible BookCategory SqlValue where
+  safeConvert = Right . toSql . show
   
--- instance Convertible SqlValue BookCategory where
---   safeConvert = Right . read . fromSql
+instance Convertible SqlValue BookCategory where
+  safeConvert = Right . read . fromSql
 
 spec :: Spec
 spec = do

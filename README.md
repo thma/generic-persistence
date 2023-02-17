@@ -7,7 +7,7 @@
 ## Introduction
 
 GenericPersistence is a minimalistic Haskell persistence layer (on top of HDBC). 
-The approach relies on Generics (`Data.Data`, `Data.Typeable`) and Reflection (`Type.Reflection`).
+The approach relies on Generics (`GHC.Generics`, `Data.Data`, `Data.Typeable`).
 
 The *functional goal* of the persistence layer is to provide hassle-free RDBMS persistence for Haskell data types in 
 Record notation (for brevity I call them *Entities*).
@@ -161,31 +161,19 @@ data Book = Book
     year    :: Int,
     category :: BookCategory
   }
-  deriving (Data, Show)
+  deriving (Generic, Data, Entity, Show)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Data, Show, Enum)
+  deriving (Generic, Data, Show, Enum)
 ```
 
-In this case the `Entity` type class instance for `Book` has to be implemented manually, 
-as the automatic derivation of `Entity` does not cover this case (yet)
-
-```haskell
-instance Entity Book where
-  fromRow row = return $ Book (col 0) (col 1) (col 2) (col 3) (col 4)
-    where
-      col i = fromSql (row !! i)
-
-  toRow b = return [toSql (bookID b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
-```
-
-`toSql` and `fromSql` expect `Convertible` instances as arguments. This works for `BookCatagory` as GenericPersistence provides `Convertible` instances for all `Enum` types.
+In this case the everything works out of the box, because `GenericPersistence` provides `Convertible` instances for all `Enum` types.
 
 If you do not want to use `Enum` types for your enumeration fields, you can implement `Convertible` instances for your own types:
 
 ```haskell
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Data, Show, Read)
+  deriving (Generic, Data, Show, Read)
 
 instance Convertible BookCategory SqlValue where
   safeConvert = Right . toSql . show
