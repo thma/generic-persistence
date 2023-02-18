@@ -11,7 +11,7 @@ module Database.GP.GenericPersistence
     idValue,
     Entity (..),
     columnNameFor,
-    fieldTypeFor,
+    --fieldTypeFor,
     maybeFieldTypeFor,
     toString,
     evidence,
@@ -182,7 +182,7 @@ idValue x = sqlValues !! idFieldIndex
 fieldIndex :: (Entity a) => a -> String -> Int
 fieldIndex x fieldName =
   expectJust
-    ("Field " ++ fieldName ++ " is not present in type " ++ typeName ti)
+    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
     (elemIndex fieldName fieldList) 
   where
     ti = typeInfo x

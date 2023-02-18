@@ -9,7 +9,6 @@ module Database.GP   ( retrieveById,
     idValue,
     Entity (..),
     columnNameFor,
-    fieldTypeFor,
     maybeFieldTypeFor,
     toString,
     evidence,
@@ -31,7 +30,7 @@ module Database.GP   ( retrieveById,
   )
 where
 
--- We are just re-exporting the functions from the GenericPersistence module.
+-- We are just re-exporting from the GenericPersistence module.
 import           Database.GP.GenericPersistence
 
 

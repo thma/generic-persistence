@@ -5,7 +5,7 @@ module Database.GP.TypeInfo
     typeConstructor,
     fieldNames,
     fieldTypes,
-    typeName,
+    constructorName,
     typeInfo,
     typeInfoFromContext,
   )
@@ -56,8 +56,8 @@ typeInfoFromContext =
    in typeInfo evidence
 
 -- | This function returns the (unqualified) type name of `a` from a `TypeInfo a` object.
-typeName :: TypeInfo a -> String
-typeName = dataTypeName . constrType . typeConstructor
+constructorName :: TypeInfo a -> String
+constructorName = show . typeConstructor
 
 -- | This function returns the list of field names of an entity of type `a`.
 fieldNamesOf :: (Data a) => a -> [String]

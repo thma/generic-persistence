@@ -3,8 +3,6 @@
 module Database.GP.Entity
   ( Entity (..),
     columnNameFor,
-    fieldTypeFor,
-    maybeFieldTypeFor,
     toString,
     evidence,
     evidenceFrom,
@@ -14,6 +12,7 @@ module Database.GP.Entity
     GP,
     gtoRow,
     GToRow,
+    maybeFieldTypeFor,
   )
 where
 
@@ -87,7 +86,7 @@ class (Generic a, Data a) => Entity a where
   idField = idFieldName . typeInfo
     where
       idFieldName :: TypeInfo a -> String
-      idFieldName ti = map toLower (typeName ti) ++ "ID"
+      idFieldName ti = map toLower (constructorName ti) ++ "ID"
 
   -- | default implementation: the field names are used as column names
   default fieldsToColumns :: a -> [(String, String)]
@@ -95,7 +94,7 @@ class (Generic a, Data a) => Entity a where
 
   -- | default implementation: the type name is used as table name
   default tableName :: a -> String
-  tableName = typeName . typeInfo
+  tableName = constructorName . typeInfo
 
 
 -- | type Ctx defines the context in which the persistence operations are executed.
@@ -128,12 +127,12 @@ columnNameFor x fieldName =
     maybeColumnNameFor a field = lookup field (fieldsToColumns a)
 
 -- | A convenience function: returns the TypeRep of a field of a type 'a'.
-fieldTypeFor :: (Entity a) => a -> String -> TypeRep
-fieldTypeFor x fieldName =
-  case maybeFieldTypeFor x fieldName of
-    Just tyRep -> tyRep
-    Nothing -> error ("fieldTypeFor: " ++ toString x ++
-                      " has no field " ++ fieldName)
+-- fieldTypeFor :: (Entity a) => a -> String -> TypeRep
+-- fieldTypeFor x fieldName =
+--   case maybeFieldTypeFor x fieldName of
+--     Just tyRep -> tyRep
+--     Nothing -> error ("fieldTypeFor: " ++ toString x ++
+--                       " has no field " ++ fieldName)
 
 maybeFieldTypeFor :: Entity a => a -> String -> Maybe TypeRep
 maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
@@ -143,7 +142,7 @@ maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
 
 -- | Returns a string representation of a value of type 'a'.
 toString :: (Entity a) => a -> String
-toString x = typeName (typeInfo x) ++ " " ++ unwords mappedRow
+toString x = constructorName (typeInfo x) ++ " " ++ unwords mappedRow
   where
     mappedRow = map fromSql (toRowWoCtx x)
 
