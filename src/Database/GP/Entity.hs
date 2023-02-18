@@ -49,7 +49,7 @@ but that are not explicitely encoded in the type class definition:
 
 --}
 
-class (Generic a, Data a) => Entity a where
+class (Generic a, Data a, HasConstructor (Rep a)) => Entity a where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: [SqlValue] -> GP a
 
@@ -134,7 +134,7 @@ columnNameFor x fieldName =
 --     Nothing -> error ("fieldTypeFor: " ++ toString x ++
 --                       " has no field " ++ fieldName)
 
-maybeFieldTypeFor :: Entity a => a -> String -> Maybe TypeRep
+maybeFieldTypeFor :: (Entity a) => a -> String -> Maybe TypeRep
 maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
   where
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]
