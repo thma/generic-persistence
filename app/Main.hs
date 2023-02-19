@@ -4,12 +4,13 @@
 module Main (main, main1) where
 
 import           Data.Data             (Data)
-import           Database.GP           (Entity (..), GP, delete, insert, liftIO,
+import           Database.GP           (Entity (..), delete, insert,
                                         persist, retrieveAll, retrieveById,
-                                        runGP, setupTableFor, update)
+                                        setupTableFor, update)
 import           Database.HDBC         (IConnection (disconnect), fromSql,
-                                        toSql)
+                                        toSql, ConnWrapper(..))
 import           Database.HDBC.Sqlite3 (connectSqlite3)
+import           GHC.Generics
 
 -- | An Entity data type with several fields, using record syntax.
 data Person = Person
@@ -18,7 +19,7 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Data, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
+  deriving (Generic, Data, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
 
 data Book = Book
   { book_id :: Int,
@@ -26,7 +27,7 @@ data Book = Book
     author  :: String,
     year    :: Int
   }
-  deriving (Data, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
+  deriving (Generic, Data, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
 
 instance Entity Book where
   -- this is the primary key field of the Book data type
@@ -39,63 +40,63 @@ instance Entity Book where
   tableName _ = "BOOK_TBL"
 
   -- this is the function that converts a row from the database table into a Book data type
-  fromRow row = return $ Book (col 0) (col 1) (col 2) (col 3)
+  fromRow _c row = return $ Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
 
   -- this is the function that converts a Book data type into a row for the database table
-  toRow b = return [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+  toRow _c b = return [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do
   -- connect to a database
-  conn <- connectSqlite3 "sqlite.db"
-  -- take the connection and execute all persistence operations in the GP monad (type alias for RIO Ctx)
-  runGP conn $ do
-    _ <- setupTableFor :: GP Person
-    _ <- setupTableFor :: GP Book
+  conn <- ConnWrapper <$> connectSqlite3 ":memory:"
 
-    let alice = Person 123456 "Alice" 25 "123 Main St"
-        book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
+  -- initialize Person and Book tables
+  _ <- setupTableFor conn :: IO Person
+  _ <- setupTableFor conn :: IO Book
 
-    -- insert a Person into the database (persist will either insert or update)
-    persist alice
+  let alice = Person 123456 "Alice" 25 "123 Main St"
+      book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
 
-    -- insert a second Person
-    persist alice {personID = 123457, name = "Bob"}
+  -- insert a Person into the database (persist will either insert or update)
+  persist conn alice
 
-    -- update a Person
-    persist alice {address = "Elmstreet 1"}
+  -- insert a second Person
+  persist conn alice {personID = 123457, name = "Bob"}
 
-    -- select a Person from a database
-    alice' <- retrieveById (123456 :: Int) :: GP (Maybe Person)
-    liftIO $ print alice'
+  -- update a Person
+  persist conn alice {address = "Elmstreet 1"}
 
-    -- select all Persons from the database
-    allPersons <- retrieveAll :: GP [Person]
-    liftIO $ print allPersons
+  -- select a Person from a database
+  alice' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
+  print alice'
 
-    -- delete a Person
-    delete alice
+  -- select all Persons from the database
+  allPersons <- retrieveAll conn :: IO [Person]
+  print allPersons
 
-    -- select all Persons from a database. The deleted Person is not in the result.
-    allPersons' <- retrieveAll :: GP [Person]
-    liftIO $ print allPersons'
+  -- delete a Person
+  delete conn alice
 
-    let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
+  -- select all Persons from a database. The deleted Person is not in the result.
+  allPersons' <- retrieveAll conn :: IO [Person]
+  print allPersons'
 
-    -- this time we are using insert directly
-    insert book
-    insert book2
-    allBooks <- retrieveAll :: GP [Book]
-    liftIO $ print allBooks
+  let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
 
-    -- explicitly updating a Book
-    update book2 {title = "The Lord of the Rings"}
-    delete book
+  -- this time we are using insert directly
+  insert conn book
+  insert conn book2
+  allBooks <- retrieveAll conn :: IO [Book]
+  print allBooks
 
-    allBooks' <- retrieveAll :: GP [Book]
-    liftIO $ print allBooks'
+  -- explicitly updating a Book
+  update conn book2 {title = "The Lord of the Rings"}
+  delete conn book
+
+  allBooks' <- retrieveAll conn :: IO [Book]
+  print allBooks'
 
   -- close connection
   disconnect conn
@@ -103,31 +104,31 @@ main = do
 main1 :: IO ()
 main1 = do
   -- connect to a database
-  conn <- connectSqlite3 "sqlite.db"
-  runGP conn $ do
-    -- initialize Person table
-    _ <- setupTableFor :: GP Person
+  conn <- ConnWrapper <$> connectSqlite3 "sqlite.db"
 
-    -- create a Person entity
-    let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
+  -- initialize Person table
+  _ <- setupTableFor conn :: IO Person
 
-    -- insert a Person into a database
-    persist alice
+  -- create a Person entity
+  let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
-    -- update a Person
-    persist alice {address = "Main Street 200"}
+  -- insert a Person into a database
+  persist conn alice
 
-    -- select a Person from a database
-    -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
-    alice' <- retrieveById "123456" :: GP (Maybe Person)
-    liftIO $ print alice'
+  -- update a Person
+  persist conn alice {address = "Main Street 200"}
 
-    alice'' <- retrieveById "123456" :: GP (Maybe Person)
+  -- select a Person from a database
+  -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
+  alice' <- retrieveById conn "123456" :: IO (Maybe Person)
+  print alice'
 
-    liftIO $ print alice''
+  alice'' <- retrieveById conn "123456" :: IO (Maybe Person)
 
-    -- delete a Person from a database
-    delete alice
+  print alice''
+
+  -- delete a Person from a database
+  delete conn alice
 
   -- close connection
   disconnect conn

@@ -41,7 +41,7 @@ params :: Int -> [String]
 params n = replicate n "?"
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Entity.
-updateStmtFor :: Entity a => a -> String
+updateStmtFor :: (Entity a) => a -> String
 updateStmtFor x =
   "UPDATE "
     ++ tableName x
@@ -54,7 +54,7 @@ updateStmtFor x =
   where
     updatePairs = map (++ " = ?") (columnNamesFor x)
 
-idColumn :: Entity a => a -> String
+idColumn :: (Entity a) => a -> String
 idColumn x = columnNameFor x (idField x)
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
@@ -93,7 +93,7 @@ selectAllWhereStmtFor ti field =
     x = evidenceFrom ti :: a
     column = columnNameFor x field
 
-deleteStmtFor :: Entity a => a -> String
+deleteStmtFor :: (Entity a) => a -> String
 deleteStmtFor x =
   "DELETE FROM "
     ++ tableName x

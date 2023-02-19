@@ -21,24 +21,13 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/thma/generic-persistence#readme>
 
 language: GHC2021    # See https://ghc-proposals.readthedocs.io/en/latest/proposals/0380-ghc2021.html
-tested-with: GHC==9.2.5, GHC==9.0.2, GHC==8.10.7
+tested-with: GHC==9.2.5, GHC==9.4.4
 
 dependencies:
 - base >= 4.7 && < 5
-- ghc
-- ghc-prim
-- syb
-- transformers
-- exceptions
-- HDBC-sqlite3 #>= 2.3.3.1
 - convertible
 - HDBC #>= 2.4.0.4
-- bytestring
-- time
-- text
-#- rio
-- mtl
-- exceptions
+
 
 ghc-options:
 - -Wall
@@ -64,6 +53,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - generic-persistence
+    - HDBC-sqlite3 #>= 2.3.3.1
 
 tests:
   generic-persistence-test:
@@ -78,6 +68,7 @@ tests:
     - hspec
     - hspec-discover
     - QuickCheck
+    - HDBC-sqlite3 #>= 2.3.3.1
     verbatim:
       build-tool-depends:
         hspec-discover:hspec-discover == 2.*

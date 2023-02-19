@@ -1,13 +1,13 @@
-# GenericPersistence - A Haskell persistence layer using Generics and Reflection
+# GenericPersistence - A Haskell persistence layer using Generics
 
 [![Actions Status](https://github.com/thma/generic-persistence/workflows/Haskell%20CI/badge.svg)](https://github.com/thma/generic-persistence/actions)
 
-![GP Logo](gp-logo-300.png)
+![GP Logo](https://github.com/thma/generic-persistence/blob/main/gp-logo-300.png?raw=true)
 
 ## Introduction
 
 GenericPersistence is a minimalistic Haskell persistence layer (on top of HDBC). 
-The approach relies on Generics (`Data.Data`, `Data.Typeable`) and Reflection (`Type.Reflection`).
+The approach relies on Generics (`GHC.Generics` and `Data.Data`).
 
 The *functional goal* of the persistence layer is to provide hassle-free RDBMS persistence for Haskell data types in 
 Record notation (for brevity I call them *Entities*).
@@ -53,14 +53,11 @@ Here now follows a short demo that shows how the library looks and feels from th
 
 module Main (main) where
 
-import           Data.Data             (Data)
-import           Database.GP           (Entity (..), GP, delete, insert, liftIO,
-                                        persist, retrieveAll, retrieveById,
-                                        runGP, setupTableFor, update)
-import           Database.HDBC         (IConnection (disconnect), fromSql,
-                                        toSql)
-import           Database.HDBC.Sqlite3 (connectSqlite3)
-
+import           Data.Data             
+import           Database.GP           
+import           Database.HDBC         
+import           Database.HDBC.Sqlite3
+import           GHC.Generics
 
 -- | An Entity data type with several fields, using record syntax.
 data Person = Person
@@ -69,7 +66,7 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Data, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
+  deriving (Generic, Data, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
 
 data Book = Book
   { book_id :: Int,
@@ -77,7 +74,7 @@ data Book = Book
     author  :: String,
     year    :: Int
   }
-  deriving (Data, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
+  deriving (Generic, Data, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
 
 instance Entity Book where
   -- this is the primary key field of the Book data type
@@ -90,63 +87,66 @@ instance Entity Book where
   tableName _ = "BOOK_TBL"
 
   -- this is the function that converts a row from the database table into a Book data type
-  fromRow row = return $ Book (col 0) (col 1) (col 2) (col 3)
+  fromRow _c row = return $ Book (col 0) (col 1) (col 2) (col 3)
     where
       col i = fromSql (row !! i)
 
   -- this is the function that converts a Book data type into a row for the database table
-  toRow b = return [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+  toRow _c b = return [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do
   -- connect to a database
-  conn <- connectSqlite3 "sqlite.db"
-  -- take the connection and execute all persistence operations in the GP monad (type alias for RIO Ctx)
-  runGP conn $ do
-    _ <- setupTableFor :: GP Person
-    _ <- setupTableFor :: GP Book
+  conn <- ConnWrapper <$> connectSqlite3 ":memory:"
 
-    let alice = Person 123456 "Alice" 25 "123 Main St"
-        book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
+  -- initialize Person and Book tables
+  _ <- setupTableFor conn :: IO Person
+  _ <- setupTableFor conn :: IO Book
 
-    -- insert a Person into the database (persist will either insert or update)
-    persist alice
+  let alice = Person 123456 "Alice" 25 "123 Main St"
+      book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
 
-    -- insert a second Person
-    persist alice {personID = 123457, name = "Bob"}
+  -- insert a Person into the database (persist will either insert or update)
+  persist conn alice
 
-    -- update a Person
-    persist alice {address = "Elmstreet 1"}
+  -- insert a second Person
+  persist conn alice {personID = 123457, name = "Bob"}
 
-    -- select a Person from a database
-    alice' <- retrieveById (123456 :: Int) :: GP (Maybe Person)
-    liftIO $ print alice'
+  -- update a Person
+  persist conn alice {address = "Elmstreet 1"}
 
-    -- select all Persons from the database
-    allPersons <- retrieveAll :: GP [Person]
-    liftIO $ print allPersons
+  -- select a Person from a database
+  alice' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
+  print alice'
 
-    -- delete a Person
-    delete alice
+  -- select all Persons from the database
+  allPersons <- retrieveAll conn :: IO [Person]
+  print allPersons
 
-    -- select all Persons from a database. The deleted Person is not in the result.
-    allPersons' <- retrieveAll :: GP [Person]
-    liftIO $ print allPersons'
+  -- delete a Person
+  delete conn alice
 
-    let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
+  -- select all Persons from a database. The deleted Person is not in the result.
+  allPersons' <- retrieveAll conn :: IO [Person]
+  print allPersons'
 
-    -- this time we are using insert directly
-    insert book
-    insert book2
-    allBooks <- retrieveAll :: GP [Book]
-    liftIO $ print allBooks
+  let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
 
-    -- explicitly updating a Book
-    update book2 {title = "The Lord of the Rings"}
-    delete book
+  -- this time we are using insert directly
+  insert conn book
+  insert conn book2
+  allBooks <- retrieveAll conn :: IO [Book]
+  print allBooks
 
-    allBooks' <- retrieveAll :: GP [Book]
-    liftIO $ print allBooks'
+  -- explicitly updating a Book
+  update conn book2 {title = "The Lord of the Rings"}
+  delete conn book
+
+  allBooks' <- retrieveAll conn :: IO [Book]
+  print allBooks'
+
+  -- close connection
+  disconnect conn
 ```
 
 ## Handling enumeration fields
@@ -161,31 +161,19 @@ data Book = Book
     year    :: Int,
     category :: BookCategory
   }
-  deriving (Data, Show)
+  deriving (Generic, Data, Entity, Show)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Data, Show, Enum)
+  deriving (Generic, Data, Show, Enum)
 ```
 
-In this case the `Entity` type class instance for `Book` has to be implemented manually, 
-as the automatic derivation of `Entity` does not cover this case (yet)
+In this case the everything works out of the box, because *GenericPersistence* provides `Convertible` instances for all `Enum` types.
 
-```haskell
-instance Entity Book where
-  fromRow row = return $ Book (col 0) (col 1) (col 2) (col 3) (col 4)
-    where
-      col i = fromSql (row !! i)
-
-  toRow b = return [toSql (bookID b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
-```
-
-`toSql` and `fromSql` expect `Convertible` instances as arguments. This works for `BookCatagory` as GenericPersistence provides `Convertible` instances for all `Enum` types.
-
-If you do not want to use `Enum` types for your enumeration fields, you can implement `Convertible` instances for your own types:
+If you do not want to use `Enum` types for your enumeration fields, you can implement `Convertible` instances manually:
 
 ```haskell
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Data, Show, Read)
+  deriving (Generic, Data, Show, Read)
 
 instance Convertible BookCategory SqlValue where
   safeConvert = Right . toSql . show
@@ -205,14 +193,14 @@ data Article = Article
     author    :: Author,
     year      :: Int
   }
-  deriving (Data, Show, Eq)
+  deriving (Generic, Data, Show, Eq)
 
 data Author = Author
   { authorID :: Int,
     name     :: String,
     address  :: String
   }
-  deriving (Data, Show, Eq)  
+  deriving (Generic, Data, Show, Eq)  
 ```
 
 If we don't want to store the `Author` as a separate table, we can use the following approach to embed the `Author` into the `Article` table:
@@ -378,7 +366,6 @@ instance Entity Author where
 
 ## Todo
 
-- coding free support for 1:1 and 1:n relationships
-- coding free support for Enums
-- resolution cache with proper Map
+- coding free support for 1:1 and 1:n relationships (using more generics magic)
+
 

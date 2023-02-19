@@ -18,7 +18,7 @@ license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC==9.2.5, GHC==9.0.2, GHC==8.10.7
+    GHC==9.2.5, GHC==9.4.4
 extra-source-files:
     README.md
 
@@ -31,10 +31,8 @@ library
       Database.GP
       Database.GP.Entity
       Database.GP.GenericPersistence
-      Database.GP.RecordtypeReflection
       Database.GP.SqlGenerator
       Database.GP.TypeInfo
-      RIO
   other-modules:
       Paths_generic_persistence
   hs-source-dirs:
@@ -42,18 +40,8 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       HDBC
-    , HDBC-sqlite3
     , base >=4.7 && <5
-    , bytestring
     , convertible
-    , exceptions
-    , ghc
-    , ghc-prim
-    , mtl
-    , syb
-    , text
-    , time
-    , transformers
   default-language: GHC2021
 
 executable generic-persistence-demo
@@ -67,17 +55,8 @@ executable generic-persistence-demo
       HDBC
     , HDBC-sqlite3
     , base >=4.7 && <5
-    , bytestring
     , convertible
-    , exceptions
     , generic-persistence
-    , ghc
-    , ghc-prim
-    , mtl
-    , syb
-    , text
-    , time
-    , transformers
   default-language: GHC2021
 
 test-suite generic-persistence-test
@@ -98,18 +77,9 @@ test-suite generic-persistence-test
     , HDBC-sqlite3
     , QuickCheck
     , base >=4.7 && <5
-    , bytestring
     , convertible
-    , exceptions
     , generic-persistence
-    , ghc
-    , ghc-prim
     , hspec
     , hspec-discover
-    , mtl
-    , syb
-    , text
-    , time
-    , transformers
   default-language: GHC2021
   build-tool-depends: hspec-discover:hspec-discover == 2.*
