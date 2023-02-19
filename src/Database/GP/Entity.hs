@@ -6,22 +6,18 @@ module Database.GP.Entity
     toString,
     evidence,
     evidenceFrom,
-    ResolutionCache,
     EntityId,
-    Ctx (..),
-    GP,
     gtoRow,
     GToRow,
     maybeFieldTypeFor,
+    Conn,
   )
 where
 
 import           Data.Char                        (toLower)
 import           Data.Data
-import           Data.Dynamic
 import           Database.GP.TypeInfo
 import           Database.HDBC                    (ConnWrapper, SqlValue, fromSql)
-import           RIO
 import           GHC.Generics
 import           Data.Kind
 import           GHC.TypeNats
@@ -49,14 +45,18 @@ but that are not explicitely encoded in the type class definition:
 
 --}
 
+type Conn = ConnWrapper
+
 class (Generic a, Data a, HasConstructor (Rep a)) => Entity a where
   -- | Converts a database row to a value of type 'a'.
-  fromRow :: [SqlValue] -> GP a
+  fromRow :: Conn -> [SqlValue] -> IO a
+
+  fromRowWoCtx :: [SqlValue] -> a
 
   -- | Converts a value of type 'a' to a database row.
-  toRow :: a -> GP [SqlValue]
+  toRow :: Conn -> a -> IO [SqlValue]
 
-  -- | Converts a value of type 'a' to a database row but without the GP monad context.
+  -- | Converts a value of type 'a' to a database row but without Connection.
   toRowWoCtx :: a -> [SqlValue]
 
   -- | Returns the name of the primary key field for a type 'a'.
@@ -69,16 +69,19 @@ class (Generic a, Data a, HasConstructor (Rep a)) => Entity a where
   tableName :: a -> String
 
   -- | generic default implementation
-  default fromRow :: GFromRow (Rep a) => [SqlValue] -> GP a
-  fromRow = pure . to <$> gfromRow
+  default fromRow :: Conn -> [SqlValue] -> IO a
+  fromRow _conn = pure . fromRowWoCtx 
+
+  default fromRowWoCtx :: GFromRow (Rep a) => [SqlValue] -> a
+  fromRowWoCtx = to <$> gfromRow 
 
   -- | generic default implementation
   default toRowWoCtx :: GToRow (Rep a) => a -> [SqlValue]
   toRowWoCtx = gtoRow . from
 
   -- | generic default implementation
-  default toRow :: GToRow (Rep a) => a -> GP [SqlValue]
-  toRow = pure . gtoRow . from
+  default toRow :: GToRow (Rep a) => Conn -> a -> IO [SqlValue]
+  toRow _ = pure . gtoRow . from
 
   -- | default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
@@ -97,23 +100,9 @@ class (Generic a, Data a, HasConstructor (Rep a)) => Entity a where
   tableName = constructorName . typeInfo
 
 
--- | type Ctx defines the context in which the persistence operations are executed.
--- It contains a connection to the database and a resolution cache for circular lookups.
-data Ctx =
-  Ctx
-    {connection :: ConnWrapper,
-     cache      :: ResolutionCache
-    }
-
-type GP = RIO Ctx
-
 -- | The EntityId is a tuple of the TypeRep and the primary key value of an Entity.
 --   It is used as a key in the resolution cache.
 type EntityId = (TypeRep, SqlValue)
-
--- | The resolution cache maps an EntityId to a Dynamic value (representing an Entity).
---   It is used to resolve circular references during loading and storing of Entities.
-type ResolutionCache = [(EntityId, Dynamic)]
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: (Entity a) => a -> String -> String
@@ -126,13 +115,6 @@ columnNameFor x fieldName =
     maybeColumnNameFor :: Entity a => a -> String -> Maybe String
     maybeColumnNameFor a field = lookup field (fieldsToColumns a)
 
--- | A convenience function: returns the TypeRep of a field of a type 'a'.
--- fieldTypeFor :: (Entity a) => a -> String -> TypeRep
--- fieldTypeFor x fieldName =
---   case maybeFieldTypeFor x fieldName of
---     Just tyRep -> tyRep
---     Nothing -> error ("fieldTypeFor: " ++ toString x ++
---                       " has no field " ++ fieldName)
 
 maybeFieldTypeFor :: (Entity a) => a -> String -> Maybe TypeRep
 maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))

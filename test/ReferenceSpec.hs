@@ -9,7 +9,6 @@ import          Data.Data
 import          Database.HDBC
 import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence
-import          RIO    
 import          Data.Maybe
 import          GHC.Generics
 
@@ -18,13 +17,12 @@ import          GHC.Generics
 test :: IO ()
 test = hspec spec
 
-withDatabase :: RIO Ctx a -> IO a
-withDatabase action = do
-  conn <- connectSqlite3 ":memory:"
-  runGP conn $ do
-    _ <- setupTableFor :: GP Article
-    _ <- setupTableFor :: GP Author
-    action
+prepareDB :: IO Conn
+prepareDB = do
+  conn <- ConnWrapper <$> connectSqlite3 ":memory:"
+  _ <- setupTableFor conn :: IO Article
+  _ <- setupTableFor conn :: IO Author
+  return conn
 
 data Article = Article
   { articleID :: Int,
@@ -49,18 +47,22 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
-  fromRow row = do
-    maybeAuthor <- retrieveById (row !! 2) :: GP (Maybe Author)
+  fromRow conn row = do
+    maybeAuthor <- retrieveById conn (row !! 2) :: IO (Maybe Author)
     let author = fromMaybe (error "Author not found") maybeAuthor
-    pure $ Article (col 0) (col 1) author (col 3)
+    pure $ rawArticle {author = author}
     where
-      col i = fromSql (row !! i)
+      rawArticle = fromRowWoCtx row
       
-  toRow a = do 
-    persist (author a)
-    return $ toRowWoCtx a --[toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
+  toRow conn a = do 
+    persist conn (author a)
+    return $ toRowWoCtx a 
 
   toRowWoCtx a = [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
+
+  fromRowWoCtx row = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
+    where
+      col i = fromSql (row !! i)
 
 article :: Article
 article = Article 
@@ -78,15 +80,15 @@ arthur = Author
 spec :: Spec
 spec = do
   describe "Handling of 1:1 References" $ do
-    it "works like a charm" $ 
-      withDatabase $ do
-        insert article
+    it "works like a charm" $ do
+      conn <- prepareDB
+      insert conn article
 
-        author' <- retrieveById "2" :: GP (Maybe Author)
-        liftIO $ author' `shouldBe` Just arthur
-        
-        article' <- retrieveById "1" :: GP (Maybe Article)
-        liftIO $ article' `shouldBe` Just article
+      author' <- retrieveById conn "2" :: IO (Maybe Author)
+      author' `shouldBe` Just arthur
+      
+      article' <- retrieveById conn "1" :: IO (Maybe Article)
+      article' `shouldBe` Just article
         
 
 

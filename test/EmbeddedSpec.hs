@@ -7,8 +7,7 @@ import          Test.Hspec
 import          Data.Data
 import          Database.HDBC
 import          Database.HDBC.Sqlite3
-import          Database.GP.GenericPersistence
-import          RIO    
+import          Database.GP.GenericPersistence 
 import          GHC.Generics
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
@@ -16,12 +15,11 @@ import          GHC.Generics
 test :: IO ()
 test = hspec spec
 
-withDatabase :: RIO Ctx a -> IO a
-withDatabase action = do
-  conn <- connectSqlite3 ":memory:"
-  runGP conn $ do
-    _ <- setupTableFor :: GP Article
-    action
+prepareDB :: IO Conn
+prepareDB = do
+  conn <- ConnWrapper <$> connectSqlite3 ":memory:"
+  _ <- setupTableFor conn :: IO Article
+  return conn
 
 data Article = Article
   { articleID :: Int,
@@ -49,10 +47,14 @@ instance Entity Article where
                        ("year", "year")
                       ]
 
-  fromRow row = return $ Article (col 0) (col 1) author (col 5)
+  fromRow :: Conn -> [SqlValue] -> IO Article
+  fromRow _ row = return $ fromRowWoCtx row
+
+  fromRowWoCtx :: [SqlValue] -> Article
+  fromRowWoCtx row = Article (col 0) (col 1) author (col 5)
     where
       col i = fromSql (row !! i)
-      author = Author (col 2) (col 3) (col 4)
+      author = Author (col 2) (col 3) (col 4)    
 
   toRowWoCtx  a = [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
     where 
@@ -60,7 +62,7 @@ instance Entity Article where
       authorName = name (author a)
       authorAddress = address (author a)
 
-  toRow = return . toRowWoCtx
+  toRow _ = return . toRowWoCtx
 
 article :: Article
 article = Article 
@@ -75,12 +77,12 @@ article = Article
 spec :: Spec
 spec = do
   describe "Handling of Embedded Objects" $ do
-    it "works like a charm" $ 
-      withDatabase $ do
-        insert article
-        article' <- retrieveById "1" :: GP (Maybe Article)
-        liftIO $ article' `shouldBe` Just article
-        allArticles <- retrieveAll :: GP [Article]
-        liftIO $ allArticles `shouldBe` [article]
+    it "works like a charm" $ do
+      conn <- prepareDB
+      insert conn article
+      article' <- retrieveById conn "1" :: IO (Maybe Article)
+      article' `shouldBe` Just article
+      allArticles <- retrieveAll conn :: IO [Article]
+      allArticles `shouldBe` [article]
 
 
