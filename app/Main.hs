@@ -52,6 +52,7 @@ main = do
   -- connect to a database
   conn <- ConnWrapper <$> connectSqlite3 ":memory:"
 
+  -- initialize Person and Book tables
   _ <- setupTableFor conn :: IO Person
   _ <- setupTableFor conn :: IO Book
 
