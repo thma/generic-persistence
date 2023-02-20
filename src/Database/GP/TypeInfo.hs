@@ -1,3 +1,5 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Database.GP.TypeInfo
   ( TypeInfo,
     typeConstructor,
@@ -11,11 +13,10 @@ module Database.GP.TypeInfo
   )
 where
 
-import Data.Typeable (Typeable, TypeRep, typeRep)
 import Data.Data (Data, Constr, DataType, dataTypeOf, dataTypeConstrs, fromConstr)
-import Data.Proxy
 import GHC.Generics
 import Data.Kind
+import Type.Reflection ( Typeable, SomeTypeRep(..), typeRep )
     
 
 -- | A data type holding meta-data about a type.
@@ -25,7 +26,7 @@ data TypeInfo a = TypeInfo
   { constructorName :: String,
     typeConstructor :: Constr,
     fieldNames      :: [String],
-    fieldTypes      :: [TypeRep]
+    fieldTypes      :: [SomeTypeRep]
   }
   deriving (Show)
 
@@ -82,26 +83,27 @@ instance Constructor c => HasConstructor (C1 c f) where
 
 
 -- field names & types
-gSelectors :: forall a. (HasSelectors (Rep a)) => a -> [(String, TypeRep)]
-gSelectors _x = selectors (Proxy :: Proxy (Rep a))
+
+gSelectors :: forall a. (HasSelectors (Rep a)) => a -> [(String, SomeTypeRep)]
+gSelectors _x = selectors @(Rep a) --selectors (Proxy :: Proxy (Rep a))
 
 class HasSelectors rep where
-  selectors :: Proxy rep -> [(String, TypeRep)]
+  selectors :: [(String, SomeTypeRep)]
 
 instance HasSelectors f => HasSelectors (M1 D x f) where
-  selectors _ = selectors (Proxy :: Proxy f)
+  selectors = selectors @f
 
 instance HasSelectors f => HasSelectors (M1 C x f) where
-  selectors _ = selectors (Proxy :: Proxy f)
+  selectors = selectors @f
 
 instance (Selector s, Typeable t) => HasSelectors (M1 S s (K1 R t)) where
-  selectors _ =
-    [ ( selName (undefined :: M1 S s (K1 R t) ()) , typeRep (Proxy :: Proxy t) ) ]
+  selectors =
+    [(selName (undefined :: M1 S s (K1 R t) ()) , SomeTypeRep (typeRep @t))]
 
 instance (HasSelectors a, HasSelectors b) => HasSelectors (a :*: b) where
-  selectors _ = selectors (Proxy :: Proxy a) ++ selectors (Proxy :: Proxy b)
+  selectors = selectors @a ++ selectors @b
 
 instance HasSelectors U1 where
-  selectors _ = []
+  selectors = []
 
- 
+
