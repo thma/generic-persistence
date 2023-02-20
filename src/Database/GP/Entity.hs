@@ -20,8 +20,8 @@ import           GHC.Generics
 import           Data.Kind
 import           GHC.TypeNats
 import           Data.Convertible
-import Data.Typeable (TypeRep)
-import Data.Proxy
+import Data.Typeable ( Proxy(..), TypeRep )
+
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping
@@ -74,18 +74,21 @@ class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a w
   -- | idField default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
   default idField :: a -> String
-  idField = idFieldName . typeInfo
+  idField _ = idFieldName
     where
-      idFieldName :: TypeInfo a -> String
-      idFieldName ti = map toLower (constructorName ti) ++ "ID"
+      idFieldName :: String
+      idFieldName = map toLower (constructorName ti) ++ "ID"
+      ti = typeInfo @a
 
   -- | fieldsToColumns default implementation: the field names are used as column names
   default fieldsToColumns :: a -> [(String, String)]
-  fieldsToColumns x = zip (fieldNames (typeInfo x)) (fieldNames (typeInfo x))
+  fieldsToColumns _ = zip (fieldNames (typeInfo @a)) (fieldNames (typeInfo @a))
 
   -- | tableName default implementation: the type name is used as table name
   default tableName :: a -> String
-  tableName = constructorName . typeInfo
+  tableName _ = constructorName ti
+    where
+      ti = typeInfo @a
 
 
 -- | The EntityId is a tuple of the type name and the primary key value of an Entity.
@@ -103,15 +106,15 @@ columnNameFor x fieldName =
     maybeColumnNameFor a field = lookup field (fieldsToColumns a)
 
 
-maybeFieldTypeFor :: (Entity a) => a -> String -> Maybe TypeRep
-maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
+maybeFieldTypeFor :: forall a . (Entity a) => a -> String -> Maybe TypeRep
+maybeFieldTypeFor _ field = lookup field (fieldsAndTypes (typeInfo @a))
   where
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]
     fieldsAndTypes ti = zip (fieldNames ti) (fieldTypes ti)
 
 -- | Returns a string representation of a value of type 'a'.
-toString :: (Entity a) => a -> String
-toString x = constructorName (typeInfo x) ++ " " ++ unwords mappedRow
+toString :: forall a . (Entity a) => a -> String
+toString x = constructorName (typeInfo @a) ++ " " ++ unwords mappedRow
   where
     mappedRow = map fromSql row
     row = [] --(gtoRow . from) x -- TODO: fix this (ie. provide a generic toString function)

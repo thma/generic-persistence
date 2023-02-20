@@ -16,12 +16,9 @@ module Database.GP.GenericPersistence
     columnNameFor,
     maybeFieldTypeFor,
     toString,
-    --evidence,
-    --evidenceFrom,
     EntityId,
     entityId,
     TypeInfo (..),
-    --typeInfoFromContext,
     typeInfo,
   )
 where
@@ -55,7 +52,7 @@ retrieveById conn idx = do
     [singleRow] -> Just <$> fromRow conn singleRow
     _ -> error $ "More than one" ++ constructorName ti ++ " found for id " ++ show eid
   where
-    ti = typeInfo (undefined :: a)
+    ti = typeInfo @a
     stmt = selectStmtFor @a
     eid = toSql idx
 
@@ -75,7 +72,6 @@ retrieveAllWhere conn field val = do
   resultRows <- quickQuery conn stmt [val]
   mapM (fromRow conn) resultRows
   where
-    --ti = typeInfoFromContext :: TypeInfo a
     stmt = selectAllWhereStmtFor @a field
 
 -- | A function that persists an entity to a database.
@@ -127,12 +123,12 @@ setupTableFor conn = do
 
 -- | Computes the EntityId of an entity.
 --   The EntityId of an entity is a (typeRep, idValue) tuple.
-entityId :: (Entity a) => Conn -> a -> IO EntityId
+entityId :: forall a . (Entity a) => Conn -> a -> IO EntityId
 entityId conn x = do 
   eid <- idValue conn x
   return (tyName, eid)
     where
-      tyName = constructorName (typeInfo x)
+      tyName = constructorName (typeInfo @a)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 idValue :: forall a. (Entity a) => Conn -> a -> IO SqlValue
@@ -145,13 +141,13 @@ idValue conn x = do
 -- | returns the index of a field of an entity.
 --   The index is the position of the field in the list of fields of the entity.
 --   If no such field exists, an error is thrown.
-fieldIndex :: (Entity a) => a -> String -> Int
+fieldIndex :: forall a . (Entity a) => a -> String -> Int
 fieldIndex x fieldName =
   expectJust
     ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
     (elemIndex fieldName fieldList) 
   where
-    ti = typeInfo x
+    ti = typeInfo @a
     fieldList = fieldNames ti
 
 expectJust :: String -> Maybe a -> a

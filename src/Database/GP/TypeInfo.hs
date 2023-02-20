@@ -12,7 +12,7 @@ module Database.GP.TypeInfo
 where
 
 import GHC.Generics
-import Data.Kind
+import Data.Kind ( Type )
 import Type.Reflection ( Typeable, SomeTypeRep(..), typeRep )
     
 
@@ -30,13 +30,14 @@ data TypeInfo a = TypeInfo
 --   It takes a value of type `a` and returns a `TypeInfo a` object.
 --   If the type has no named fields, an error is thrown.
 --   If the type has more than one constructor, an error is thrown.
-typeInfo :: (HasConstructor (Rep a), HasSelectors (Rep a), Generic a) => a -> TypeInfo a
-typeInfo x =
+typeInfo :: forall a . (HasConstructor (Rep a), HasSelectors (Rep a), Generic a) => TypeInfo a
+typeInfo =
   TypeInfo
     { constructorName = gConstrName x,
       fieldNames = map fst (gSelectors x),
       fieldTypes = map snd (gSelectors x)
     }
+    where x = undefined :: a
 
 
 -- Generic implementations
