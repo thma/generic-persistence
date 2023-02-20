@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 module EmbeddedSpec
   ( test
   , spec
@@ -36,6 +37,7 @@ data Author = Author
   }
   deriving (Generic, Data, Show, Eq)  
 
+
 instance Entity Article where
 
   fieldsToColumns :: Article -> [(String, String)]
@@ -48,21 +50,20 @@ instance Entity Article where
                       ]
 
   fromRow :: Conn -> [SqlValue] -> IO Article
-  fromRow _ row = return $ fromRowWoCtx row
-
-  fromRowWoCtx :: [SqlValue] -> Article
-  fromRowWoCtx row = Article (col 0) (col 1) author (col 5)
+  fromRow _ r = return $ fromRowWoCtx r
     where
-      col i = fromSql (row !! i)
-      author = Author (col 2) (col 3) (col 4)    
+      fromRowWoCtx row = Article (col 0) (col 1) author (col 5)
+        where
+          col i = fromSql (row !! i)
+          author = Author (col 2) (col 3) (col 4)    
 
-  toRowWoCtx  a = [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
-    where 
-      authID = authorID (author a)
-      authorName = name (author a)
-      authorAddress = address (author a)
 
-  toRow _ = return . toRowWoCtx
+  toRow _ art = return $ toRowWoCtx art
+    where
+      toRowWoCtx a = [toSql (articleID a), toSql (title a), toSql authID, toSql authorName, toSql authorAddress, toSql (year a)]
+      authID = authorID (author art)
+      authorName = name (author art)
+      authorAddress = address (author art)
 
 article :: Article
 article = Article 

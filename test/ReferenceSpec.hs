@@ -58,11 +58,13 @@ instance Entity Article where
     persist conn (author a)
     return $ toRowWoCtx a 
 
-  toRowWoCtx a = [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
+toRowWoCtx :: Article -> [SqlValue]
+toRowWoCtx a = [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
-  fromRowWoCtx row = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
-    where
-      col i = fromSql (row !! i)
+fromRowWoCtx :: [SqlValue] -> Article
+fromRowWoCtx row = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
+  where
+    col i = fromSql (row !! i)
 
 article :: Article
 article = Article 

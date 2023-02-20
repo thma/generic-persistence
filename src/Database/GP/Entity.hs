@@ -9,6 +9,7 @@ module Database.GP.Entity
     EntityId,
     gtoRow,
     GToRow,
+    GFromRow,
     maybeFieldTypeFor,
     Conn,
   )
@@ -47,17 +48,12 @@ but that are not explicitely encoded in the type class definition:
 
 type Conn = ConnWrapper
 
-class (Generic a, Data a, HasConstructor (Rep a)) => Entity a where
+class (Generic a, Data a, HasConstructor (Rep a), (HasSelectors (Rep a))) => Entity a where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: Conn -> [SqlValue] -> IO a
 
-  fromRowWoCtx :: [SqlValue] -> a
-
   -- | Converts a value of type 'a' to a database row.
   toRow :: Conn -> a -> IO [SqlValue]
-
-  -- | Converts a value of type 'a' to a database row but without Connection.
-  toRowWoCtx :: a -> [SqlValue]
 
   -- | Returns the name of the primary key field for a type 'a'.
   idField :: a -> String
@@ -68,22 +64,15 @@ class (Generic a, Data a, HasConstructor (Rep a)) => Entity a where
   -- | Returns the name of the table for a type 'a'.
   tableName :: a -> String
 
-  -- | generic default implementation
-  default fromRow :: Conn -> [SqlValue] -> IO a
-  fromRow _conn = pure . fromRowWoCtx 
+  -- | fromRow generic default implementation
+  default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
+  fromRow _conn = pure . to <$> gfromRow 
 
-  default fromRowWoCtx :: GFromRow (Rep a) => [SqlValue] -> a
-  fromRowWoCtx = to <$> gfromRow 
-
-  -- | generic default implementation
-  default toRowWoCtx :: GToRow (Rep a) => a -> [SqlValue]
-  toRowWoCtx = gtoRow . from
-
-  -- | generic default implementation
+  -- | toRow generic default implementation
   default toRow :: GToRow (Rep a) => Conn -> a -> IO [SqlValue]
   toRow _ = pure . gtoRow . from
 
-  -- | default implementation: the ID field is the field with the same name
+  -- | idField default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
   default idField :: a -> String
   idField = idFieldName . typeInfo
@@ -91,11 +80,11 @@ class (Generic a, Data a, HasConstructor (Rep a)) => Entity a where
       idFieldName :: TypeInfo a -> String
       idFieldName ti = map toLower (constructorName ti) ++ "ID"
 
-  -- | default implementation: the field names are used as column names
+  -- | fieldsToColumns default implementation: the field names are used as column names
   default fieldsToColumns :: a -> [(String, String)]
   fieldsToColumns x = zip (fieldNames (typeInfo x)) (fieldNames (typeInfo x))
 
-  -- | default implementation: the type name is used as table name
+  -- | tableName default implementation: the type name is used as table name
   default tableName :: a -> String
   tableName = constructorName . typeInfo
 
@@ -126,7 +115,8 @@ maybeFieldTypeFor a field = lookup field (fieldsAndTypes (typeInfo a))
 toString :: (Entity a) => a -> String
 toString x = constructorName (typeInfo x) ++ " " ++ unwords mappedRow
   where
-    mappedRow = map fromSql (toRowWoCtx x)
+    mappedRow = map fromSql row
+    row = [] --gtoRow . from $ x -- TODO: fix this (ie. provide a generic toString function)
 
 -- | A convenience function: returns an evidence instance of type 'a'.
 --   This is useful for type inference where no instance is available.
@@ -138,8 +128,7 @@ evidence = evidenceFrom ti
 evidenceFrom :: forall a. (Entity a) => TypeInfo a -> a
 evidenceFrom = fromConstr . typeConstructor
 
-
--- generics
+-- generics based implementations for gFromRow and gToRow
 -- toRow
 class GToRow f where
   gtoRow :: f a -> [SqlValue]

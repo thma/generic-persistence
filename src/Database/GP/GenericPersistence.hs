@@ -11,6 +11,8 @@ module Database.GP.GenericPersistence
     idValue,
     Conn,
     Entity (..),
+    GToRow,
+    GFromRow,
     columnNameFor,
     maybeFieldTypeFor,
     toString,
@@ -84,6 +86,7 @@ retrieveAllWhere conn field val = do
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: (Entity a) => Conn -> a -> IO ()
 persist conn entity = do
+  eid <- idValue conn entity
   resultRows <- quickQuery conn preparedSelectStmt [eid]
   case resultRows of
     []           -> insert conn entity
@@ -91,7 +94,6 @@ persist conn entity = do
     _            -> error $ "More than one entity found for id " ++ show eid
   where
     ti = typeInfo entity
-    eid = idValue entity
     preparedSelectStmt = selectStmtFor ti
 
 -- | A function that explicitely inserts an entity into a database.
@@ -104,13 +106,15 @@ insert conn entity = do
 -- | A function that explicitely updates an entity in a database.
 update :: (Entity a) => Conn -> a -> IO ()
 update conn entity = do
+  eid <- idValue conn entity
   row <- toRow conn entity
-  _rowcount <- run conn (updateStmtFor entity) (row ++ [idValue entity])
+  _rowcount <- run conn (updateStmtFor entity) (row ++ [eid])
   commit conn
 
 delete :: (Entity a) => Conn -> a -> IO ()
 delete conn entity = do
-  _rowCount <- run conn (deleteStmtFor entity) [idValue entity]
+  eid <- idValue conn entity
+  _rowCount <- run conn (deleteStmtFor entity) [eid]
   commit conn
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
@@ -127,15 +131,18 @@ setupTableFor conn = do
 
 -- | Computes the EntityId of an entity.
 --   The EntityId of an entity is a (typeRep, idValue) tuple.
-entityId :: (Entity a) => a -> EntityId
-entityId x = (typeOf x, idValue x)
+entityId :: (Entity a) => Conn -> a -> IO EntityId
+entityId conn x = do 
+  eid <- idValue conn x
+  return (typeOf x, eid)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
-idValue :: forall a. (Entity a) => a -> SqlValue
-idValue x = sqlValues !! idFieldIndex 
+idValue :: forall a. (Entity a) => Conn -> a -> IO SqlValue
+idValue conn x = do 
+  sqlValues <- toRow conn x
+  return (sqlValues !! idFieldIndex)
   where
     idFieldIndex = fieldIndex x (idField x)
-    sqlValues = toRowWoCtx x
 
 -- | returns the index of a field of an entity.
 --   The index is the position of the field in the list of fields of the entity.

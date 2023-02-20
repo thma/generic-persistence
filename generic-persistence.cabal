@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           generic-persistence
-version:        0.2.0.3
+version:        0.3.0.0
 synopsis:       Database persistence using generics
 description:    Please see the README on GitHub at <https://github.com/thma/generic-persistence#readme>
 category:       Database

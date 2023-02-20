@@ -49,7 +49,8 @@ instance Entity Author where
 
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
-    articlesByAuth <- retrieveAllWhere conn "authorId" (idValue rawAuthor) :: IO [Article]
+    authID <- idValue conn rawAuthor
+    articlesByAuth <- retrieveAllWhere conn "authorId" authID :: IO [Article]
     pure $ rawAuthor {articles= articlesByAuth}
     where
       rawAuthor = fromRowWoCtx row
@@ -59,13 +60,13 @@ instance Entity Author where
     mapM_ (persist conn) (articles x)
     return (toRowWoCtx x)
 
-  toRowWoCtx :: Author -> [SqlValue]
-  toRowWoCtx a = [toSql (authorID a), toSql (name a), toSql (address a)]
+toRowWoCtx :: Author -> [SqlValue]
+toRowWoCtx a = [toSql (authorID a), toSql (name a), toSql (address a)]
 
-  fromRowWoCtx :: [SqlValue] -> Author
-  fromRowWoCtx row = Author (col 0) (col 1) (col 2) []
-    where
-      col i = fromSql (row !! i)
+fromRowWoCtx :: [SqlValue] -> Author
+fromRowWoCtx row = Author (col 0) (col 1) (col 2) []
+  where
+    col i = fromSql (row !! i)
 
 article1 :: Article
 article1 = Article 
