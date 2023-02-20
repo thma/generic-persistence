@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Database.GP.GenericPersistence
   ( retrieveById,
     retrieveAll,
@@ -87,27 +88,27 @@ persist conn entity = do
     [_singleRow] -> update conn entity
     _            -> error $ "More than one entity found for id " ++ show eid
   where
-    preparedSelectStmt = selectStmtFor @a -- @a
+    preparedSelectStmt = selectStmtFor @a
 
 -- | A function that explicitely inserts an entity into a database.
-insert :: (Entity a) => Conn -> a -> IO ()
+insert :: forall a . (Entity a) => Conn -> a -> IO ()
 insert conn entity = do
   row <- toRow conn entity
-  _rowcount <- run conn (insertStmtFor entity) row
+  _rowcount <- run conn (insertStmtFor @a) row
   commit conn
 
 -- | A function that explicitely updates an entity in a database.
-update :: (Entity a) => Conn -> a -> IO ()
+update :: forall a . (Entity a) => Conn -> a -> IO ()
 update conn entity = do
   eid <- idValue conn entity
   row <- toRow conn entity
-  _rowcount <- run conn (updateStmtFor entity) (row ++ [eid])
+  _rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
   commit conn
 
-delete :: (Entity a) => Conn -> a -> IO ()
+delete :: forall a . (Entity a) => Conn -> a -> IO ()
 delete conn entity = do
   eid <- idValue conn entity
-  _rowCount <- run conn (deleteStmtFor entity) [eid]
+  _rowCount <- run conn (deleteStmtFor @a) [eid]
   commit conn
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
@@ -136,13 +137,13 @@ idValue conn x = do
   sqlValues <- toRow conn x
   return (sqlValues !! idFieldIndex)
   where
-    idFieldIndex = fieldIndex x (idField x)
+    idFieldIndex = fieldIndex @a (idField @a)
 
 -- | returns the index of a field of an entity.
 --   The index is the position of the field in the list of fields of the entity.
 --   If no such field exists, an error is thrown.
-fieldIndex :: forall a . (Entity a) => a -> String -> Int
-fieldIndex x fieldName =
+fieldIndex :: forall a . (Entity a) => String -> Int
+fieldIndex fieldName =
   expectJust
     ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
     (elemIndex fieldName fieldList) 

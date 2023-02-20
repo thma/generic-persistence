@@ -47,9 +47,9 @@ data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Ot
 
   
 instance Entity Book where
-  idField _ = "book_id"
-  fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("category", "bookCategory")]
-  tableName _ = "BOOK_TBL"
+  idField = "book_id"
+  fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("category", "bookCategory")]
+  tableName = "BOOK_TBL"
   fromRow _c row = pure $ Book (col 0) (col 1) (col 2) (col 3) (col 4)
     where
       col i = fromSql (row !! i)

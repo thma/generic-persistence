@@ -30,13 +30,13 @@ data Book = Book
 
 instance Entity Book where
   -- this is the primary key field of the Book data type
-  idField _ = "book_id"
+  idField = "book_id"
 
   -- this defines the mapping between the field names of the Book data type and the column names of the database table
-  fieldsToColumns _ = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
+  fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
 
   -- this is the name of the database table
-  tableName _ = "BOOK_TBL"
+  tableName = "BOOK_TBL"
 
   -- this is the function that converts a row from the database table into a Book data type
   fromRow _c row = return $ Book (col 0) (col 1) (col 2) (col 3)

@@ -39,8 +39,7 @@ data Author = Author
 
 instance Entity Article where
 
-  fieldsToColumns :: Article -> [(String, String)]
-  fieldsToColumns _ = [("articleID", "articleID"),
+  fieldsToColumns = [("articleID", "articleID"),
                        ("title", "title"), 
                        ("authorID", "authorID"), 
                        ("authorName", "authorName"), 

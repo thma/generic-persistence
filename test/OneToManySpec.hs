@@ -40,8 +40,8 @@ data Author = Author
   deriving (Generic, Show, Eq)  
 
 instance Entity Author where
-  fieldsToColumns :: Author -> [(String, String)]
-  fieldsToColumns _ = [("authorID", "authorID"),
+  fieldsToColumns :: [(String, String)]
+  fieldsToColumns = [("authorID", "authorID"),
                        ("name", "name"), 
                        ("address", "address")
                       ]

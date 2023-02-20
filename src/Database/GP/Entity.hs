@@ -1,4 +1,4 @@
-{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, UndecidableInstances, ScopedTypeVariables, DefaultSignatures, DeriveAnyClass #-}
+{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, UndecidableInstances, ScopedTypeVariables, DefaultSignatures, AllowAmbiguousTypes #-}
 
 module Database.GP.Entity
   ( Entity (..),
@@ -55,17 +55,17 @@ class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a w
   toRow :: Conn -> a -> IO [SqlValue]
 
   -- | Returns the name of the primary key field for a type 'a'.
-  idField :: a -> String
+  idField :: String
 
   -- | Returns a list of tuples that map field names to column names for a type 'a'.
-  fieldsToColumns :: a -> [(String, String)]
+  fieldsToColumns :: [(String, String)]
 
   -- | Returns the name of the table for a type 'a'.
-  tableName :: a -> String
+  tableName :: String
 
   -- | fromRow generic default implementation
   default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
-  fromRow _conn = pure . to <$> gfromRow 
+  fromRow _conn = pure . to <$> gfromRow
 
   -- | toRow generic default implementation
   default toRow :: GToRow (Rep a) => Conn -> a -> IO [SqlValue]
@@ -73,41 +73,41 @@ class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a w
 
   -- | idField default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
-  default idField :: a -> String
-  idField _ = idFieldName
+  default idField :: String
+  idField = idFieldName
     where
       idFieldName :: String
       idFieldName = map toLower (constructorName ti) ++ "ID"
       ti = typeInfo @a
 
   -- | fieldsToColumns default implementation: the field names are used as column names
-  default fieldsToColumns :: a -> [(String, String)]
-  fieldsToColumns _ = zip (fieldNames (typeInfo @a)) (fieldNames (typeInfo @a))
+  default fieldsToColumns :: [(String, String)]
+  fieldsToColumns = zip (fieldNames (typeInfo @a)) (fieldNames (typeInfo @a))
 
   -- | tableName default implementation: the type name is used as table name
-  default tableName :: a -> String
-  tableName _ = constructorName ti
+  default tableName :: String
+  tableName = constructorName ti
     where
       ti = typeInfo @a
 
 
--- | The EntityId is a tuple of the type name and the primary key value of an Entity.
+-- | The EntityId is a tuple of the constructor name and the primary key value of an Entity.
 type EntityId = (String, SqlValue)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
-columnNameFor :: (Entity a) => a -> String -> String
-columnNameFor x fieldName =
-  case maybeColumnNameFor x fieldName of
+columnNameFor :: forall a . (Entity a) => String -> String
+columnNameFor fieldName =
+  case maybeColumnNameFor fieldName of
     Just columnName -> columnName
-    Nothing -> error ("columnNameFor: " ++ toString x ++
+    Nothing -> error ("columnNameFor: " ++ tableName @a ++
                       " has no column mapping for " ++ fieldName)
   where
-    maybeColumnNameFor :: Entity a => a -> String -> Maybe String
-    maybeColumnNameFor a field = lookup field (fieldsToColumns a)
+    maybeColumnNameFor :: String -> Maybe String
+    maybeColumnNameFor field = lookup field (fieldsToColumns @a)
 
 
-maybeFieldTypeFor :: forall a . (Entity a) => a -> String -> Maybe TypeRep
-maybeFieldTypeFor _ field = lookup field (fieldsAndTypes (typeInfo @a))
+maybeFieldTypeFor :: forall a . (Entity a) => String -> Maybe TypeRep
+maybeFieldTypeFor field = lookup field (fieldsAndTypes (typeInfo @a))
   where
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]
     fieldsAndTypes ti = zip (fieldNames ti) (fieldTypes ti)
