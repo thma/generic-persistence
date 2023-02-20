@@ -5,7 +5,6 @@ module OneToManySpec
   ) where
 
 import          Test.Hspec
-import          Data.Data
 import          Database.HDBC
 import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence
@@ -30,7 +29,7 @@ data Article = Article
     authorId  :: Int,
     year      :: Int
   }
-  deriving (Generic, Data, Show, Eq, Entity)
+  deriving (Generic, Show, Eq, Entity)
 
 data Author = Author
   { authorID :: Int,
@@ -38,7 +37,7 @@ data Author = Author
     address  :: String,
     articles :: [Article]
   }
-  deriving (Generic, Data, Show, Eq)  
+  deriving (Generic, Show, Eq)  
 
 instance Entity Author where
   fieldsToColumns :: Author -> [(String, String)]

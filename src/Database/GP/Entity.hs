@@ -14,13 +14,14 @@ module Database.GP.Entity
 where
 
 import           Data.Char                        (toLower)
-import           Data.Data
 import           Database.GP.TypeInfo
 import           Database.HDBC                    (ConnWrapper, SqlValue, fromSql)
 import           GHC.Generics
 import           Data.Kind
 import           GHC.TypeNats
 import           Data.Convertible
+import Data.Typeable (TypeRep)
+import Data.Proxy
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping

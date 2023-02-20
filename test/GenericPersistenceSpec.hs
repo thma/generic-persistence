@@ -5,8 +5,7 @@ module GenericPersistenceSpec
   ) where
 
 
-import           Test.Hspec
-import           Data.Data             
+import           Test.Hspec      
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3
 import           Database.GP.GenericPersistence
@@ -32,7 +31,7 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Generic, Data, Entity, Show, Eq)
+  deriving (Generic, Entity, Show, Eq)
 
 data Book = Book
   { book_id :: Int,
@@ -41,10 +40,10 @@ data Book = Book
     year    :: Int,
     category :: BookCategory
   }
-  deriving (Generic, Data, Show, Eq)
+  deriving (Generic, Show, Eq)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Generic, Data, Read, Show, Eq, Enum)
+  deriving (Generic, Read, Show, Eq, Enum)
 
   
 instance Entity Book where

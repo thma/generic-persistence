@@ -5,7 +5,6 @@ module EmbeddedSpec
   ) where
 
 import          Test.Hspec
-import          Data.Data
 import          Database.HDBC
 import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence 
@@ -28,14 +27,14 @@ data Article = Article
     author    :: Author,
     year      :: Int
   }
-  deriving (Generic, Data, Show, Eq)
+  deriving (Generic, Show, Eq)
 
 data Author = Author
   { authorID :: Int,
     name     :: String,
     address  :: String
   }
-  deriving (Generic, Data, Show, Eq)  
+  deriving (Generic, Show, Eq)  
 
 
 instance Entity Article where

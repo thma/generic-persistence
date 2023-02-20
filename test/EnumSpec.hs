@@ -5,7 +5,6 @@ module EnumSpec
   ) where
 
 import          Test.Hspec
-import          Data.Data
 import          Database.HDBC
 import          Database.HDBC.Sqlite3
 import          Database.GP.GenericPersistence  
@@ -30,10 +29,10 @@ data Book = Book
     year    :: Int,
     category :: BookCategory
   }
-  deriving (Generic, Data, Show, Eq, Entity)
+  deriving (Generic, Show, Eq, Entity)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
-  deriving (Generic, Data, Show, Read, Eq)
+  deriving (Generic, Show, Read, Eq)
   
 instance Convertible BookCategory SqlValue where
   safeConvert = Right . toSql . show

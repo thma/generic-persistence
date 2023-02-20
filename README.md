@@ -7,7 +7,7 @@
 ## Introduction
 
 GenericPersistence is a minimalistic Haskell persistence layer (on top of HDBC). 
-The approach relies on Generics (`GHC.Generics` and `Data.Data`).
+The approach relies on Generics (`GHC.Generics`).
 
 The *functional goal* of the persistence layer is to provide hassle-free RDBMS persistence for Haskell data types in 
 Record notation (for brevity I call them *Entities*).
@@ -52,8 +52,7 @@ Here now follows a short demo that shows how the library looks and feels from th
 {-# LANGUAGE DeriveAnyClass #-}
 
 module Main (main) where
-
-import           Data.Data             
+        
 import           Database.GP           
 import           Database.HDBC         
 import           Database.HDBC.Sqlite3

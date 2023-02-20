@@ -28,12 +28,12 @@ where
 
 import           Data.Convertible                 (ConvertResult, Convertible)
 import           Data.Convertible.Base            (Convertible (safeConvert))
-import           Data.Data
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
 import           Data.List                      (elemIndex)
+import Data.Proxy
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
