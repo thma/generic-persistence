@@ -33,7 +33,6 @@ import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
 import           Data.List                      (elemIndex)
-import Data.Proxy
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -56,8 +55,8 @@ retrieveById conn idx = do
     [singleRow] -> Just <$> fromRow conn singleRow
     _ -> error $ "More than one" ++ constructorName ti ++ " found for id " ++ show eid
   where
-    ti = typeInfo (def :: a)
-    stmt = selectStmtFor (Proxy :: Proxy a)
+    ti = typeInfo (undefined :: a)
+    stmt = selectStmtFor @a
     eid = toSql idx
 
 
@@ -69,7 +68,7 @@ retrieveAll conn = do
   resultRows <- quickQuery conn stmt []
   mapM (fromRow conn) resultRows
   where
-    stmt = selectAllStmtFor (Proxy :: Proxy a)
+    stmt = selectAllStmtFor @a
 
 retrieveAllWhere :: forall a. (Entity a) => Conn -> String -> SqlValue -> IO [a]
 retrieveAllWhere conn field val = do
@@ -77,7 +76,7 @@ retrieveAllWhere conn field val = do
   mapM (fromRow conn) resultRows
   where
     --ti = typeInfoFromContext :: TypeInfo a
-    stmt = selectAllWhereStmtFor (Proxy :: Proxy a) field
+    stmt = selectAllWhereStmtFor @a field
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
@@ -92,8 +91,7 @@ persist conn entity = do
     [_singleRow] -> update conn entity
     _            -> error $ "More than one entity found for id " ++ show eid
   where
-    --ti = typeInfo entity
-    preparedSelectStmt = selectStmtFor (Proxy :: Proxy a)
+    preparedSelectStmt = selectStmtFor @a -- @a
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: (Entity a) => Conn -> a -> IO ()
@@ -119,13 +117,12 @@ delete conn entity = do
 -- | set up a table for a given entity type. The table is dropped and recreated.
 setupTableFor :: forall a. (Entity a) => Conn -> IO a
 setupTableFor conn = do
-  _ <- runRaw conn $ dropTableStmtFor (Proxy :: Proxy a)
-  _ <- runRaw conn $ createTableStmtFor (Proxy :: Proxy a)
+  _ <- runRaw conn $ dropTableStmtFor @a
+  _ <- runRaw conn $ createTableStmtFor @a
   commit conn
   return x
   where
-    --ti = typeInfoFromContext :: TypeInfo a
-    x = def :: a
+    x = undefined :: a
 
 
 -- | Computes the EntityId of an entity.

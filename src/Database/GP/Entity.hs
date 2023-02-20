@@ -63,9 +63,6 @@ class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a w
   -- | Returns the name of the table for a type 'a'.
   tableName :: a -> String
 
-  -- | Returns a default instance of type 'a'.
-  def :: a
-
   -- | fromRow generic default implementation
   default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
   fromRow _conn = pure . to <$> gfromRow 
@@ -89,10 +86,6 @@ class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a w
   -- | tableName default implementation: the type name is used as table name
   default tableName :: a -> String
   tableName = constructorName . typeInfo
-
-  -- | def default implementation: return the default value of the generic representation
-  --default def :: (GDefault (Rep a)) => a
-  --def = to gdef
 
 
 -- | The EntityId is a tuple of the type name and the primary key value of an Entity.
@@ -146,15 +139,12 @@ class GFromRow f where
   gfromRow :: [SqlValue] -> f a
 
 instance GFromRow U1 where
-  --gfromRow :: forall k (a :: k). [SqlValue] -> U1 a
   gfromRow = pure U1
 
 instance (Convertible SqlValue a) => GFromRow (K1 i a) where
-  --gfromRow :: forall k (a1 :: k). [SqlValue] -> K1 i a a1
   gfromRow = K1 <$> convert . head
 
 instance GFromRow a => GFromRow (M1 i c a) where
-  --gfromRow :: forall k (a :: k -> Type) i (c :: Meta) (a1 :: k). GFromRow a => [SqlValue] -> M1 i c a a1
   gfromRow = M1 <$> gfromRow
 
 -- | This instance is the most interesting one. It splits the list of
@@ -173,21 +163,3 @@ instance (KnownNat (NumFields f), GFromRow f, GFromRow g) => GFromRow (f :*: g) 
 type family NumFields (f :: Type -> Type) :: Nat where
   NumFields (M1 i c f) = 1
   NumFields (f :*: g) = NumFields f + NumFields g
-
-
-----
--- https://stackoverflow.com/questions/39619805/rep-type-in-ghc-generics
-class GDefault f where
-  gdef :: f a
-
-instance GDefault U1 where
-  gdef = U1
-
-instance Entity a => GDefault (K1 i a) where
-  gdef = K1 def
-
-instance (GDefault a, GDefault b) => GDefault (a :*: b) where
-  gdef = gdef :*: gdef
-
-instance GDefault a => GDefault (M1 i c a) where
-  gdef = M1 gdef

@@ -13,7 +13,6 @@ where
 
 import           Data.List            (intercalate)
 import           Database.GP.Entity
-import Data.Proxy
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -59,8 +58,8 @@ idColumn :: (Entity a) => a -> String
 idColumn x = columnNameFor x (idField x)
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
-selectStmtFor :: forall a. (Entity a) => Proxy a -> String
-selectStmtFor _ =
+selectStmtFor :: forall a. (Entity a) => String
+selectStmtFor =
   "SELECT "
     ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
@@ -69,20 +68,20 @@ selectStmtFor _ =
     ++ idColumn x
     ++ " = ?;"
   where
-    x = def :: a
+    x = undefined :: a
 
-selectAllStmtFor :: forall a. (Entity a) => Proxy a -> String
-selectAllStmtFor _ =
+selectAllStmtFor :: forall a. (Entity a) => String
+selectAllStmtFor =
   "SELECT "
     ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
     ++ tableName x
     ++ ";"
   where
-    x = def :: a
+    x = undefined :: a
 
-selectAllWhereStmtFor :: forall a. (Entity a) => Proxy a -> String -> String
-selectAllWhereStmtFor _ field =
+selectAllWhereStmtFor :: forall a. (Entity a) => String -> String
+selectAllWhereStmtFor field =
   "SELECT "
     ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
@@ -91,7 +90,7 @@ selectAllWhereStmtFor _ field =
     ++ column
     ++ " = ?;"
   where
-    x = def :: a
+    x = undefined :: a
     column = columnNameFor x field
 
 deleteStmtFor :: (Entity a) => a -> String
@@ -102,15 +101,15 @@ deleteStmtFor x =
     ++ idColumn x
     ++ " = ?;"
 
-createTableStmtFor :: forall a. (Entity a) => Proxy a -> String
-createTableStmtFor _ =
+createTableStmtFor :: forall a. (Entity a) => String
+createTableStmtFor =
   "CREATE TABLE "
     ++ tableName x
     ++ " ("
     ++ intercalate ", " (map (\(f,c) -> c ++ " " ++ columnTypeFor x f ++ optionalPK f) (fieldsToColumns x))
     ++ ");"
   where
-    x = def :: a
+    x = undefined :: a
     isIdField f = f == idField x
     optionalPK f = if isIdField f then " PRIMARY KEY" else ""
 
@@ -131,10 +130,10 @@ columnTypeFor x field =
       fType = maybe "OTHER" show maybeFType
 
 
-dropTableStmtFor :: forall a. (Entity a) => Proxy a -> String
-dropTableStmtFor _ =
+dropTableStmtFor :: forall a. (Entity a) => String
+dropTableStmtFor =
   "DROP TABLE IF EXISTS "
     ++ tableName x
     ++ ";"
   where
-    x = def :: a
+    x = undefined :: a
