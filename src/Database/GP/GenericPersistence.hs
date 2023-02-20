@@ -16,12 +16,12 @@ module Database.GP.GenericPersistence
     columnNameFor,
     maybeFieldTypeFor,
     toString,
-    evidence,
-    evidenceFrom,
+    --evidence,
+    --evidenceFrom,
     EntityId,
     entityId,
     TypeInfo (..),
-    typeInfoFromContext,
+    --typeInfoFromContext,
     typeInfo,
   )
 where
@@ -54,10 +54,10 @@ retrieveById conn idx = do
   case resultRowsSqlValues of
     []          -> pure Nothing
     [singleRow] -> Just <$> fromRow conn singleRow
-    _ -> error $ "More than one" ++ show (typeConstructor ti) ++ " found for id " ++ show eid
+    _ -> error $ "More than one" ++ constructorName ti ++ " found for id " ++ show eid
   where
-    ti = typeInfoFromContext :: TypeInfo a
-    stmt = selectStmtFor ti
+    ti = typeInfo (def :: a)
+    stmt = selectStmtFor (Proxy :: Proxy a)
     eid = toSql idx
 
 
@@ -69,22 +69,21 @@ retrieveAll conn = do
   resultRows <- quickQuery conn stmt []
   mapM (fromRow conn) resultRows
   where
-    ti = typeInfoFromContext :: TypeInfo a
-    stmt = selectAllStmtFor ti
+    stmt = selectAllStmtFor (Proxy :: Proxy a)
 
 retrieveAllWhere :: forall a. (Entity a) => Conn -> String -> SqlValue -> IO [a]
 retrieveAllWhere conn field val = do
   resultRows <- quickQuery conn stmt [val]
   mapM (fromRow conn) resultRows
   where
-    ti = typeInfoFromContext :: TypeInfo a
-    stmt = selectAllWhereStmtFor ti field
+    --ti = typeInfoFromContext :: TypeInfo a
+    stmt = selectAllWhereStmtFor (Proxy :: Proxy a) field
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
-persist :: (Entity a) => Conn -> a -> IO ()
+persist :: forall a. (Entity a) => Conn -> a -> IO ()
 persist conn entity = do
   eid <- idValue conn entity
   resultRows <- quickQuery conn preparedSelectStmt [eid]
@@ -93,8 +92,8 @@ persist conn entity = do
     [_singleRow] -> update conn entity
     _            -> error $ "More than one entity found for id " ++ show eid
   where
-    ti = typeInfo entity
-    preparedSelectStmt = selectStmtFor ti
+    --ti = typeInfo entity
+    preparedSelectStmt = selectStmtFor (Proxy :: Proxy a)
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: (Entity a) => Conn -> a -> IO ()
@@ -120,13 +119,13 @@ delete conn entity = do
 -- | set up a table for a given entity type. The table is dropped and recreated.
 setupTableFor :: forall a. (Entity a) => Conn -> IO a
 setupTableFor conn = do
-  _ <- runRaw conn (dropTableStmtFor ti)
-  _ <- runRaw conn (createTableStmtFor ti)
+  _ <- runRaw conn $ dropTableStmtFor (Proxy :: Proxy a)
+  _ <- runRaw conn $ createTableStmtFor (Proxy :: Proxy a)
   commit conn
   return x
   where
-    ti = typeInfoFromContext :: TypeInfo a
-    x = evidenceFrom ti :: a
+    --ti = typeInfoFromContext :: TypeInfo a
+    x = def :: a
 
 
 -- | Computes the EntityId of an entity.
@@ -134,7 +133,9 @@ setupTableFor conn = do
 entityId :: (Entity a) => Conn -> a -> IO EntityId
 entityId conn x = do 
   eid <- idValue conn x
-  return (typeOf x, eid)
+  return (tyName, eid)
+    where
+      tyName = constructorName (typeInfo x)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 idValue :: forall a. (Entity a) => Conn -> a -> IO SqlValue

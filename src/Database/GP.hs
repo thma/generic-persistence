@@ -13,12 +13,10 @@ module Database.GP   ( retrieveById,
     columnNameFor,
     maybeFieldTypeFor,
     toString,
-    evidence,
-    evidenceFrom,
+
     EntityId,
     entityId,
     TypeInfo (..),
-    typeInfoFromContext,
     typeInfo,
   )
 where

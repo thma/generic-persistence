@@ -3,7 +3,6 @@
 
 module Main (main, main1) where
 
-import           Data.Data             (Data)
 import           Database.GP           (Entity (..), delete, insert,
                                         persist, retrieveAll, retrieveById,
                                         setupTableFor, update)
@@ -19,7 +18,7 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Generic, Data, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
+  deriving (Generic, Entity, Show) -- deriving Entity allows to handle the type with GenericPersistence
 
 data Book = Book
   { book_id :: Int,
@@ -27,7 +26,7 @@ data Book = Book
     author  :: String,
     year    :: Int
   }
-  deriving (Generic, Data, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
+  deriving (Generic, Show) -- no auto deriving of Entity, so we have to implement the Entity type class:
 
 instance Entity Book where
   -- this is the primary key field of the Book data type

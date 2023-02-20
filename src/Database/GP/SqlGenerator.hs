@@ -1,3 +1,4 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module Database.GP.SqlGenerator
   ( insertStmtFor,
     updateStmtFor,
@@ -12,7 +13,7 @@ where
 
 import           Data.List            (intercalate)
 import           Database.GP.Entity
-import           Database.GP.TypeInfo
+import Data.Proxy
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -58,8 +59,8 @@ idColumn :: (Entity a) => a -> String
 idColumn x = columnNameFor x (idField x)
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
-selectStmtFor :: forall a. (Entity a) => TypeInfo a -> String
-selectStmtFor ti =
+selectStmtFor :: forall a. (Entity a) => Proxy a -> String
+selectStmtFor _ =
   "SELECT "
     ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
@@ -68,20 +69,20 @@ selectStmtFor ti =
     ++ idColumn x
     ++ " = ?;"
   where
-    x = evidenceFrom ti :: a
+    x = def :: a
 
-selectAllStmtFor :: forall a. (Entity a) => TypeInfo a -> String
-selectAllStmtFor ti =
+selectAllStmtFor :: forall a. (Entity a) => Proxy a -> String
+selectAllStmtFor _ =
   "SELECT "
     ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
     ++ tableName x
     ++ ";"
   where
-    x = evidenceFrom ti :: a
+    x = def :: a
 
-selectAllWhereStmtFor :: forall a. (Entity a) => TypeInfo a -> String -> String
-selectAllWhereStmtFor ti field =
+selectAllWhereStmtFor :: forall a. (Entity a) => Proxy a -> String -> String
+selectAllWhereStmtFor _ field =
   "SELECT "
     ++ intercalate ", " (columnNamesFor x)
     ++ " FROM "
@@ -90,7 +91,7 @@ selectAllWhereStmtFor ti field =
     ++ column
     ++ " = ?;"
   where
-    x = evidenceFrom ti :: a
+    x = def :: a
     column = columnNameFor x field
 
 deleteStmtFor :: (Entity a) => a -> String
@@ -101,19 +102,21 @@ deleteStmtFor x =
     ++ idColumn x
     ++ " = ?;"
 
-createTableStmtFor :: forall a. (Entity a) => TypeInfo a -> String
-createTableStmtFor ti =
+createTableStmtFor :: forall a. (Entity a) => Proxy a -> String
+createTableStmtFor _ =
   "CREATE TABLE "
     ++ tableName x
     ++ " ("
     ++ intercalate ", " (map (\(f,c) -> c ++ " " ++ columnTypeFor x f ++ optionalPK f) (fieldsToColumns x))
     ++ ");"
   where
-    x = evidenceFrom ti :: a
+    x = def :: a
     isIdField f = f == idField x
     optionalPK f = if isIdField f then " PRIMARY KEY" else ""
 
 
+-- | A function that returns the SQLite column type for a field of an entity.
+-- TODO: have a switch to also support other databases.
 columnTypeFor :: forall a. (Entity a) => a -> String -> String
 columnTypeFor x field =
   case fType of
@@ -128,10 +131,10 @@ columnTypeFor x field =
       fType = maybe "OTHER" show maybeFType
 
 
-dropTableStmtFor :: forall a. (Entity a) => TypeInfo a -> String
-dropTableStmtFor ti =
+dropTableStmtFor :: forall a. (Entity a) => Proxy a -> String
+dropTableStmtFor _ =
   "DROP TABLE IF EXISTS "
     ++ tableName x
     ++ ";"
   where
-    x = evidenceFrom ti :: a
+    x = def :: a

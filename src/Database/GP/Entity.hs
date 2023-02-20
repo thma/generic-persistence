@@ -4,8 +4,6 @@ module Database.GP.Entity
   ( Entity (..),
     columnNameFor,
     toString,
-    evidence,
-    evidenceFrom,
     EntityId,
     gtoRow,
     GToRow,
@@ -48,7 +46,7 @@ but that are not explicitely encoded in the type class definition:
 
 type Conn = ConnWrapper
 
-class (Generic a, Data a, HasConstructor (Rep a), (HasSelectors (Rep a))) => Entity a where
+class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: Conn -> [SqlValue] -> IO a
 
@@ -63,6 +61,9 @@ class (Generic a, Data a, HasConstructor (Rep a), (HasSelectors (Rep a))) => Ent
 
   -- | Returns the name of the table for a type 'a'.
   tableName :: a -> String
+
+  -- | Returns a default instance of type 'a'.
+  def :: a
 
   -- | fromRow generic default implementation
   default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
@@ -88,10 +89,13 @@ class (Generic a, Data a, HasConstructor (Rep a), (HasSelectors (Rep a))) => Ent
   default tableName :: a -> String
   tableName = constructorName . typeInfo
 
+  -- | def default implementation: return the default value of the generic representation
+  --default def :: (GDefault (Rep a)) => a
+  --def = to gdef
 
--- | The EntityId is a tuple of the TypeRep and the primary key value of an Entity.
---   It is used as a key in the resolution cache.
-type EntityId = (TypeRep, SqlValue)
+
+-- | The EntityId is a tuple of the type name and the primary key value of an Entity.
+type EntityId = (String, SqlValue)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: (Entity a) => a -> String -> String
@@ -116,17 +120,8 @@ toString :: (Entity a) => a -> String
 toString x = constructorName (typeInfo x) ++ " " ++ unwords mappedRow
   where
     mappedRow = map fromSql row
-    row = [] --gtoRow . from $ x -- TODO: fix this (ie. provide a generic toString function)
+    row = [] --(gtoRow . from) x -- TODO: fix this (ie. provide a generic toString function)
 
--- | A convenience function: returns an evidence instance of type 'a'.
---   This is useful for type inference where no instance is available.
-evidence :: forall a. (Entity a) => a
-evidence = evidenceFrom ti
-  where
-    ti = typeInfoFromContext :: TypeInfo a
-
-evidenceFrom :: forall a. (Entity a) => TypeInfo a -> a
-evidenceFrom = fromConstr . typeConstructor
 
 -- generics based implementations for gFromRow and gToRow
 -- toRow
@@ -177,3 +172,21 @@ instance (KnownNat (NumFields f), GFromRow f, GFromRow g) => GFromRow (f :*: g) 
 type family NumFields (f :: Type -> Type) :: Nat where
   NumFields (M1 i c f) = 1
   NumFields (f :*: g) = NumFields f + NumFields g
+
+
+----
+-- https://stackoverflow.com/questions/39619805/rep-type-in-ghc-generics
+class GDefault f where
+  gdef :: f a
+
+instance GDefault U1 where
+  gdef = U1
+
+instance Entity a => GDefault (K1 i a) where
+  gdef = K1 def
+
+instance (GDefault a, GDefault b) => GDefault (a :*: b) where
+  gdef = gdef :*: gdef
+
+instance GDefault a => GDefault (M1 i c a) where
+  gdef = M1 gdef
