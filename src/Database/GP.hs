@@ -1,4 +1,5 @@
-module Database.GP   ( retrieveById,
+module Database.GP
+  ( retrieveById,
     retrieveAll,
     retrieveAllWhere,
     persist,
@@ -13,7 +14,6 @@ module Database.GP   ( retrieveById,
     columnNameFor,
     maybeFieldTypeFor,
     toString,
-
     EntityId,
     entityId,
     TypeInfo (..),
@@ -23,5 +23,3 @@ where
 
 -- We are just re-exporting from the GenericPersistence module.
 import           Database.GP.GenericPersistence
-
-

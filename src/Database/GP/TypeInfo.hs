@@ -11,10 +11,9 @@ module Database.GP.TypeInfo
   )
 where
 
-import GHC.Generics
-import Data.Kind ( Type )
-import Type.Reflection ( Typeable, SomeTypeRep(..), typeRep )
-    
+import           Data.Kind       (Type)
+import           GHC.Generics
+import           Type.Reflection (SomeTypeRep (..), Typeable, typeRep)
 
 -- | A data type holding meta-data about a type.
 --   The Phantom type parameter `a` ensures type safety for reflective functions
@@ -30,20 +29,20 @@ data TypeInfo a = TypeInfo
 --   It takes a value of type `a` and returns a `TypeInfo a` object.
 --   If the type has no named fields, an error is thrown.
 --   If the type has more than one constructor, an error is thrown.
-typeInfo :: forall a . (HasConstructor (Rep a), HasSelectors (Rep a), Generic a) => TypeInfo a
+typeInfo :: forall a. (HasConstructor (Rep a), HasSelectors (Rep a), Generic a) => TypeInfo a
 typeInfo =
   TypeInfo
     { constructorName = gConstrName x,
       fieldNames = map fst (gSelectors x),
       fieldTypes = map snd (gSelectors x)
     }
-    where x = undefined :: a
-
+  where
+    x = undefined :: a
 
 -- Generic implementations
 
-gConstrName :: (HasConstructor (Rep a), Generic a)=> a -> String
-gConstrName = genericConstrName . from 
+gConstrName :: (HasConstructor (Rep a), Generic a) => a -> String
+gConstrName = genericConstrName . from
 
 class HasConstructor (f :: Type -> Type) where
   genericConstrName :: f x -> String
@@ -56,8 +55,7 @@ instance (HasConstructor x, HasConstructor y) => HasConstructor (x :+: y) where
   genericConstrName (R1 r) = genericConstrName r
 
 instance Constructor c => HasConstructor (C1 c f) where
-  genericConstrName = conName   
-
+  genericConstrName = conName
 
 -- field names & types
 
@@ -75,12 +73,10 @@ instance HasSelectors f => HasSelectors (M1 C x f) where
 
 instance (Selector s, Typeable t) => HasSelectors (M1 S s (K1 R t)) where
   selectors =
-    [(selName (undefined :: M1 S s (K1 R t) ()) , SomeTypeRep (typeRep @t))]
+    [(selName (undefined :: M1 S s (K1 R t) ()), SomeTypeRep (typeRep @t))]
 
 instance (HasSelectors a, HasSelectors b) => HasSelectors (a :*: b) where
   selectors = selectors @a ++ selectors @b
 
 instance HasSelectors U1 where
   selectors = []
-
-

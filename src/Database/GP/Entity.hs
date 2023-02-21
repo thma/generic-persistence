@@ -1,4 +1,10 @@
-{-# LANGUAGE DataKinds, TypeFamilies, TypeOperators, UndecidableInstances, ScopedTypeVariables, DefaultSignatures, AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes  #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE DefaultSignatures    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeOperators        #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Database.GP.Entity
   ( Entity (..),
@@ -13,15 +19,14 @@ module Database.GP.Entity
   )
 where
 
-import           Data.Char                        (toLower)
-import           Database.GP.TypeInfo
-import           Database.HDBC                    (ConnWrapper, SqlValue, fromSql)
-import           GHC.Generics
-import           Data.Kind
-import           GHC.TypeNats
+import           Data.Char            (toLower)
 import           Data.Convertible
-import Data.Typeable ( Proxy(..), TypeRep )
-
+import           Data.Kind
+import           Data.Typeable        (Proxy (..), TypeRep)
+import           Database.GP.TypeInfo
+import           Database.HDBC        (ConnWrapper, SqlValue, fromSql)
+import           GHC.Generics
+import           GHC.TypeNats
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping
@@ -47,7 +52,7 @@ but that are not explicitely encoded in the type class definition:
 
 type Conn = ConnWrapper
 
-class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a where
+class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a))) => Entity a where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: Conn -> [SqlValue] -> IO a
 
@@ -90,35 +95,37 @@ class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a)) ) => Entity a w
     where
       ti = typeInfo @a
 
-
 -- | The EntityId is a tuple of the constructor name and the primary key value of an Entity.
 type EntityId = (String, SqlValue)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
-columnNameFor :: forall a . (Entity a) => String -> String
+columnNameFor :: forall a. (Entity a) => String -> String
 columnNameFor fieldName =
   case maybeColumnNameFor fieldName of
     Just columnName -> columnName
-    Nothing -> error ("columnNameFor: " ++ tableName @a ++
-                      " has no column mapping for " ++ fieldName)
+    Nothing ->
+      error
+        ( "columnNameFor: "
+            ++ tableName @a
+            ++ " has no column mapping for "
+            ++ fieldName
+        )
   where
     maybeColumnNameFor :: String -> Maybe String
     maybeColumnNameFor field = lookup field (fieldsToColumns @a)
 
-
-maybeFieldTypeFor :: forall a . (Entity a) => String -> Maybe TypeRep
+maybeFieldTypeFor :: forall a. (Entity a) => String -> Maybe TypeRep
 maybeFieldTypeFor field = lookup field (fieldsAndTypes (typeInfo @a))
   where
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]
     fieldsAndTypes ti = zip (fieldNames ti) (fieldTypes ti)
 
 -- | Returns a string representation of a value of type 'a'.
-toString :: forall a . (Entity a) => a -> String
+toString :: forall a. (Entity a) => a -> String
 toString x = constructorName (typeInfo @a) ++ " " ++ unwords mappedRow
   where
     mappedRow = map fromSql row
-    row = [] --(gtoRow . from) x -- TODO: fix this (ie. provide a generic toString function)
-
+    row = [] -- (gtoRow . from) x -- TODO: fix this (ie. provide a generic toString function)
 
 -- generics based implementations for gFromRow and gToRow
 -- toRow

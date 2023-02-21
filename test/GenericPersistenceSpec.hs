@@ -1,16 +1,17 @@
-{-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
+-- allows automatic derivation from Entity type class
+{-# LANGUAGE DeriveAnyClass #-}
+
 module GenericPersistenceSpec
-  ( test
-  , spec
-  ) where
+  ( test,
+    spec,
+  )
+where
 
-
-import           Test.Hspec      
-import           Database.HDBC         
-import           Database.HDBC.Sqlite3
 import           Database.GP.GenericPersistence
+import           Database.HDBC
+import           Database.HDBC.Sqlite3
 import           GHC.Generics
-
+import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
@@ -34,10 +35,10 @@ data Person = Person
   deriving (Generic, Entity, Show, Eq)
 
 data Book = Book
-  { book_id :: Int,
-    title   :: String,
-    author  :: String,
-    year    :: Int,
+  { book_id  :: Int,
+    title    :: String,
+    author   :: String,
+    year     :: Int,
     category :: BookCategory
   }
   deriving (Generic, Show, Eq)
@@ -45,7 +46,6 @@ data Book = Book
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
   deriving (Generic, Read, Show, Eq, Enum)
 
-  
 instance Entity Book where
   idField = "book_id"
   fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("category", "bookCategory")]
@@ -56,13 +56,11 @@ instance Entity Book where
 
   toRow _c b = pure [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
 
-
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"
 
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
-
 
 spec :: Spec
 spec = do
@@ -105,7 +103,7 @@ spec = do
       persist conn book
       allbooks' <- retrieveAll conn :: IO [Book]
       length allbooks' `shouldBe` 1
-      book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book) 
+      book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
     it "persists existing Entities using Generics" $ do
       conn <- prepareDB
@@ -164,7 +162,7 @@ spec = do
       length allPersons `shouldBe` 1
       delete conn person
       allPersons' <- retrieveAll conn :: IO [Person]
-      length allPersons' `shouldBe` 0  
+      length allPersons' `shouldBe` 0
     it "deletes Entities using user implementation" $ do
       conn <- prepareDB
       insert conn book
@@ -173,4 +171,3 @@ spec = do
       delete conn book
       allBooks' <- retrieveAll conn :: IO [Book]
       length allBooks' `shouldBe` 0
-      

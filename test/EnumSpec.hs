@@ -1,15 +1,17 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module EnumSpec
-  ( test
-  , spec
-  ) where
 
-import          Test.Hspec
-import          Database.HDBC
-import          Database.HDBC.Sqlite3
-import          Database.GP.GenericPersistence  
-import          GHC.Generics
-import          Data.Convertible
+module EnumSpec
+  ( test,
+    spec,
+  )
+where
+
+import           Data.Convertible
+import           Database.GP.GenericPersistence
+import           Database.HDBC
+import           Database.HDBC.Sqlite3
+import           GHC.Generics
+import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
@@ -23,20 +25,20 @@ prepareDB = do
   return conn
 
 data Book = Book
-  { bookID :: Int,
-    title   :: String,
-    author  :: String,
-    year    :: Int,
+  { bookID   :: Int,
+    title    :: String,
+    author   :: String,
+    year     :: Int,
     category :: BookCategory
   }
   deriving (Generic, Show, Eq, Entity)
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
   deriving (Generic, Show, Read, Eq)
-  
+
 instance Convertible BookCategory SqlValue where
   safeConvert = Right . toSql . show
-  
+
 instance Convertible SqlValue BookCategory where
   safeConvert = Right . read . fromSql
 
@@ -49,5 +51,3 @@ spec = do
       insert conn book
       allBooks <- retrieveAll conn :: IO [Book]
       allBooks `shouldBe` [book]
-
-

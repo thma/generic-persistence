@@ -1,15 +1,18 @@
-{-# LANGUAGE DeriveAnyClass     #-}  -- allows automatic derivation from Entity type class
-module ReferenceSpec
-  ( test
-  , spec
-  ) where
+-- allows automatic derivation from Entity type class
+{-# LANGUAGE DeriveAnyClass #-}
 
-import          Test.Hspec
-import          Database.HDBC
-import          Database.HDBC.Sqlite3
-import          Database.GP.GenericPersistence
-import          Data.Maybe
-import          GHC.Generics
+module ReferenceSpec
+  ( test,
+    spec,
+  )
+where
+
+import           Data.Maybe
+import           Database.GP.GenericPersistence
+import           Database.HDBC
+import           Database.HDBC.Sqlite3
+import           GHC.Generics
+import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
@@ -36,15 +39,16 @@ data Author = Author
     name     :: String,
     address  :: String
   }
-  deriving (Generic, Entity, Show, Eq)  
+  deriving (Generic, Entity, Show, Eq)
 
 instance Entity Article where
   fieldsToColumns :: [(String, String)]
-  fieldsToColumns = [("articleID", "articleID"),
-                       ("title", "title"), 
-                       ("authorID", "authorID"),
-                       ("year", "year")
-                      ]
+  fieldsToColumns =
+    [ ("articleID", "articleID"),
+      ("title", "title"),
+      ("authorID", "authorID"),
+      ("year", "year")
+    ]
 
   fromRow conn row = do
     maybeAuthor <- retrieveById conn (row !! 2) :: IO (Maybe Author)
@@ -52,10 +56,10 @@ instance Entity Article where
     pure $ rawArticle {author = author}
     where
       rawArticle = fromRowWoCtx row
-      
-  toRow conn a = do 
+
+  toRow conn a = do
     persist conn (author a)
-    return $ toRowWoCtx a 
+    return $ toRowWoCtx a
 
 toRowWoCtx :: Article -> [SqlValue]
 toRowWoCtx a = [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
@@ -66,17 +70,21 @@ fromRowWoCtx row = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
     col i = fromSql (row !! i)
 
 article :: Article
-article = Article 
-  { articleID = 1, 
-    title = "Persistence without Boilerplate", 
-    author = arthur, 
-    year = 2018}
-    
+article =
+  Article
+    { articleID = 1,
+      title = "Persistence without Boilerplate",
+      author = arthur,
+      year = 2018
+    }
+
 arthur :: Author
-arthur = Author 
-  {authorID = 2, 
-  name = "Arthur Miller", 
-  address = "Denver"}    
+arthur =
+  Author
+    { authorID = 2,
+      name = "Arthur Miller",
+      address = "Denver"
+    }
 
 spec :: Spec
 spec = do
@@ -87,10 +95,6 @@ spec = do
 
       author' <- retrieveById conn "2" :: IO (Maybe Author)
       author' `shouldBe` Just arthur
-      
+
       article' <- retrieveById conn "1" :: IO (Maybe Article)
       article' `shouldBe` Just article
-        
-
-
-

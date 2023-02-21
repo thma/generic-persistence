@@ -1,14 +1,16 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module EmbeddedSpec
-  ( test
-  , spec
-  ) where
 
-import          Test.Hspec
-import          Database.HDBC
-import          Database.HDBC.Sqlite3
-import          Database.GP.GenericPersistence 
-import          GHC.Generics
+module EmbeddedSpec
+  ( test,
+    spec,
+  )
+where
+
+import           Database.GP.GenericPersistence
+import           Database.HDBC
+import           Database.HDBC.Sqlite3
+import           GHC.Generics
+import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
@@ -34,18 +36,17 @@ data Author = Author
     name     :: String,
     address  :: String
   }
-  deriving (Generic, Show, Eq)  
-
+  deriving (Generic, Show, Eq)
 
 instance Entity Article where
-
-  fieldsToColumns = [("articleID", "articleID"),
-                       ("title", "title"), 
-                       ("authorID", "authorID"), 
-                       ("authorName", "authorName"), 
-                       ("authorAddress", "authorAddress"),
-                       ("year", "year")
-                      ]
+  fieldsToColumns =
+    [ ("articleID", "articleID"),
+      ("title", "title"),
+      ("authorID", "authorID"),
+      ("authorName", "authorName"),
+      ("authorAddress", "authorAddress"),
+      ("year", "year")
+    ]
 
   fromRow :: Conn -> [SqlValue] -> IO Article
   fromRow _ r = return $ fromRowWoCtx r
@@ -53,8 +54,7 @@ instance Entity Article where
       fromRowWoCtx row = Article (col 0) (col 1) author (col 5)
         where
           col i = fromSql (row !! i)
-          author = Author (col 2) (col 3) (col 4)    
-
+          author = Author (col 2) (col 3) (col 4)
 
   toRow _ art = return $ toRowWoCtx art
     where
@@ -64,14 +64,18 @@ instance Entity Article where
       authorAddress = address (author art)
 
 article :: Article
-article = Article 
-  { articleID = 1, 
-    title = "Persistence without Boilerplate", 
-    author = Author 
-      {authorID = 1, 
-      name = "Arthur Dent", 
-      address = "Boston"}, 
-    year = 2018}
+article =
+  Article
+    { articleID = 1,
+      title = "Persistence without Boilerplate",
+      author =
+        Author
+          { authorID = 1,
+            name = "Arthur Dent",
+            address = "Boston"
+          },
+      year = 2018
+    }
 
 spec :: Spec
 spec = do
@@ -83,5 +87,3 @@ spec = do
       article' `shouldBe` Just article
       allArticles <- retrieveAll conn :: IO [Article]
       allArticles `shouldBe` [article]
-
-

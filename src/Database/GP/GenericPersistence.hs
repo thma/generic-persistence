@@ -1,5 +1,6 @@
-{-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+
 module Database.GP.GenericPersistence
   ( retrieveById,
     retrieveAll,
@@ -24,13 +25,13 @@ module Database.GP.GenericPersistence
   )
 where
 
-import           Data.Convertible                 (ConvertResult, Convertible)
-import           Data.Convertible.Base            (Convertible (safeConvert))
+import           Data.Convertible         (ConvertResult, Convertible)
+import           Data.Convertible.Base    (Convertible (safeConvert))
+import           Data.List                (elemIndex)
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
-import           Data.List                      (elemIndex)
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -49,14 +50,13 @@ retrieveById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -
 retrieveById conn idx = do
   resultRowsSqlValues <- quickQuery conn stmt [eid]
   case resultRowsSqlValues of
-    []          -> pure Nothing
+    [] -> pure Nothing
     [singleRow] -> Just <$> fromRow conn singleRow
     _ -> error $ "More than one" ++ constructorName ti ++ " found for id " ++ show eid
   where
     ti = typeInfo @a
     stmt = selectStmtFor @a
     eid = toSql idx
-
 
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
@@ -91,21 +91,21 @@ persist conn entity = do
     preparedSelectStmt = selectStmtFor @a
 
 -- | A function that explicitely inserts an entity into a database.
-insert :: forall a . (Entity a) => Conn -> a -> IO ()
+insert :: forall a. (Entity a) => Conn -> a -> IO ()
 insert conn entity = do
   row <- toRow conn entity
   _rowcount <- run conn (insertStmtFor @a) row
   commit conn
 
 -- | A function that explicitely updates an entity in a database.
-update :: forall a . (Entity a) => Conn -> a -> IO ()
+update :: forall a. (Entity a) => Conn -> a -> IO ()
 update conn entity = do
   eid <- idValue conn entity
   row <- toRow conn entity
   _rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
   commit conn
 
-delete :: forall a . (Entity a) => Conn -> a -> IO ()
+delete :: forall a. (Entity a) => Conn -> a -> IO ()
 delete conn entity = do
   eid <- idValue conn entity
   _rowCount <- run conn (deleteStmtFor @a) [eid]
@@ -121,19 +121,18 @@ setupTableFor conn = do
   where
     x = undefined :: a
 
-
 -- | Computes the EntityId of an entity.
 --   The EntityId of an entity is a (typeRep, idValue) tuple.
-entityId :: forall a . (Entity a) => Conn -> a -> IO EntityId
-entityId conn x = do 
+entityId :: forall a. (Entity a) => Conn -> a -> IO EntityId
+entityId conn x = do
   eid <- idValue conn x
   return (tyName, eid)
-    where
-      tyName = constructorName (typeInfo @a)
+  where
+    tyName = constructorName (typeInfo @a)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 idValue :: forall a. (Entity a) => Conn -> a -> IO SqlValue
-idValue conn x = do 
+idValue conn x = do
   sqlValues <- toRow conn x
   return (sqlValues !! idFieldIndex)
   where
@@ -142,24 +141,24 @@ idValue conn x = do
 -- | returns the index of a field of an entity.
 --   The index is the position of the field in the list of fields of the entity.
 --   If no such field exists, an error is thrown.
-fieldIndex :: forall a . (Entity a) => String -> Int
+fieldIndex :: forall a. (Entity a) => String -> Int
 fieldIndex fieldName =
   expectJust
     ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
-    (elemIndex fieldName fieldList) 
+    (elemIndex fieldName fieldList)
   where
     ti = typeInfo @a
     fieldList = fieldNames ti
 
 expectJust :: String -> Maybe a -> a
-expectJust _   (Just x) = x
-expectJust err Nothing  = error ("expectJust " ++ err)
+expectJust _ (Just x)  = x
+expectJust err Nothing = error ("expectJust " ++ err)
 
 -- These instances are needed to make the Convertible type class work with Enum types out of the box.
-instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible SqlValue a where
+instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible SqlValue a where
   safeConvert :: SqlValue -> ConvertResult a
   safeConvert = Right . toEnum . fromSql
 
-instance {-# OVERLAPS #-} forall a . (Enum a) => Convertible a SqlValue where
+instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible a SqlValue where
   safeConvert :: a -> ConvertResult SqlValue
   safeConvert = Right . toSql . fromEnum
