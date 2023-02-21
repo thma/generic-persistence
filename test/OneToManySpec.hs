@@ -32,7 +32,7 @@ data Article = Article
     authorId  :: Int,
     year      :: Int
   }
-  deriving (Generic, Show, Eq, Entity)
+  deriving (Generic, Entity, Show, Eq) -- automatically derives Entity
 
 data Author = Author
   { authorID :: Int,
@@ -53,23 +53,17 @@ instance Entity Author where
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
     authID <- idValue conn rawAuthor
-    articlesByAuth <- retrieveAllWhere conn "authorId" authID :: IO [Article]
-    pure $ rawAuthor {articles = articlesByAuth}
+    articlesByAuth <- retrieveAllWhere conn "authorId" authID
+    return rawAuthor {articles = articlesByAuth}
     where
-      rawAuthor = fromRowWoCtx row
+      rawAuthor = Author (col 0) (col 1) (col 2) []
+      col i = fromSql (row !! i)
 
   toRow :: Conn -> Author -> IO [SqlValue]
-  toRow conn x = do
-    mapM_ (persist conn) (articles x)
-    return (toRowWoCtx x)
+  toRow conn a = do
+    mapM_ (persist conn) (articles a)
+    return [toSql (authorID a), toSql (name a), toSql (address a)]
 
-toRowWoCtx :: Author -> [SqlValue]
-toRowWoCtx a = [toSql (authorID a), toSql (name a), toSql (address a)]
-
-fromRowWoCtx :: [SqlValue] -> Author
-fromRowWoCtx row = Author (col 0) (col 1) (col 2) []
-  where
-    col i = fromSql (row !! i)
 
 article1 :: Article
 article1 =

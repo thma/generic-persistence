@@ -50,24 +50,27 @@ instance Entity Article where
       ("year", "year")
     ]
 
+  fromRow :: Conn -> [SqlValue] -> IO Article
   fromRow conn row = do
-    maybeAuthor <- retrieveById conn (row !! 2) :: IO (Maybe Author)
-    let author = fromMaybe (error "Author not found") maybeAuthor
-    pure $ rawArticle {author = author}
+    -- load author by foreign key
+    authorById <- fromJust <$> retrieveById conn (row !! 2)
+    -- insert author into article
+    return $ rawArticle {author = authorById}
     where
-      rawArticle = fromRowWoCtx row
+      -- create article from row, with dummy author
+      rawArticle = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
+        where
+          col i = fromSql (row !! i)
 
+  toRow :: Conn -> Article -> IO [SqlValue]
   toRow conn a = do
+    -- persist author first
     persist conn (author a)
-    return $ toRowWoCtx a
+    -- return row for article table where authorID is foreign key to author table 
+    return [toSql (articleID a), toSql (title a), 
+            toSql $ authorID (author a), toSql (year a)]
 
-toRowWoCtx :: Article -> [SqlValue]
-toRowWoCtx a = [toSql (articleID a), toSql (title a), toSql $ authorID (author a), toSql (year a)]
 
-fromRowWoCtx :: [SqlValue] -> Article
-fromRowWoCtx row = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
-  where
-    col i = fromSql (row !! i)
 
 article :: Article
 article =
