@@ -24,9 +24,10 @@ import           Data.Convertible
 import           Data.Kind
 import           Data.Typeable        (Proxy (..), TypeRep)
 import           Database.GP.TypeInfo
-import           Database.HDBC        (ConnWrapper, SqlValue, fromSql)
+import           Database.HDBC        (ConnWrapper, SqlValue)
 import           GHC.Generics
 import           GHC.TypeNats
+import           Generics.Deriving.Show (GShow' (..), gshowsPrecdefault)
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping
@@ -52,7 +53,7 @@ but that are not explicitely encoded in the type class definition:
 
 type Conn = ConnWrapper
 
-class (Generic a, HasConstructor (Rep a), (HasSelectors (Rep a))) => Entity a where
+class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: Conn -> [SqlValue] -> IO a
 
@@ -121,11 +122,14 @@ maybeFieldTypeFor field = lookup field (fieldsAndTypes (typeInfo @a))
     fieldsAndTypes ti = zip (fieldNames ti) (fieldTypes ti)
 
 -- | Returns a string representation of a value of type 'a'.
-toString :: forall a. (Entity a) => a -> String
-toString x = constructorName (typeInfo @a) ++ " " ++ unwords mappedRow
+toString :: forall a. (Generic a, GShow' (Rep a)) => a -> String
+toString = gshow
   where
-    mappedRow = map fromSql row
-    row = [] -- (gtoRow . from) x -- TODO: fix this (ie. provide a generic toString function)
+    gshows :: a -> ShowS
+    gshows = gshowsPrecdefault 0
+
+    gshow :: a -> String
+    gshow x = gshows x ""
 
 -- generics based implementations for gFromRow and gToRow
 -- toRow

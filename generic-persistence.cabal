@@ -42,6 +42,7 @@ library
       HDBC
     , base >=4.7 && <5
     , convertible
+    , generic-deriving
   default-language: GHC2021
 
 executable generic-persistence-demo
@@ -56,6 +57,7 @@ executable generic-persistence-demo
     , HDBC-sqlite3
     , base >=4.7 && <5
     , convertible
+    , generic-deriving
     , generic-persistence
   default-language: GHC2021
 
@@ -78,6 +80,7 @@ test-suite generic-persistence-test
     , QuickCheck
     , base >=4.7 && <5
     , convertible
+    , generic-deriving
     , generic-persistence
     , hspec
     , hspec-discover
