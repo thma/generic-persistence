@@ -3,13 +3,9 @@
 
 module Main (main, main1) where
 
-import           Database.GP           (Entity (..), delete, insert, persist,
-                                        retrieveAll, retrieveById,
-                                        setupTableFor, update)
-import           Database.HDBC         (ConnWrapper (..),
-                                        IConnection (disconnect), fromSql,
-                                        toSql)
-import           Database.HDBC.Sqlite3 (connectSqlite3)
+import           Database.GP         
+import           Database.HDBC
+import           Database.HDBC.Sqlite3
 import           GHC.Generics
 
 -- | An Entity data type with several fields, using record syntax.
