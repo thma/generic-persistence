@@ -49,8 +49,8 @@ main = do
   conn <- Conn SQLite <$> connectSqlite3 ":memory:"
 
   -- initialize Person and Book tables
-  _ <- setupTableFor conn :: IO Person
-  _ <- setupTableFor conn :: IO Book
+  setupTableFor @Person conn
+  setupTableFor @Book conn
 
   let alice = Person 123456 "Alice" 25 "123 Main St"
       book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
@@ -103,28 +103,33 @@ main1 = do
   conn <- Conn SQLite <$> connectSqlite3 "sqlite.db"
 
   -- initialize Person table
-  _ <- setupTableFor conn :: IO Person
+  setupTableFor @Person conn
 
   -- create a Person entity
   let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
   -- insert a Person into a database
-  persist conn alice
+  insert conn alice
 
   -- update a Person
-  persist conn alice {address = "Main Street 200"}
+  update conn alice {address = "Main Street 200"}
 
   -- select a Person from a database
-  -- The result type must be provided explicitly, as `retrieveEntityById` has a polymorphic return type `IO a`.
-  alice' <- retrieveById conn "123456" :: IO (Maybe Person)
+  -- The result type must be provided by the call site, 
+  -- as `retrieveEntityById` has a polymorphic return type `IO (Maybe a)`.
+  alice' <- retrieveById @Person conn "123456" 
   print alice'
 
-  alice'' <- retrieveById conn "123456" :: IO (Maybe Person)
-
-  print alice''
+  -- select all Persons from a database
+  allPersons <- retrieveAll @Person conn
+  print allPersons
 
   -- delete a Person from a database
   delete conn alice
+
+  -- select all Persons from a database. Now it should be empty.
+  allPersons' <- retrieveAll conn :: IO [Person]
+  print allPersons'
 
   -- close connection
   disconnect conn

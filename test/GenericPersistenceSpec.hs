@@ -21,8 +21,8 @@ test = hspec spec
 prepareDB :: IO Conn
 prepareDB = do
   conn <- Conn SQLite <$> connectSqlite3 ":memory:"
-  _ <- setupTableFor conn :: IO Person
-  _ <- setupTableFor conn :: IO Book
+  setupTableFor @Person conn
+  setupTableFor @Book conn
   return conn
 
 -- | A data type with several fields, using record syntax.

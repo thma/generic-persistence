@@ -49,8 +49,7 @@ dependencies:
 Here now follows a short demo that shows how the library looks and feels from the user's point of view.
 
 ```haskell
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-} -- allows automatic derivation from Entity type class
 
 module Main (main) where
 
@@ -68,86 +67,97 @@ data Person = Person
   }
   deriving (Generic, Entity, Show) -- deriving Entity allows us to use the GenericPersistence API
 
-data Book = Book
-  { book_id :: Int,
-    title   :: String,
-    author  :: String,
-    year    :: Int
-  }
-  deriving (Generic, Show) -- no auto deriving of Entity, so we have to manually implement the Entity type class:
-
-instance Entity Book where
-  -- this is the primary key field of the Book data type
-  idField = "book_id"
-
-  -- this defines the mapping between the field names of the Book data type and the column names of the database table
-  fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
-
-  -- this is the name of the database table
-  tableName = "BOOK_TBL"
-
-  -- this is the function that converts a row from the database table into a Book data type
-  fromRow _conn row = return $ Book (col 0) (col 1) (col 2) (col 3)
-    where
-      col i = fromSql (row !! i)
-
-  -- this is the function that converts a Book data type into a row for the database table
-  toRow _conn b = return [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do
   -- connect to a database
-  conn <- ConnWrapper <$> connectSqlite3 ":memory:"
+  conn <- Conn SQLite <$> connectSqlite3 "sqlite.db"
 
-  -- initialize Person and Book tables
-  _ <- setupTableFor conn :: IO Person
-  _ <- setupTableFor conn :: IO Book
+  -- initialize Person table
+  setupTableFor @Person conn
 
-  let alice = Person 123456 "Alice" 25 "123 Main St"
-      book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937
+  -- create a Person entity
+  let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
 
-  -- insert a Person into the database (persist will either insert or update)
-  persist conn alice
-
-  -- insert a second Person
-  persist conn alice {personID = 123457, name = "Bob"}
+  -- insert a Person into a database
+  insert conn alice
 
   -- update a Person
-  persist conn alice {address = "Elmstreet 1"}
+  update conn alice {address = "Main Street 200"}
 
   -- select a Person from a database
-  alice' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
+  -- The result type must be provided by the call site, 
+  -- as `retrieveEntityById` has a polymorphic return type `IO (Maybe a)`.
+  alice' <- retrieveById @Person conn "123456" 
   print alice'
 
-  -- select all Persons from the database
-  allPersons <- retrieveAll conn :: IO [Person]
+  -- select all Persons from a database
+  allPersons <- retrieveAll @Person conn
   print allPersons
 
-  -- delete a Person
+  -- delete a Person from a database
   delete conn alice
 
-  -- select all Persons from a database. The deleted Person is not in the result.
+  -- select all Persons from a database. Now it should be empty.
   allPersons' <- retrieveAll conn :: IO [Person]
   print allPersons'
-
-  let book2 = Book {book_id = 2, title = "The Lord of the Ring", author = "J.R.R. Tolkien", year = 1954}
-
-  -- this time we are using insert directly
-  insert conn book
-  insert conn book2
-  allBooks <- retrieveAll conn :: IO [Book]
-  print allBooks
-
-  -- explicitly updating a Book
-  update conn book2 {title = "The Lord of the Rings"}
-  delete conn book
-
-  allBooks' <- retrieveAll conn :: IO [Book]
-  print allBooks'
 
   -- close connection
   disconnect conn
 ```
+
+## How it works
+
+The library uses the `Generic` type class to derive the mapping between Haskell types and database tables.
+The mapping is defined by the `Entity` type class. This type class comes with default implementations for all methods,
+which define a default mapping between Haskell types and database tables.
+
+This default mapping will work for most cases, but it can be customized by overriding the default implementations.
+
+### The Entity type class
+
+The `Entity` type class specifies the following methods:
+
+```haskell
+class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a where
+  -- | Converts a database row to a value of type 'a'.
+  fromRow :: Conn -> [SqlValue] -> IO a
+
+  -- | Converts a value of type 'a' to a database row.
+  toRow :: Conn -> a -> IO [SqlValue]
+
+  -- | Returns the name of the primary key field for a type 'a'.
+  idField :: String
+
+  -- | Returns a list of tuples that map field names to column names for a type 'a'.
+  fieldsToColumns :: [(String, String)]
+
+  -- | Returns the name of the table for a type 'a'.
+  tableName :: String
+```
+
+### Default Behaviour
+
+The default implementations of `idField` returns a default value for the field name of the primary key field of a type `a`:
+The type name in lower case, plus "ID".
+E.g. `idField @Book` will return `"bookID"`.
+
+`tableName` returns the name of the database table used for type `a`. The default implementation simply returns the constructor name of `a`. E.g. `tableName @Book` will return `"Book"`.
+
+`idField`, `fieldsToColumns` and `tableName` are used to define the mapping between Haskell types and database tables.
+
+`fieldsToColumns` returns a list of tuples that map field names of type `a` to database column names for a type. The default implementation simply returns a list of tuples that map the field names of `a` to the field names of `a`. E.g. `fieldsToColumns @Person` will return `[("personID","personID"),("name","name"),("age","age"),("address","address")]`.
+
+`fromRow` and `toRow` are used to convert between Haskell types and database rows. `fromRow` converts a database row, represented by a `[SqlValue]` to a value of type `a`. `toRow` converts a value of type `a` to a `[SqlValue]`, representing a database row. 
+
+The default implementations of `fromRow` and `toRow` expects that type `a` has a single constructor and a selector for each field. All fields are expected to have a 1:1 mapping to a column in the database table.
+Thus each field must have a type that can be converted to and from a `SqlValue`. 
+
+### Customizing the default behaviour
+
+To be done...
+
+
 
 ## Handling enumeration fields
 

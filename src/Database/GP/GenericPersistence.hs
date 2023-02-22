@@ -113,14 +113,11 @@ delete conn entity = do
   commit conn
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
-setupTableFor :: forall a. (Entity a) => Conn -> IO a
+setupTableFor :: forall a. (Entity a) => Conn -> IO ()
 setupTableFor conn@(Conn dbServer _) = do
-  _ <- runRaw conn $ dropTableStmtFor @a
-  _ <- runRaw conn $ createTableStmtFor @a dbServer
+  runRaw conn $ dropTableStmtFor @a
+  runRaw conn $ createTableStmtFor @a dbServer
   commit conn
-  return x
-  where
-    x = undefined :: a
 
 -- | Computes the EntityId of an entity.
 --   The EntityId of an entity is a (typeRep, idValue) tuple.
