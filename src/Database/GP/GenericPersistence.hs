@@ -11,7 +11,8 @@ module Database.GP.GenericPersistence
     delete,
     setupTableFor,
     idValue,
-    Conn,
+    Conn(..),
+    Database(..),
     Entity (..),
     GToRow,
     GFromRow,
@@ -113,9 +114,9 @@ delete conn entity = do
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
 setupTableFor :: forall a. (Entity a) => Conn -> IO a
-setupTableFor conn = do
+setupTableFor conn@(Conn dbServer _) = do
   _ <- runRaw conn $ dropTableStmtFor @a
-  _ <- runRaw conn $ createTableStmtFor @a
+  _ <- runRaw conn $ createTableStmtFor @a dbServer
   commit conn
   return x
   where

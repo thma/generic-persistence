@@ -18,6 +18,8 @@ module Database.GP
     entityId,
     TypeInfo (..),
     typeInfo,
+    Conn (..),
+    Database (..),
   )
 where
 

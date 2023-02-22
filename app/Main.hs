@@ -46,7 +46,7 @@ instance Entity Book where
 main :: IO ()
 main = do
   -- connect to a database
-  conn <- ConnWrapper <$> connectSqlite3 ":memory:"
+  conn <- Conn SQLite <$> connectSqlite3 ":memory:"
 
   -- initialize Person and Book tables
   _ <- setupTableFor conn :: IO Person
@@ -100,7 +100,7 @@ main = do
 main1 :: IO ()
 main1 = do
   -- connect to a database
-  conn <- ConnWrapper <$> connectSqlite3 "sqlite.db"
+  conn <- Conn SQLite <$> connectSqlite3 "sqlite.db"
 
   -- initialize Person table
   _ <- setupTableFor conn :: IO Person

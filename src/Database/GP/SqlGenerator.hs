@@ -95,21 +95,21 @@ deleteStmtFor =
     ++ idColumn @a
     ++ " = ?;"
 
-createTableStmtFor :: forall a. (Entity a) => String
-createTableStmtFor =
+createTableStmtFor :: forall a. (Entity a) => Database -> String
+createTableStmtFor dbServer =
   "CREATE TABLE "
     ++ tableName @a
     ++ " ("
-    ++ intercalate ", " (map (\(f, c) -> c ++ " " ++ columnTypeFor @a f ++ optionalPK f) (fieldsToColumns @a))
+    ++ intercalate ", " (map (\(f, c) -> c ++ " " ++ columnTypeFor @a dbServer f ++ optionalPK f) (fieldsToColumns @a))
     ++ ");"
   where
     isIdField f = f == idField @a
     optionalPK f = if isIdField f then " PRIMARY KEY" else ""
 
--- | A function that returns the SQLite column type for a field of an entity.
--- TODO: have a switch to also support other databases.
-columnTypeFor :: forall a. (Entity a) => String -> String
-columnTypeFor field =
+-- | A function that returns the column type for a field of an entity.
+-- TODO: Support other databases than just SQLite.
+columnTypeFor :: forall a. (Entity a) => Database -> String -> String
+columnTypeFor SQLite field =
   case fType of
     "Int"    -> "INTEGER"
     "String" -> "TEXT"
@@ -120,6 +120,7 @@ columnTypeFor field =
   where
     maybeFType = maybeFieldTypeFor @a field
     fType = maybe "OTHER" show maybeFType
+columnTypeFor other _ = error $ "Schema creation for " ++ show other ++ " not implemented yet"
 
 dropTableStmtFor :: forall a. (Entity a) => String
 dropTableStmtFor =

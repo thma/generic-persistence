@@ -15,7 +15,8 @@ module Database.GP.Entity
     GToRow,
     GFromRow,
     maybeFieldTypeFor,
-    Conn,
+    Conn(..),
+    Database(..),
   )
 where
 
@@ -24,10 +25,11 @@ import           Data.Convertible
 import           Data.Kind
 import           Data.Typeable        (Proxy (..), TypeRep)
 import           Database.GP.TypeInfo
-import           Database.HDBC        (ConnWrapper, SqlValue)
+import           Database.HDBC        (SqlValue)
 import           GHC.Generics
 import           GHC.TypeNats
 import           Generics.Deriving.Show (GShow' (..), gshowsPrecdefault)
+import           Database.GP.Conn
 
 {--
 This is the Entity class. It is a type class that is used to define the mapping
@@ -51,7 +53,6 @@ but that are not explicitely encoded in the type class definition:
 
 --}
 
-type Conn = ConnWrapper
 
 class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a where
   -- | Converts a database row to a value of type 'a'.
