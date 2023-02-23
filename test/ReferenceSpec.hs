@@ -21,7 +21,7 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  conn <- Conn SQLite <$> connectSqlite3 ":memory:"
+  conn <- connect SQLite <$> connectSqlite3 ":memory:"
   setupTableFor @Article conn
   setupTableFor @Author conn
   return conn

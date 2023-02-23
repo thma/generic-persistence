@@ -20,6 +20,7 @@ module Database.GP
     typeInfo,
     Conn (..),
     Database (..),
+    connect,
   )
 where
 

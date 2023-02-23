@@ -46,7 +46,44 @@ instance Entity Book where
 main :: IO ()
 main = do
   -- connect to a database
-  conn <- Conn SQLite <$> connectSqlite3 ":memory:"
+  conn <- connect SQLite <$> connectSqlite3 "sqlite.db"
+
+  -- initialize Person table
+  setupTableFor @Person conn
+
+  -- create a Person entity
+  let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
+
+  -- insert a Person into a database
+  insert conn alice
+
+  -- update a Person
+  update conn alice {address = "Main Street 200"}
+
+  -- select a Person from a database
+  -- The result type must be provided by the call site, 
+  -- as `retrieveEntityById` has a polymorphic return type `IO (Maybe a)`.
+  alice' <- retrieveById @Person conn "123456" 
+  print alice'
+
+  -- select all Persons from a database
+  allPersons <- retrieveAll @Person conn
+  print allPersons
+
+  -- delete a Person from a database
+  delete conn alice
+
+  -- select all Persons from a database. Now it should be empty.
+  allPersons' <- retrieveAll conn :: IO [Person]
+  print allPersons'
+
+  -- close connection
+  disconnect conn
+
+main1 :: IO ()
+main1 = do
+  -- connect to a database
+  conn <- Conn SQLite False <$> connectSqlite3 ":memory:" 
 
   -- initialize Person and Book tables
   setupTableFor @Person conn
@@ -97,39 +134,4 @@ main = do
   -- close connection
   disconnect conn
 
-main1 :: IO ()
-main1 = do
-  -- connect to a database
-  conn <- Conn SQLite <$> connectSqlite3 "sqlite.db"
 
-  -- initialize Person table
-  setupTableFor @Person conn
-
-  -- create a Person entity
-  let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
-
-  -- insert a Person into a database
-  insert conn alice
-
-  -- update a Person
-  update conn alice {address = "Main Street 200"}
-
-  -- select a Person from a database
-  -- The result type must be provided by the call site, 
-  -- as `retrieveEntityById` has a polymorphic return type `IO (Maybe a)`.
-  alice' <- retrieveById @Person conn "123456" 
-  print alice'
-
-  -- select all Persons from a database
-  allPersons <- retrieveAll @Person conn
-  print allPersons
-
-  -- delete a Person from a database
-  delete conn alice
-
-  -- select all Persons from a database. Now it should be empty.
-  allPersons' <- retrieveAll conn :: IO [Person]
-  print allPersons'
-
-  -- close connection
-  disconnect conn

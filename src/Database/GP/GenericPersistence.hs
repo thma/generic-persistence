@@ -12,6 +12,7 @@ module Database.GP.GenericPersistence
     setupTableFor,
     idValue,
     Conn(..),
+    connect,
     Database(..),
     Entity (..),
     GToRow,
@@ -29,10 +30,12 @@ where
 import           Data.Convertible         (ConvertResult, Convertible)
 import           Data.Convertible.Base    (Convertible (safeConvert))
 import           Data.List                (elemIndex)
+import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
+import Control.Monad (when)
 
 {--
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -96,7 +99,7 @@ insert :: forall a. (Entity a) => Conn -> a -> IO ()
 insert conn entity = do
   row <- toRow conn entity
   _rowcount <- run conn (insertStmtFor @a) row
-  commit conn
+  when (implicitCommit conn) $ commit conn
 
 -- | A function that explicitely updates an entity in a database.
 update :: forall a. (Entity a) => Conn -> a -> IO ()
@@ -104,20 +107,20 @@ update conn entity = do
   eid <- idValue conn entity
   row <- toRow conn entity
   _rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
-  commit conn
+  when (implicitCommit conn) $ commit conn
 
 delete :: forall a. (Entity a) => Conn -> a -> IO ()
 delete conn entity = do
   eid <- idValue conn entity
   _rowCount <- run conn (deleteStmtFor @a) [eid]
-  commit conn
+  when (implicitCommit conn) $ commit conn
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
 setupTableFor :: forall a. (Entity a) => Conn -> IO ()
-setupTableFor conn@(Conn dbServer _) = do
+setupTableFor conn@(Conn dbServer _ _) = do
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ createTableStmtFor @a dbServer
-  commit conn
+  when (implicitCommit conn) $ commit conn
 
 -- | Computes the EntityId of an entity.
 --   The EntityId of an entity is a (typeRep, idValue) tuple.

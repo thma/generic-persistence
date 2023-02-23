@@ -1,5 +1,6 @@
 module Database.GP.Conn (
   Conn (..),
+  connect, 
   Database (..),
 ) 
 where
@@ -10,12 +11,20 @@ import Control.Monad ((>=>))
 data Database = Postgres | MySQL | SQLite | Oracle | MSSQL | Other String
   deriving (Show, Eq)
 
-data Conn = forall conn. IConnection conn => Conn Database conn 
+data Conn = forall conn. IConnection conn => 
+  Conn 
+    { db ::Database, 
+      implicitCommit :: Bool,
+      connection :: conn
+    }
+
+connect :: forall conn. IConnection conn => Database -> conn -> Conn
+connect db = Conn db True 
 
 withWConn :: forall b. Conn -> (forall conn. IConnection conn => conn -> b) -> b
 withWConn conn f =
     case conn of
-         Conn _db x -> f x
+         Conn _db _ec x -> f x
 
 instance IConnection Conn where
   disconnect w = withWConn w disconnect
@@ -24,7 +33,7 @@ instance IConnection Conn where
   runRaw w = withWConn w runRaw
   run w = withWConn w run
   prepare w = withWConn w prepare
-  clone w@(Conn db _) = withWConn w (clone >=> return . Conn db)
+  clone w@(Conn db ec _) = withWConn w (clone >=> return . Conn db ec)
   hdbcDriverName w = withWConn w hdbcDriverName
   hdbcClientVer w = withWConn w hdbcClientVer
   proxiedClientName w = withWConn w proxiedClientName
