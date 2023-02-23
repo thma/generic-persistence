@@ -25,13 +25,19 @@ The main *design goal* is to minimize the *boilerplate* code required:
 In an ideal world we would be able to take any POHO (Plain old Haskell Object) 
 and persist it to any RDBMS without any additional effort.
 
+## Status
+
+The library is in an early stage of development. All test cases are green and it should be ready for early adopters.
 Several things are still missing:
 
 - A query language
-- Handling of nested transactions
 - Handling auto-incrementing primary keys
 - caching
+- coding free support for 1:1 and 1:n relationships (using more generics magic)
+- schema migration
 - ...
+
+Feature requests, feedback and pull requests are welcome!
 
 ## Available on Hackage
 
@@ -43,6 +49,15 @@ Add the following to your `package.yaml` file:
 dependencies:
 - generic-persistence
 ```
+
+I would also recommend to add the setting `language: GHC2021`  to your `package.yaml` file:
+
+```yaml
+language: GHC2021
+```
+
+This drastically reduces the amount of LANGUAGE extensions that need to be added to your source files.
+
 
 ## Short demo
 
@@ -71,7 +86,7 @@ data Person = Person
 main :: IO ()
 main = do
   -- connect to a database
-  conn <- Conn SQLite <$> connectSqlite3 "sqlite.db"
+  conn <- connect SQLite <$> connectSqlite3 "sqlite.db"
 
   -- initialize Person table
   setupTableFor @Person conn
@@ -108,11 +123,11 @@ main = do
 
 ## How it works
 
-The library uses the `Generic` type class to derive the mapping between Haskell types and database tables.
-The mapping is defined by the `Entity` type class. This type class comes with default implementations for all methods,
-which define a default mapping between Haskell types and database tables.
+In order to store Haskell data types in a relational database, we need to define a mapping between Haskell types and database tables.
+This mapping is defined by the `Entity` type class. This type class comes with default implementations for all methods which define 
+the standard behaviour. (The default implementations internally use `GHC.Generics`.)
 
-This default mapping will work for most cases, but it can be customized by overriding the default implementations.
+This default mapping will work for many cases, but it can be customized by overriding the default implementations.
 
 ### The Entity type class
 
@@ -138,26 +153,93 @@ class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a wher
 
 ### Default Behaviour
 
-The default implementations of `idField` returns a default value for the field name of the primary key field of a type `a`:
+`idField`, `fieldsToColumns` and `tableName` are used to define the mapping between Haskell types and database tables.
+
+- The default implementations of `idField` returns a default value for the field name of the primary key field of a type `a`:
 The type name in lower case, plus "ID".
 E.g. `idField @Book` will return `"bookID"`.
 
-`tableName` returns the name of the database table used for type `a`. The default implementation simply returns the constructor name of `a`. E.g. `tableName @Book` will return `"Book"`.
+- `tableName` returns the name of the database table used for type `a`. The default implementation simply returns the constructor name of `a`. E.g. `tableName @Book` will return `"Book"`.
 
-`idField`, `fieldsToColumns` and `tableName` are used to define the mapping between Haskell types and database tables.
+- `fieldsToColumns` returns a list of tuples that map field names of type `a` to database column names for a type. The default implementation simply returns a list of tuples that map the field names of `a` to the field names of `a`. E.g. `fieldsToColumns @Person` will return `[("personID","personID"),("name","name"),("age","age"),("address","address")]`.
 
-`fieldsToColumns` returns a list of tuples that map field names of type `a` to database column names for a type. The default implementation simply returns a list of tuples that map the field names of `a` to the field names of `a`. E.g. `fieldsToColumns @Person` will return `[("personID","personID"),("name","name"),("age","age"),("address","address")]`.
+`fromRow` and `toRow` are used to convert between Haskell types and database rows. 
 
-`fromRow` and `toRow` are used to convert between Haskell types and database rows. `fromRow` converts a database row, represented by a `[SqlValue]` to a value of type `a`. `toRow` converts a value of type `a` to a `[SqlValue]`, representing a database row. 
+- `fromRow` converts a database row, represented by a `[SqlValue]` to a value of type `a`. 
+
+- `toRow` converts a value of type `a` to a `[SqlValue]`, representing a database row. 
 
 The default implementations of `fromRow` and `toRow` expects that type `a` has a single constructor and a selector for each field. All fields are expected to have a 1:1 mapping to a column in the database table.
 Thus each field must have a type that can be converted to and from a `SqlValue`. 
 
+For example 
+
+```haskell
+toRow conn (Person {personID = 1234, name = "Alice", age = 27, address = "Elmstreet 1"}) 
+````
+
+will return 
+
+```haskell
+[SqlInt64 1234,SqlString "Alice",SqlInt64 27,SqlString "Elmstreet 1"]
+```
+
+And `fromRow` does the inverse: 
+```haskell
+fromRow conn [SqlInt64 1234,SqlString "Alice",SqlInt64 27,SqlString "Elmstreet 1"] :: IO Person
+``` 
+
+returns 
+
+```haskell
+Person {personID = 1234, name = "Alice", age = 27, address = "Elmstreet 1"}
+```
+
+The conversion functions `toRow` and `fromRow` both carry an additional `Conn` argument. This argument is not used by the default implementations, but it can be used to provide database access during the conversion process. We will cover this later.
+
 ### Customizing the default behaviour
 
-To be done...
+The default implementations of `idField`, `fieldsToColumns`, `tableName`, `fromRow` and `toRow` can be customized by overriding the default implementations.
+Overiding `idField`, `fieldsToColumns` and `tableName` will be required when your database tables do not follow the default naming conventions.
 
+For example, if we have a database table `BOOK_TBL` with the following columns:
 
+```sql
+CREATE TABLE BOOK_TBL 
+  ( bookId INTEGER PRIMARY KEY, 
+    bookTitle TEXT, 
+    bookAuthor TEXT, 
+    bookYear INTEGER
+  );
+```
+and we want to map this table to a Haskell data type `Book`:
+
+```haskell
+data Book = Book
+  { book_id :: Int,
+    title   :: String,
+    author  :: String,
+    year    :: Int
+  }
+  deriving (Generic, Show)
+```
+
+Then we can customize the default implementations of `idField`, `fieldsToColumns` and `tableName` to achieve the desired mapping:
+
+```haskell
+instance Entity Book where
+  -- this is the primary key field of the Book data type (not following the default naming convention)
+  idField = "book_id"
+
+  -- this defines the mapping between the field names of the Book data type and the column names of the database table
+  fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear")]
+
+  -- this is the name of the database table
+  tableName = "BOOK_TBL"
+```
+
+Overriding `fromRow` and `toRow` will be required when your database tables do not follow the default mapping conventions.
+We will see some examples in later sections.
 
 ## Handling enumeration fields
 
@@ -265,38 +347,40 @@ data Author = Author
   }
   deriving (Generic, Entity, Show, Eq)
 
+
 instance Entity Article where
-  fieldsToColumns :: [(String, String)]
-  fieldsToColumns =
-    [ ("articleID", "articleID"),
+  fieldsToColumns :: [(String, String)]                      -- ommitting the author field,
+  fieldsToColumns =                                          -- as this can not be mapped to a single column
+    [ ("articleID", "articleID"),                            -- instead we invent a new column authorID         
       ("title", "title"),
       ("authorID", "authorID"),
       ("year", "year")
     ]
 
   fromRow :: Conn -> [SqlValue] -> IO Article
-  fromRow conn row = do
-    -- load author by foreign key
-    authorById <- fromJust <$> retrieveById conn (row !! 2)
-    -- insert author into article
-    return $ rawArticle {author = authorById}
+  fromRow conn row = do    
+    authorById <- fromJust <$> retrieveById conn (row !! 2)  -- load author by foreign key
+    return $ rawArticle {author = authorById}                -- add author to article
     where
-      -- create article from row, with dummy author
-      rawArticle = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
+      rawArticle = Article (col 0) (col 1)                   -- create article from row, 
+                           (Author (col 2) "" "") (col 3)    -- using a dummy author
         where
           col i = fromSql (row !! i)
 
   toRow :: Conn -> Article -> IO [SqlValue]
   toRow conn a = do
-    -- persist author first
-    persist conn (author a)
-    -- return row for article table where authorID is foreign key to author table 
-    return [toSql (articleID a), toSql (title a), 
-            toSql $ authorID (author a), toSql (year a)]
+    persist conn (author a)                                  -- persist author first
+    return [toSql (articleID a), toSql (title a),            -- return row for article table where 
+            toSql $ authorID (author a), toSql (year a)]     -- authorID is foreign key to author table 
 ```
+
+Persisting the `Author`as a side effect in `toRow` may sound like an *interesting* idea...
+This step is optional. But then the user has to make sure that the `Author` is persisted before the `Article` is persisted.
+
+
 ## Handling 1:n references
 
-Now let's change the previous example by having a list of Article`s in the `Author` type:
+Now let's change the previous example by having a list of Articles in the `Author` type:
 
 ```haskell
 data Author = Author
@@ -321,11 +405,33 @@ So now we have a `1:n` relationship between `Author` and `Article`.
 We can handle this situation by using the following instance declaration for `Author`:
 
 ```haskell
-i
+instance Entity Author where
+  fieldsToColumns :: [(String, String)]                   -- ommitting the articles field, 
+  fieldsToColumns =                                       -- as this can not be mapped to a single column
+    [ ("authorID", "authorID"),
+      ("name", "name"),
+      ("address", "address")
+    ]
+
+  fromRow :: Conn -> [SqlValue] -> IO Author
+  fromRow conn row = do
+    let authID = head row                                 -- authorID is the first column
+    articlesBy <- retrieveAllWhere conn "authorId" authID -- retrieve all articles by this author
+    return rawAuthor {articles = articlesBy}              -- add the articles to the author
+    where
+      rawAuthor = Author (col 0) (col 1) (col 2) []       -- create the author from row (w/o articles)
+      col i = fromSql (row !! i)                          -- helper function to convert SqlValue to Haskell type
+
+  toRow :: Conn -> Author -> IO [SqlValue]
+  toRow conn a = do
+    mapM_ (persist conn) (articles a)                     -- persist all articles of this author (update or insert)
+    return [toSql (authorID a),                           -- return the author as a list of SqlValues
+            toSql (name a), toSql (address a)]
 ```
 
-## Todo
+Persisting all articles of an author as a side effect during the conversion of the author to a row may seem *special*...
+You can ommit this step. But then you have to persist the articles manually before persisting the author.
 
-- coding free support for 1:1 and 1:n relationships (using more generics magic)
+
 
 

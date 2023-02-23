@@ -35,13 +35,13 @@ instance Entity Book where
   -- this is the name of the database table
   tableName = "BOOK_TBL"
 
-  -- this is the function that converts a row from the database table into a Book data type
-  fromRow _c row = return $ Book (col 0) (col 1) (col 2) (col 3)
-    where
-      col i = fromSql (row !! i)
+  -- -- this is the function that converts a row from the database table into a Book data type
+  -- fromRow _c row = return $ Book (col 0) (col 1) (col 2) (col 3)
+  --   where
+  --     col i = fromSql (row !! i)
 
-  -- this is the function that converts a Book data type into a row for the database table
-  toRow _c b = return [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
+  -- -- this is the function that converts a Book data type into a row for the database table
+  -- toRow _c b = return [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b)]
 
 main :: IO ()
 main = do
@@ -83,7 +83,7 @@ main = do
 main1 :: IO ()
 main1 = do
   -- connect to a database
-  conn <- Conn SQLite False <$> connectSqlite3 ":memory:" 
+  conn <- Conn SQLite False <$> connectSqlite3 "test.db" -- ":memory:" 
 
   -- initialize Person and Book tables
   setupTableFor @Person conn

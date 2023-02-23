@@ -43,8 +43,8 @@ data Author = Author
   deriving (Generic, Show, Eq)
 
 instance Entity Author where
-  fieldsToColumns :: [(String, String)]
-  fieldsToColumns =
+  fieldsToColumns :: [(String, String)]                  -- ommitting the articles field, 
+  fieldsToColumns =                                      -- as this can not be mapped to a single column
     [ ("authorID", "authorID"),
       ("name", "name"),
       ("address", "address")
@@ -52,17 +52,18 @@ instance Entity Author where
 
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
-    authID <- idValue conn rawAuthor
-    articlesByAuth <- retrieveAllWhere conn "authorId" authID
-    return rawAuthor {articles = articlesByAuth}
+    let authID = head row                                 -- authorID is the first column
+    articlesBy <- retrieveAllWhere conn "authorId" authID -- retrieve all articles by this author
+    return rawAuthor {articles = articlesBy}              -- add the articles to the author
     where
-      rawAuthor = Author (col 0) (col 1) (col 2) []
-      col i = fromSql (row !! i)
+      rawAuthor = Author (col 0) (col 1) (col 2) []       -- create the author from row (w/o articles)
+      col i = fromSql (row !! i)                          -- helper function to convert SqlValue to Haskell type
 
   toRow :: Conn -> Author -> IO [SqlValue]
   toRow conn a = do
-    mapM_ (persist conn) (articles a)
-    return [toSql (authorID a), toSql (name a), toSql (address a)]
+    mapM_ (persist conn) (articles a)                     -- persist all articles of this author (update or insert)
+    return [toSql (authorID a),                           -- return the author as a list of SqlValues
+            toSql (name a), toSql (address a)]
 
 
 article1 :: Article

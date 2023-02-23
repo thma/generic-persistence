@@ -42,33 +42,29 @@ data Author = Author
   deriving (Generic, Entity, Show, Eq)
 
 instance Entity Article where
-  fieldsToColumns :: [(String, String)]
-  fieldsToColumns =
-    [ ("articleID", "articleID"),
+  fieldsToColumns :: [(String, String)]                      -- ommitting the author field,
+  fieldsToColumns =                                          -- as this can not be mapped to a single column
+    [ ("articleID", "articleID"),                            -- instead we invent a new column authorID         
       ("title", "title"),
       ("authorID", "authorID"),
       ("year", "year")
     ]
 
   fromRow :: Conn -> [SqlValue] -> IO Article
-  fromRow conn row = do
-    -- load author by foreign key
-    authorById <- fromJust <$> retrieveById conn (row !! 2)
-    -- insert author into article
-    return $ rawArticle {author = authorById}
+  fromRow conn row = do    
+    authorById <- fromJust <$> retrieveById conn (row !! 2)  -- load author by foreign key
+    return $ rawArticle {author = authorById}                -- add author to article
     where
-      -- create article from row, with dummy author
-      rawArticle = Article (col 0) (col 1) (Author (col 2) "" "") (col 3)
+      rawArticle = Article (col 0) (col 1)                   -- create article from row, 
+                           (Author (col 2) "" "") (col 3)    -- using a dummy author
         where
           col i = fromSql (row !! i)
 
   toRow :: Conn -> Article -> IO [SqlValue]
   toRow conn a = do
-    -- persist author first
-    persist conn (author a)
-    -- return row for article table where authorID is foreign key to author table 
-    return [toSql (articleID a), toSql (title a), 
-            toSql $ authorID (author a), toSql (year a)]
+    persist conn (author a)                                  -- persist author first
+    return [toSql (articleID a), toSql (title a),            -- return row for article table where 
+            toSql $ authorID (author a), toSql (year a)]     -- authorID is foreign key to author table 
 
 
 
