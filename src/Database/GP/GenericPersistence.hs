@@ -72,6 +72,10 @@ retrieveAll conn = do
   where
     stmt = selectAllStmtFor @a
 
+-- | This function retrieves all entities of type `a` where a given field has a given value.
+--  The function takes an HDBC connection, the name of the field and the value as parameters.
+--  The type `a` is determined by the context of the function call.
+--  The function returns a (possibly empty) list of all matching entities.
 retrieveAllWhere :: forall a. (Entity a) => Conn -> String -> SqlValue -> IO [a]
 retrieveAllWhere conn field val = do
   resultRows <- quickQuery conn stmt [val]
@@ -117,9 +121,9 @@ delete conn entity = do
 
 -- | set up a table for a given entity type. The table is dropped and recreated.
 setupTableFor :: forall a. (Entity a) => Conn -> IO ()
-setupTableFor conn@(Conn dbServer _ _) = do
+setupTableFor conn = do
   runRaw conn $ dropTableStmtFor @a
-  runRaw conn $ createTableStmtFor @a dbServer
+  runRaw conn $ createTableStmtFor @a (db conn)
   when (implicitCommit conn) $ commit conn
 
 -- | Computes the EntityId of an entity.
