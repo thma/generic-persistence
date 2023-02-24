@@ -440,7 +440,7 @@ As of now, the library only supports very basic support for queries:
 - `retrieveAll` retrieves all rows of a table
 - `retrieveAllWhere` retrieves all rows of a table where a given column has a given value
 
-If you want to use more complex queries, you can integrate HDBC queries by using the `entitiesFromRows` function as in the following example:
+If you want to use more complex queries, you can integrate HDBC SQL queries by using the `entitiesFromRows` function as in the following example:
 
 ```haskell
 main :: IO ()
