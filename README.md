@@ -432,6 +432,58 @@ instance Entity Author where
 Persisting all articles of an author as a side effect during the conversion of the author to a row may seem *special*...
 You can ommit this step. But then you have to persist the articles manually before persisting the author.
 
+## Integrating user defined queries
 
+As of now, the library only supports very basic support for queries:
+
+- `retrieveById` retrieves a single row of a table by its primary key
+- `retrieveAll` retrieves all rows of a table
+- `retrieveAllWhere` retrieves all rows of a table where a given column has a given value
+
+If you want to use more complex queries, you can integrate HDBC queries by using the `entitiesFromRows` function as in the following example:
+
+```haskell
+main :: IO ()
+main = do
+  -- connect to a database
+  conn <- connect SQLite <$> connectSqlite3 ":memory:" 
+
+  -- initialize Person table
+  setupTableFor @Person conn
+
+  let alice = Person 1 "Alice" 25 "123 Main St"
+      bob = Person 2 "Bob" 30 "456 Elm St"
+      charlie = Person 3 "Charlie" 35 "789 Pine St"
+      dave = Person 4 "Dave" 40 "1011 Oak St"
+      eve = Person 5 "Eve" 45 "1213 Maple St"
+      frank = Person 6 "Frank" 50 "1415 Walnut St"
+      people = [alice, bob, charlie, dave, eve, frank]
+  -- insert all persons into the database
+  mapM_ (insert conn) people
+
+  -- perform a custom query with HDBC
+  stmt = "SELECT * FROM Person WHERE age >= ?"
+  resultRows <- quickQuery conn stmt [toSql (40 :: Int)]
+
+  -- convert the resulting rows into a list of Person objects
+  fourtplussers <- entitiesFromRows @Person conn resultRows
+  print fourtplussers
+```
+
+Of course this approach is not type safe. It is up to the user to make sure that the query returns the correct columns. 
+
+## The `Conn` Connection Type
+
+The `Conn` type is a wrapper around an `IConnection` obtained from an HDBC backend driver like `HDBC-sqlite3` or `hdbc-postgresql`. It is used to pass the connection to the database to *Generic-Persistence*. All functions of the library that require a database connection take a `Conn` as an argument.
+
+HDBC provides a very similar type called `ConnectionWrapper`. The main reason for such a wrapper type is to simplify the type signatures of the library functions. 
+
+In addition, the `Conn` type provides additional database related information that is not available in the `ConnectionWrapper` type. For example, the `Conn` type contains the name of the database driver that is used. This information can be used to generate the correct SQL statements for different database backends.
+`Conn` also carries a flag that indicates whether implicit commits should be used by the library. This flag is set to `True` by default. If you want to use explicit commits, you can set the flag to `False` by modifying the `Conn` value:
+  
+```haskell
+c <- connect SQLite <$> connectSqlite3 ":memory:"
+let conn = c {implicitCommit = False}
+```
 
 

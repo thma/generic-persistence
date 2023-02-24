@@ -5,6 +5,7 @@ module Database.GP.GenericPersistence
   ( retrieveById,
     retrieveAll,
     retrieveAllWhere,
+    entitiesFromRows,
     persist,
     insert,
     update,
@@ -68,7 +69,7 @@ retrieveById conn idx = do
 retrieveAll :: forall a. (Entity a) => Conn -> IO [a]
 retrieveAll conn = do
   resultRows <- quickQuery conn stmt []
-  mapM (fromRow conn) resultRows
+  entitiesFromRows conn resultRows
   where
     stmt = selectAllStmtFor @a
 
@@ -79,9 +80,18 @@ retrieveAll conn = do
 retrieveAllWhere :: forall a. (Entity a) => Conn -> String -> SqlValue -> IO [a]
 retrieveAllWhere conn field val = do
   resultRows <- quickQuery conn stmt [val]
-  mapM (fromRow conn) resultRows
+  entitiesFromRows conn resultRows
   where
     stmt = selectAllWhereStmtFor @a field
+
+-- | This function converts a list of database rows, represented as a `[[SqlValue]]` to a list of entities.
+--   The function takes an HDBC connection and a list of database rows as parameters.
+--   The type `a` is determined by the context of the function call.
+--   The function returns a (possibly empty) list of all matching entities.
+--   The function is used internally by `retrieveAll` and `retrieveAllWhere`.
+--   But it can also be used to convert the result of a custom SQL query to a list of entities.
+entitiesFromRows :: forall a. (Entity a) => Conn -> [[SqlValue]] -> IO [a]
+entitiesFromRows = mapM . fromRow
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.

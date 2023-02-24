@@ -2,6 +2,7 @@ module Database.GP
   ( retrieveById,
     retrieveAll,
     retrieveAllWhere,
+    entitiesFromRows,
     persist,
     insert,
     update,
