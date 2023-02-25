@@ -458,8 +458,9 @@ main = do
       eve = Person 5 "Eve" 45 "1213 Maple St"
       frank = Person 6 "Frank" 50 "1415 Walnut St"
       people = [alice, bob, charlie, dave, eve, frank]
+      
   -- insert all persons into the database
-  mapM_ (insert conn) people
+  insertMany conn people
 
   -- perform a custom query with HDBC
   stmt = "SELECT * FROM Person WHERE age >= ?"

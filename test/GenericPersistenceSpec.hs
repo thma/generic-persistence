@@ -59,6 +59,17 @@ instance Entity Book where
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"
 
+manyPersons :: [Person]
+manyPersons =
+  [ Person 1 "Alice" 25 "123 Main St",
+    Person 2 "Bob" 30 "456 Elm St",
+    Person 3 "Charlie" 35 "789 Pine St",
+    Person 4 "Dave" 40 "1011 Oak St",
+    Person 5 "Eve" 45 "1213 Maple St",
+    Person 6 "Frank" 50 "1415 Walnut St"
+  ]
+
+
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
 
@@ -134,6 +145,24 @@ spec = do
       length allPersons' `shouldBe` 1
       person' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person
+    it "inserts many Entities re-using a single prepared stmt" $ do
+      conn <- prepareDB
+      allPersons <- retrieveAll conn :: IO [Person]
+      length allPersons `shouldBe` 0
+      insertMany conn manyPersons
+      allPersons' <- retrieveAll conn :: IO [Person]
+      length allPersons' `shouldBe` 6
+    it "updates many Entities re-using a single prepared stmt" $ do
+      conn <- prepareDB
+      allPersons <- retrieveAll conn :: IO [Person]
+      length allPersons `shouldBe` 0
+      insertMany conn manyPersons
+      allPersons' <- retrieveAll conn :: IO [Person]
+      length allPersons' `shouldBe` 6
+      let manyPersons' = map (\p -> p {name = "Bob"}) manyPersons
+      updateMany conn manyPersons'
+      allPersons'' <- retrieveAll conn :: IO [Person]
+      all (\p -> name p == "Bob") allPersons'' `shouldBe` True
     it "inserts Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- retrieveAll conn :: IO [Book]

@@ -8,7 +8,9 @@ module Database.GP.GenericPersistence
     entitiesFromRows,
     persist,
     insert,
+    insertMany,
     update,
+    updateMany,
     delete,
     setupTableFor,
     idValue,
@@ -115,12 +117,35 @@ insert conn entity = do
   _rowcount <- run conn (insertStmtFor @a) row
   when (implicitCommit conn) $ commit conn
 
+-- | A function that inserts a list of entities into a database.
+--   The function takes an HDBC connection and a list of entities as parameters.
+--   The insert-statement is compiled only once and then executed for each entity.
+insertMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
+insertMany conn entities = do
+  rows <- mapM (toRow conn) entities
+  stmt <- prepare conn (insertStmtFor @a)
+  executeMany stmt rows
+  when (implicitCommit conn) $ commit conn
+  
+
 -- | A function that explicitely updates an entity in a database.
 update :: forall a. (Entity a) => Conn -> a -> IO ()
 update conn entity = do
   eid <- idValue conn entity
   row <- toRow conn entity
   _rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
+  when (implicitCommit conn) $ commit conn
+
+-- | A function that updates a list of entities in a database.
+--   The function takes an HDBC connection and a list of entities as parameters.
+--   The update-statement is compiled only once and then executed for each entity.
+updateMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
+updateMany conn entities = do
+  eids <- mapM (idValue conn) entities
+  rows <- mapM (toRow conn) entities
+  stmt <- prepare conn (updateStmtFor @a)
+  -- the update statement has one more parameter than the row: the id value for the where clause
+  executeMany stmt (zipWith (\l x -> l ++ [x]) rows eids)
   when (implicitCommit conn) $ commit conn
 
 delete :: forall a. (Entity a) => Conn -> a -> IO ()

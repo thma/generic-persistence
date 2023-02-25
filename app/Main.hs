@@ -1,7 +1,7 @@
 -- allows automatic derivation from Entity type class
 {-# LANGUAGE DeriveAnyClass #-}
 
-module Main (main, main1, main2) where
+module Main (main, main1, main2, main3) where
 
 import           Database.GP         
 import           Database.HDBC
@@ -153,10 +153,33 @@ main2 = do
       stmt = "SELECT * FROM Person WHERE age >= ?"
 
   -- insert all persons into the database
-  mapM_ (insert conn) people
+  insertMany conn people
+
   -- select all Person with age >= 40
   resultRows <- quickQuery conn stmt [toSql (40 :: Int)]
   fourtplussers <- entitiesFromRows @Person conn resultRows
   print fourtplussers
   
-    
+main3 :: IO ()
+main3 = do
+  -- connect to a database
+  conn <- connect SQLite <$> connectSqlite3 "test.db" 
+
+  -- initialize Person table
+  setupTableFor @Person conn
+
+  let alice = Person 1 "Alice" 25 "123 Main St"
+      bob = Person 2 "Bob" 30 "456 Elm St"
+      charlie = Person 3 "Charlie" 35 "789 Pine St"
+      dave = Person 4 "Dave" 40 "1011 Oak St"
+      eve = Person 5 "Eve" 45 "1213 Maple St"
+      frank = Person 6 "Frank" 50 "1415 Walnut St"
+      people = [alice, bob, charlie, dave, eve, frank]
+
+  -- insert all persons into the database
+  insertMany conn people  
+
+  people' <- retrieveAll @Person conn
+  print $ length people'
+
+
