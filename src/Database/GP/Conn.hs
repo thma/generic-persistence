@@ -8,14 +8,14 @@ where
 import           Control.Monad ((>=>))
 import           Database.HDBC hiding (withWConn)
 
-{--
+{- | 
   This module defines a wrapper around an HDBC IConnection. Using this wrapper `Conn` simplifies the signature of the functions in the `Database.GP` module.
   It allows to use any HDBC connection without having to define a new function for each connection type.
   It also provides additional attributes to the connection, like the database type and the implicit commit flag.
   These attributes can be used to implement database specific functionality, modify transaction behaviour, etc.
 
   This code has been inspired by the HDBC ConnectionWrapper and some parts have been copied from the HDBC Database.HDBC.Types module.
---}
+-}
 
 -- | A wrapper around an HDBC IConnection.
 data Conn = forall conn.

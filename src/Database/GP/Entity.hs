@@ -31,8 +31,7 @@ import           GHC.TypeNats
 import           Generics.Deriving.Show (GShow' (..), gshowsPrecdefault)
 import           Database.GP.Conn
 
-{--
-This is the Entity class. It is a type class that is used to define the mapping
+{- | This is the Entity class. It is a type class that is used to define the mapping
 between a Haskell product type in record notation and a database table.
 The class has a default implementation for all methods.
 The default implementation uses the type information to determine a simple 1:1 mapping.
@@ -51,7 +50,7 @@ but that are not explicitely encoded in the type class definition:
 - The type must have exactly one constructor.
 - There must be single primary key field, compund primary keys are not supported.
 
---}
+-}
 
 
 class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a where

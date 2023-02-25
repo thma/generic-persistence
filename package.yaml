@@ -1,5 +1,5 @@
 name:                generic-persistence
-version:             0.3.0.0
+version:             0.3.0.1
 github:              "thma/generic-persistence"
 license:             BSD3
 author:              "Thomas Mahler"
@@ -26,7 +26,7 @@ tested-with: GHC==9.2.5, GHC==9.4.4
 dependencies:
 - base >= 4.7 && < 5
 - convertible
-- HDBC #>= 2.4.0.4
+- HDBC
 - generic-deriving
 
 
@@ -43,18 +43,6 @@ ghc-options:
 
 library:
   source-dirs: src
-
-executables:
-  generic-persistence-demo:
-    main:                Main.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - generic-persistence
-    - HDBC-sqlite3 #>= 2.3.3.1
 
 tests:
   generic-persistence-test:

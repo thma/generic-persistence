@@ -40,13 +40,13 @@ import           Database.GP.TypeInfo
 import           Database.HDBC
 import Control.Monad (when)
 
-{--
+{- | 
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
  I call instances of such a data type Entities.
 
  The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
  HDBC is used to access the RDBMS.
---}
+-}
 
 -- | A function that retrieves an entity from a database.
 -- The function takes entity id as parameter.
@@ -148,13 +148,16 @@ updateMany conn entities = do
   executeMany stmt (zipWith (\l x -> l ++ [x]) rows eids)
   when (implicitCommit conn) $ commit conn
 
+-- | A function that deletes an entity from a database.
+--   The function takes an HDBC connection and an entity as parameters.
 delete :: forall a. (Entity a) => Conn -> a -> IO ()
 delete conn entity = do
   eid <- idValue conn entity
   _rowCount <- run conn (deleteStmtFor @a) [eid]
   when (implicitCommit conn) $ commit conn
 
--- | set up a table for a given entity type. The table is dropped and recreated.
+-- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
+--   The function takes an HDBC connection as parameter.
 setupTableFor :: forall a. (Entity a) => Conn -> IO ()
 setupTableFor conn = do
   runRaw conn $ dropTableStmtFor @a
@@ -163,6 +166,7 @@ setupTableFor conn = do
 
 -- | Computes the EntityId of an entity.
 --   The EntityId of an entity is a (typeRep, idValue) tuple.
+--   The function takes an HDBC connection and an entity as parameters.
 entityId :: forall a. (Entity a) => Conn -> a -> IO EntityId
 entityId conn x = do
   eid <- idValue conn x
@@ -171,6 +175,7 @@ entityId conn x = do
     tyName = constructorName (typeInfo @a)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
+--   The function takes an HDBC connection and an entity as parameters.
 idValue :: forall a. (Entity a) => Conn -> a -> IO SqlValue
 idValue conn x = do
   sqlValues <- toRow conn x
@@ -181,6 +186,8 @@ idValue conn x = do
 -- | returns the index of a field of an entity.
 --   The index is the position of the field in the list of fields of the entity.
 --   If no such field exists, an error is thrown.
+--   The function takes an field name as parameters, 
+--   the type of the entity is determined by the context.
 fieldIndex :: forall a. (Entity a) => String -> Int
 fieldIndex fieldName =
   expectJust
@@ -194,7 +201,8 @@ expectJust :: String -> Maybe a -> a
 expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
 
--- These instances are needed to make the Convertible type class work with Enum types out of the box.
+-- | These instances are needed to make the Convertible type class work with Enum types out of the box.
+--   This is needed because the Convertible type class is used to convert SqlValues to Haskell types.
 instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible SqlValue a where
   safeConvert :: SqlValue -> ConvertResult a
   safeConvert = Right . toEnum . fromSql

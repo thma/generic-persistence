@@ -17,7 +17,7 @@ import           Type.Reflection (SomeTypeRep (..), Typeable, typeRep)
 
 -- | A data type holding meta-data about a type.
 --   The Phantom type parameter `a` ensures type safety for reflective functions
---   that use this type to create type instances (See module RecordtypeReflection).
+--   that use this type to create type instances.
 data TypeInfo a = TypeInfo
   { constructorName :: String,
     fieldNames      :: [String],

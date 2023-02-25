@@ -15,6 +15,11 @@ where
 import           Data.List          (intercalate)
 import           Database.GP.Entity
 
+{- | 
+  This module defines some basic SQL statements for Record Data Types that are instances of 'Entity'.
+  The SQL statements are generated using Haskell generics to provide compile time reflection capabilities.
+-}
+
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
 -- The values of the fields will be used as the values in the insert statement.

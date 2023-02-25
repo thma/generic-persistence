@@ -38,10 +38,8 @@ packages:
 # forks / in-progress versions pinned to a git hash. For example:
 #
 extra-deps:
-  - HDBC-sqlite3-2.3.3.1@sha256:5025fd94d02b9b3f0b8b8233796dd9a85a0b3dda6503c6e671e3eddbc51cb4d4,2424
+  - HDBC-sqlite3-2.3.3.1 
 
-#  - git: https://github.com/hdbc/hdbc.git
-#    commit: ec950ff8fb3025cbcdb5ee1d3481409ea464bee5
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
