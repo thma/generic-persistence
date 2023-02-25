@@ -18,8 +18,7 @@ import           Database.HDBC hiding (withWConn)
 -}
 
 -- | A wrapper around an HDBC IConnection.
-data Conn = forall conn.
-  IConnection conn =>
+data Conn = forall conn. IConnection conn =>
   Conn
   { -- | The database type
     db             :: Database,

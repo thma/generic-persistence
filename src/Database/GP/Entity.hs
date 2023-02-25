@@ -10,7 +10,6 @@ module Database.GP.Entity
   ( Entity (..),
     columnNameFor,
     toString,
-    EntityId,
     gtoRow,
     GToRow,
     GFromRow,
@@ -95,9 +94,6 @@ class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a wher
   tableName = constructorName ti
     where
       ti = typeInfo @a
-
--- | The EntityId is a tuple of the constructor name and the primary key value of an Entity.
-type EntityId = (String, SqlValue)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: forall a. (Entity a) => String -> String

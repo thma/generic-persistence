@@ -163,6 +163,17 @@ spec = do
       updateMany conn manyPersons'
       allPersons'' <- retrieveAll conn :: IO [Person]
       all (\p -> name p == "Bob") allPersons'' `shouldBe` True
+    it "deletes many Entities re-using a single prepared stmt" $ do
+      conn <- prepareDB
+      allPersons <- retrieveAll conn :: IO [Person]
+      length allPersons `shouldBe` 0
+      insertMany conn manyPersons
+      allPersons' <- retrieveAll conn :: IO [Person]
+      length allPersons' `shouldBe` 6   
+      deleteMany conn allPersons'
+      allPersons'' <- retrieveAll conn :: IO [Person]
+      length allPersons'' `shouldBe` 0
+
     it "inserts Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- retrieveAll conn :: IO [Book]

@@ -12,6 +12,7 @@ module Database.GP.GenericPersistence
     update,
     updateMany,
     delete,
+    deleteMany,
     setupTableFor,
     idValue,
     Conn(..),
@@ -23,8 +24,6 @@ module Database.GP.GenericPersistence
     columnNameFor,
     maybeFieldTypeFor,
     toString,
-    EntityId,
-    entityId,
     TypeInfo (..),
     typeInfo,
   )
@@ -126,7 +125,7 @@ insertMany conn entities = do
   stmt <- prepare conn (insertStmtFor @a)
   executeMany stmt rows
   when (implicitCommit conn) $ commit conn
-  
+
 
 -- | A function that explicitely updates an entity in a database.
 update :: forall a. (Entity a) => Conn -> a -> IO ()
@@ -156,6 +155,16 @@ delete conn entity = do
   _rowCount <- run conn (deleteStmtFor @a) [eid]
   when (implicitCommit conn) $ commit conn
 
+-- | A function that deletes a list of entities from a database.
+--   The function takes an HDBC connection and a list of entities as parameters.
+--   The delete-statement is compiled only once and then executed for each entity.
+deleteMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
+deleteMany conn entities = do
+  eids <- mapM (idValue conn) entities
+  stmt <- prepare conn (deleteStmtFor @a)
+  executeMany stmt (map (: []) eids)
+  when (implicitCommit conn) $ commit conn
+
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection as parameter.
 setupTableFor :: forall a. (Entity a) => Conn -> IO ()
@@ -163,16 +172,6 @@ setupTableFor conn = do
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ createTableStmtFor @a (db conn)
   when (implicitCommit conn) $ commit conn
-
--- | Computes the EntityId of an entity.
---   The EntityId of an entity is a (typeRep, idValue) tuple.
---   The function takes an HDBC connection and an entity as parameters.
-entityId :: forall a. (Entity a) => Conn -> a -> IO EntityId
-entityId conn x = do
-  eid <- idValue conn x
-  return (tyName, eid)
-  where
-    tyName = constructorName (typeInfo @a)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.
