@@ -34,14 +34,14 @@ where
 
 import           Data.Convertible         (ConvertResult, Convertible)
 import           Data.Convertible.Base    (Convertible (safeConvert))
-import           Data.List                (elemIndex)
+import           Data.List                (elemIndex, isInfixOf)
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
 import Control.Monad (when)
-import Control.Exception (Exception, SomeException, try)
+import Control.Exception (Exception, SomeException, try, throw)
 
 {- | 
  This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
@@ -142,10 +142,19 @@ persist conn entity =
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
-insert conn entity = tryPE $ do
-  row <- toRow conn entity
-  _rowcount <- run conn (insertStmtFor @a) row
-  when (implicitCommit conn) $ commit conn
+insert conn entity = do
+  eitherExUnit <- try $ do
+    row <- toRow conn entity
+    _rowcount <- run conn (insertStmtFor @a) row
+    when (implicitCommit conn) $ commit conn
+  case eitherExUnit of
+    Left ex -> return $ Left $ handleEx ex
+    Right _ -> return $ Right ()
+  where
+    handleEx :: SomeException -> PersistenceException
+    handleEx ex = if "UNIQUE constraint failed" `isInfixOf` show ex 
+      then EntityAlreadyExists "Entity already exists in DB, use update instead" 
+      else fromException ex
   
 tryPE :: IO a -> IO (Either PersistenceException a)
 tryPE action = do
@@ -170,7 +179,8 @@ update :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException (
 update conn entity = tryPE $ do
   eid <- idValue conn entity
   row <- toRow conn entity
-  _rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
+  rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
+  when (rowcount == 0) $ throw $ EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")
   when (implicitCommit conn) $ commit conn
 
 -- | A function that updates a list of entities in a database.
