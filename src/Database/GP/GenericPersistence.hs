@@ -1,5 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+--{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Database.GP.GenericPersistence
   ( retrieveById,
@@ -29,15 +29,18 @@ module Database.GP.GenericPersistence
   )
 where
 
-import           Data.Convertible         (ConvertResult, Convertible)
-import           Data.Convertible.Base    (Convertible (safeConvert))
+import           Data.Convertible         (Convertible)
+--import           Data.Convertible.Base    (Convertible (safeConvert))
 import           Data.List                (elemIndex)
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
+import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.HDBC
 import Control.Monad (when)
+import Control.Exception
+import Database.GP.GenericPersistenceSafe (PersistenceException)
 
 {- | 
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -54,25 +57,22 @@ import Control.Monad (when)
 -- An error is thrown if there are more than one entity with the given id.
 retrieveById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Maybe a)
 retrieveById conn idx = do
-  resultRowsSqlValues <- quickQuery conn stmt [eid]
-  case resultRowsSqlValues of
-    [] -> pure Nothing
-    [singleRow] -> Just <$> fromRow conn singleRow
-    _ -> error $ "More than one" ++ constructorName ti ++ " found for id " ++ show eid
-  where
-    ti = typeInfo @a
-    stmt = selectStmtFor @a
-    eid = toSql idx
+  eitherExEntity <- GpSafe.retrieveById conn idx
+  case eitherExEntity of
+    Left (GpSafe.EntityNotFound _) -> pure Nothing
+    Left ex -> throw ex
+    Right entity -> pure $ Just entity
 
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
 --  The type `a` is determined by the context of the function call.
 retrieveAll :: forall a. (Entity a) => Conn -> IO [a]
 retrieveAll conn = do
-  resultRows <- quickQuery conn stmt []
-  entitiesFromRows conn resultRows
-  where
-    stmt = selectAllStmtFor @a
+  eitherExRow <- GpSafe.retrieveAll @a conn
+  case eitherExRow of
+    Left ex -> throw ex
+    Right rows -> pure rows
+
 
 -- | This function retrieves all entities of type `a` where a given field has a given value.
 --  The function takes an HDBC connection, the name of the field and the value as parameters.
@@ -80,10 +80,10 @@ retrieveAll conn = do
 --  The function returns a (possibly empty) list of all matching entities.
 retrieveAllWhere :: forall a. (Entity a) => Conn -> String -> SqlValue -> IO [a]
 retrieveAllWhere conn field val = do
-  resultRows <- quickQuery conn stmt [val]
-  entitiesFromRows conn resultRows
-  where
-    stmt = selectAllWhereStmtFor @a field
+  eitherExEntities <- GpSafe.retrieveAllWhere @a conn field val
+  case eitherExEntities of
+    Left ex -> throw ex
+    Right entities -> pure entities
 
 -- | This function converts a list of database rows, represented as a `[[SqlValue]]` to a list of entities.
 --   The function takes an HDBC connection and a list of database rows as parameters.
@@ -92,78 +92,57 @@ retrieveAllWhere conn field val = do
 --   The function is used internally by `retrieveAll` and `retrieveAllWhere`.
 --   But it can also be used to convert the result of a custom SQL query to a list of entities.
 entitiesFromRows :: forall a. (Entity a) => Conn -> [[SqlValue]] -> IO [a]
-entitiesFromRows = mapM . fromRow
+entitiesFromRows conn rows = do
+  eitherExEntities <- GpSafe.entitiesFromRows @a conn rows
+  case eitherExEntities of
+    Left ex -> throw ex
+    Right entities -> pure entities
+
+fromEitherExUnit :: IO (Either PersistenceException ()) -> IO ()
+fromEitherExUnit ioEitherExUnit = do
+  eitherExUnit <- ioEitherExUnit
+  case eitherExUnit of
+    Left ex -> throw ex
+    Right _ -> pure ()
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: forall a. (Entity a) => Conn -> a -> IO ()
-persist conn entity = do
-  eid <- idValue conn entity
-  resultRows <- quickQuery conn preparedSelectStmt [eid]
-  case resultRows of
-    []           -> insert conn entity
-    [_singleRow] -> update conn entity
-    _            -> error $ "More than one entity found for id " ++ show eid
-  where
-    preparedSelectStmt = selectStmtFor @a
+persist = (fromEitherExUnit .) . GpSafe.persist
+
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO ()
-insert conn entity = do
-  row <- toRow conn entity
-  _rowcount <- run conn (insertStmtFor @a) row
-  when (implicitCommit conn) $ commit conn
+insert = (fromEitherExUnit .) . GpSafe.insert
 
 -- | A function that inserts a list of entities into a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The insert-statement is compiled only once and then executed for each entity.
 insertMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
-insertMany conn entities = do
-  rows <- mapM (toRow conn) entities
-  stmt <- prepare conn (insertStmtFor @a)
-  executeMany stmt rows
-  when (implicitCommit conn) $ commit conn
-
+insertMany = (fromEitherExUnit .) . GpSafe.insertMany
 
 -- | A function that explicitely updates an entity in a database.
 update :: forall a. (Entity a) => Conn -> a -> IO ()
-update conn entity = do
-  eid <- idValue conn entity
-  row <- toRow conn entity
-  _rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
-  when (implicitCommit conn) $ commit conn
+update = (fromEitherExUnit .) . GpSafe.update
 
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
 updateMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
-updateMany conn entities = do
-  eids <- mapM (idValue conn) entities
-  rows <- mapM (toRow conn) entities
-  stmt <- prepare conn (updateStmtFor @a)
-  -- the update statement has one more parameter than the row: the id value for the where clause
-  executeMany stmt (zipWith (\l x -> l ++ [x]) rows eids)
-  when (implicitCommit conn) $ commit conn
+updateMany = (fromEitherExUnit .) . GpSafe.updateMany
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
 delete :: forall a. (Entity a) => Conn -> a -> IO ()
-delete conn entity = do
-  eid <- idValue conn entity
-  _rowCount <- run conn (deleteStmtFor @a) [eid]
-  when (implicitCommit conn) $ commit conn
+delete = (fromEitherExUnit .) . GpSafe.delete
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
 deleteMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
-deleteMany conn entities = do
-  eids <- mapM (idValue conn) entities
-  stmt <- prepare conn (deleteStmtFor @a)
-  executeMany stmt (map (: []) eids)
-  when (implicitCommit conn) $ commit conn
+deleteMany = (fromEitherExUnit .) . GpSafe.deleteMany
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection as parameter.
@@ -200,12 +179,3 @@ expectJust :: String -> Maybe a -> a
 expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
 
--- | These instances are needed to make the Convertible type class work with Enum types out of the box.
---   This is needed because the Convertible type class is used to convert SqlValues to Haskell types.
-instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible SqlValue a where
-  safeConvert :: SqlValue -> ConvertResult a
-  safeConvert = Right . toEnum . fromSql
-
-instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible a SqlValue where
-  safeConvert :: a -> ConvertResult SqlValue
-  safeConvert = Right . toSql . fromEnum
