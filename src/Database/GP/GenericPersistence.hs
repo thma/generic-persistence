@@ -26,6 +26,7 @@ module Database.GP.GenericPersistence
     toString,
     TypeInfo (..),
     typeInfo,
+    PersistenceException (..),
   )
 where
 

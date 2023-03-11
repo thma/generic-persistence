@@ -44,6 +44,8 @@ import Control.Monad (when)
 import Control.Exception (Exception, SomeException, try)
 
 {- | 
+ This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
+
  This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
  I call instances of such a data type Entities.
 
