@@ -53,6 +53,7 @@ test-suite generic-persistence-test
   other-modules:
       EmbeddedSpec
       EnumSpec
+      ExceptionsSpec
       GenericPersistenceSpec
       OneToManySpec
       ReferenceSpec

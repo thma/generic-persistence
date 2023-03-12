@@ -41,7 +41,7 @@ import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
 import Control.Monad (when)
-import Control.Exception (Exception, SomeException, try, throw)
+import Control.Exception (Exception, SomeException, try)
 
 {- | 
  This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
@@ -56,10 +56,10 @@ import Control.Exception (Exception, SomeException, try, throw)
 -- | exceptions that may occur during persistence operations
 data PersistenceException = 
     EntityNotFound String
-  | EntityAlreadyExists String
+  | DuplicateInsert String
   | DatabaseError String
   | NoUniqueKey String
-  deriving (Show, Exception)
+  deriving (Show, Eq, Exception)
 
 fromException :: SomeException -> PersistenceException
 --fromException pe@(EntityNotFound msg) = pe
@@ -130,13 +130,17 @@ entitiesFromRows = (tryPE .) . mapM . fromRow
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
-persist conn entity = 
-  idValue conn entity >>= \eid ->
-  quickQuery conn preparedSelectStmt [eid] >>= 
-    \case 
-      []           -> insert conn entity
-      [_singleRow] -> update conn entity
-      _            -> error $ "More than one entity found for id " ++ show eid
+persist conn entity = do
+  eitherExRes <- try $
+    idValue conn entity >>= \eid ->
+    quickQuery conn preparedSelectStmt [eid] >>= 
+      \case 
+        []           -> insert conn entity
+        [_singleRow] -> update conn entity
+        _            -> error $ "More than one entity found for id " ++ show eid
+  case eitherExRes of
+    Left ex -> return $ Left $ fromException ex
+    Right res -> return res
   where
     preparedSelectStmt = selectStmtFor @a
 
@@ -153,7 +157,7 @@ insert conn entity = do
   where
     handleEx :: SomeException -> PersistenceException
     handleEx ex = if "UNIQUE constraint failed" `isInfixOf` show ex 
-      then EntityAlreadyExists "Entity already exists in DB, use update instead" 
+      then DuplicateInsert "Entity already exists in DB, use update instead" 
       else fromException ex
   
 tryPE :: IO a -> IO (Either PersistenceException a)
@@ -176,12 +180,19 @@ insertMany conn entities = tryPE $ do
 
 -- | A function that explicitely updates an entity in a database.
 update :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
-update conn entity = tryPE $ do
-  eid <- idValue conn entity
-  row <- toRow conn entity
-  rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
-  when (rowcount == 0) $ throw $ EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")
-  when (implicitCommit conn) $ commit conn
+update conn entity = do
+  eitherExUnit <- try $ do
+    eid <- idValue conn entity
+    row <- toRow conn entity
+    rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
+    if (rowcount == 0) 
+      then return (Left (EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")))
+      else do
+        when (implicitCommit conn) $ commit conn
+        return $ Right ()
+  case eitherExUnit of
+    Left ex -> return $ Left $ fromException ex
+    Right result -> return result
 
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
@@ -198,10 +209,18 @@ updateMany conn entities = tryPE $ do
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
 delete :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
-delete conn entity = tryPE $ do
-  eid <- idValue conn entity
-  _rowCount <- run conn (deleteStmtFor @a) [eid]
-  when (implicitCommit conn) $ commit conn
+delete conn entity = do
+  eitherExRes <- try $ do
+    eid <- idValue conn entity
+    rowCount <- run conn (deleteStmtFor @a) [eid]
+    if (rowCount == 0) 
+      then return (Left (EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")))
+      else do
+        when (implicitCommit conn) $ commit conn
+        return $ Right ()
+  case eitherExRes of
+    Left ex -> return $ Left $ fromException ex
+    Right result -> return result
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
