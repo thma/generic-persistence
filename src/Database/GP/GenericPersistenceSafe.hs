@@ -152,13 +152,13 @@ insert conn entity = do
     _rowcount <- run conn (insertStmtFor @a) row
     when (implicitCommit conn) $ commit conn
   case eitherExUnit of
-    Left ex -> return $ Left $ handleEx ex
+    Left ex -> return $ Left $ handleDuplicateInsert ex
     Right _ -> return $ Right ()
-  where
-    handleEx :: SomeException -> PersistenceException
-    handleEx ex = if "UNIQUE constraint failed" `isInfixOf` show ex 
-      then DuplicateInsert "Entity already exists in DB, use update instead" 
-      else fromException ex
+  
+handleDuplicateInsert :: SomeException -> PersistenceException
+handleDuplicateInsert ex = if "UNIQUE constraint failed" `isInfixOf` show ex 
+  then DuplicateInsert "Entity already exists in DB, use update instead" 
+  else fromException ex
   
 tryPE :: IO a -> IO (Either PersistenceException a)
 tryPE action = do
@@ -171,11 +171,15 @@ tryPE action = do
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The insert-statement is compiled only once and then executed for each entity.
 insertMany :: forall a. (Entity a) => Conn -> [a] -> IO (Either PersistenceException ())
-insertMany conn entities = tryPE $ do
-  rows <- mapM (toRow conn) entities
-  stmt <- prepare conn (insertStmtFor @a)
-  executeMany stmt rows
-  when (implicitCommit conn) $ commit conn
+insertMany conn entities = do
+  eitherExUnit <- try $ do
+    rows <- mapM (toRow conn) entities
+    stmt <- prepare conn (insertStmtFor @a)
+    executeMany stmt rows
+    when (implicitCommit conn) $ commit conn
+  case eitherExUnit of
+    Left ex -> return $ Left $ handleDuplicateInsert ex
+    Right _ -> return $ Right ()
 
 
 -- | A function that explicitely updates an entity in a database.

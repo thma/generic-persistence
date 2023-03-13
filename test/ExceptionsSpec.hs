@@ -47,6 +47,13 @@ spec = do
       case eitherExRes of
         Left (DuplicateInsert _) -> expectationSuccess
         _                        -> expectationFailure "Expected DuplicateInsert exception"
+    it "detects duplicate inserts in insertMany" $ do
+      conn <- prepareDB
+      _ <- insert conn article
+      eitherExRes <- insertMany conn [article,article] :: IO (Either PersistenceException ())
+      case eitherExRes of
+        Left (DuplicateInsert _) -> expectationSuccess
+        _                        -> expectationFailure "Expected DuplicateInsert exception"        
     it "detects missing entities in retrieveById" $ do
       conn <- prepareDB
       eitherExRes <- retrieveById conn "1" :: IO (Either PersistenceException Article)
@@ -64,7 +71,7 @@ spec = do
       eitherExRes <- delete conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (EntityNotFound _) -> expectationSuccess
-        _                       -> expectationFailure "Expected EntityNotFound exception"
+        Right _                 -> expectationFailure "Right: Expected EntityNotFound exception"
     it "detects general backend issues" $ do
       conn <- connect SQLite <$> connectSqlite3 ":memory:"
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
