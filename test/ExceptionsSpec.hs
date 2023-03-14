@@ -71,7 +71,7 @@ spec = do
       eitherExRes <- delete conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (EntityNotFound _) -> expectationSuccess
-        Right _                 -> expectationFailure "Right: Expected EntityNotFound exception"
+        _                       -> expectationFailure "Right: Expected EntityNotFound exception"
     it "detects general backend issues" $ do
       conn <- connect SQLite <$> connectSqlite3 ":memory:"
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
