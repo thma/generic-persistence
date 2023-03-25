@@ -34,6 +34,13 @@ data Person = Person
   }
   deriving (Generic, Entity, Show, Eq)
 
+nameField :: String
+nameField = "name"
+ageField :: String
+ageField = "age"
+addressField :: String
+addressField = "address"
+
 data Book = Book
   { book_id  :: Int,
     title    :: String,
@@ -98,6 +105,25 @@ spec = do
       head allBooks `shouldBe` hobbit
       book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just hobbit
+    it "retrieves Entities using a simple Query DSL" $ do
+      conn <- prepareDB
+      let bob = Person 1 "Bob" 36 "West Street 79"
+          alice = Person 2 "Alice" 25 "West Street 90"
+          charlie = Person 3 "Charlie" 35 "West Street 40"
+      insertMany conn [alice, bob, charlie]
+      one <- retrieveWhere conn (nameField ==. "Bob" &&. ageField ==. (36 :: Int))
+      length one `shouldBe` 1
+      head one `shouldBe` bob
+      two <- retrieveWhere conn (nameField ==. "Bob" ||. ageField ==. (25 :: Int))
+      length two `shouldBe` 2
+      two `shouldContain` [bob, alice]
+      three <- retrieveWhere conn (addressField `like` "West Street %")
+      length three `shouldBe` 3
+      three `shouldContain` [bob, alice, charlie]
+      boomers <- retrieveWhere conn (ageField >. (30 :: Int))
+      length boomers `shouldBe` 2
+      boomers `shouldContain` [bob, charlie]
+      
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- retrieveAll conn :: IO [Person]

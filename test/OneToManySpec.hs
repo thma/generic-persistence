@@ -53,7 +53,7 @@ instance Entity Author where
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
     let authID = head row                                 -- authorID is the first column
-    articlesBy <- retrieveAllWhere conn "authorId" authID -- retrieve all articles by this author
+    articlesBy <- retrieveWhere conn ("authorId" ==. authID) -- retrieve all articles by this author
     return rawAuthor {articles = articlesBy}              -- add the articles to the author
     where
       rawAuthor = Author (col 0) (col 1) (col 2) []       -- create the author from row (w/o articles)

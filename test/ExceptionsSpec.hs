@@ -9,7 +9,6 @@ where
 
 import           Database.GP.GenericPersistenceSafe
 import           Database.HDBC.Sqlite3
-import           Database.HDBC (toSql)
 import           GHC.Generics
 import           Test.Hspec
 
@@ -86,7 +85,7 @@ spec = do
       _ <- delete conn article :: IO (Either PersistenceException ())
       _ <- retrieveById conn "1" :: IO (Either PersistenceException Article)
       _ <- retrieveAll conn :: IO (Either PersistenceException [Article])
-      _ <- retrieveAllWhere conn "year" (toSql "2023")  :: IO (Either PersistenceException [Article])
+      _ <- retrieveWhere conn ("year" ==. "2023")  :: IO (Either PersistenceException [Article])
       _ <- insertMany conn [article] :: IO (Either PersistenceException ())
       _ <- updateMany conn [article] :: IO (Either PersistenceException ())
       _ <- deleteMany conn [article] :: IO (Either PersistenceException ())

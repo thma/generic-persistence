@@ -6,7 +6,7 @@
 module Database.GP.GenericPersistenceSafe
   ( retrieveById,
     retrieveAll,
-    retrieveAllWhere,
+    retrieveWhere,
     entitiesFromRows,
     persist,
     insert,
@@ -28,7 +28,19 @@ module Database.GP.GenericPersistenceSafe
     toString,
     TypeInfo (..),
     typeInfo,
-    PersistenceException(..)
+    PersistenceException(..),
+    WhereClauseExpr (..),
+    CompareOp (..),
+    (&&.),
+    (||.),
+    (!.), -- not
+    (==.),
+    (>.),
+    (<.),
+    (>=.),
+    (<=.),
+    (!=.),
+    like,
   )
 where
 
@@ -103,18 +115,21 @@ retrieveAll conn = do
   where
     stmt = selectAllStmtFor @a
 
--- | This function retrieves all entities of type `a` where a given field has a given value.
---  The function takes an HDBC connection, the name of the field and the value as parameters.
---  The type `a` is determined by the context of the function call.
---  The function returns a (possibly empty) list of all matching entities.
-retrieveAllWhere :: forall a. (Entity a) => Conn -> String -> SqlValue -> IO (Either PersistenceException [a])
-retrieveAllWhere conn field val = do
-  eitherExRows <- tryPE $ quickQuery conn stmt [val]
+
+-- | This function retrieves all entities of type `a` that match some query criteria.
+--   The function takes an HDBC connection and a `WhereClauseExpr` as parameters.
+--   The type `a` is determined by the context of the function call.
+--   The function returns a (possibly empty) list of all matching entities.
+--   The `WhereClauseExpr` is typically constructed using any tiny query dsl based on infix operators.
+retrieveWhere :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
+retrieveWhere conn whereClause = do
+  eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
     Left ex -> return $ Left ex
     Right resultRows -> entitiesFromRows conn resultRows
   where
-    stmt = selectAllWhereStmtFor @a field
+    stmt = selectFrom @a whereClause 
+    values = whereClauseValues whereClause
 
 -- | This function converts a list of database rows, represented as a `[[SqlValue]]` to a list of entities.
 --   The function takes an HDBC connection and a list of database rows as parameters.

@@ -4,7 +4,7 @@
 module Database.GP.GenericPersistence
   ( retrieveById,
     retrieveAll,
-    retrieveAllWhere,
+    retrieveWhere,
     entitiesFromRows,
     persist,
     insert,
@@ -27,11 +27,22 @@ module Database.GP.GenericPersistence
     TypeInfo (..),
     typeInfo,
     PersistenceException (..),
+    WhereClauseExpr (..),
+    CompareOp (..),
+    (&&.),
+    (||.),
+    (!.), -- not
+    (==.),
+    (>.),
+    (<.),
+    (>=.),
+    (<=.),
+    (!=.),
+    like,
   )
 where
 
 import           Data.Convertible         (Convertible)
---import           Data.Convertible.Base    (Convertible (safeConvert))
 import           Data.List                (elemIndex)
 import           Database.GP.Conn
 import           Database.GP.Entity
@@ -75,13 +86,14 @@ retrieveAll conn = do
     Right rows -> pure rows
 
 
--- | This function retrieves all entities of type `a` where a given field has a given value.
---  The function takes an HDBC connection, the name of the field and the value as parameters.
---  The type `a` is determined by the context of the function call.
---  The function returns a (possibly empty) list of all matching entities.
-retrieveAllWhere :: forall a. (Entity a) => Conn -> String -> SqlValue -> IO [a]
-retrieveAllWhere conn field val = do
-  eitherExEntities <- GpSafe.retrieveAllWhere @a conn field val
+-- | This function retrieves all entities of type `a` that match some query criteria.
+--   The function takes an HDBC connection and a `WhereClauseExpr` as parameters.
+--   The type `a` is determined by the context of the function call.
+--   The function returns a (possibly empty) list of all matching entities.
+--   The `WhereClauseExpr` is typically constructed using any tiny query dsl based on infix operators.
+retrieveWhere :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO [a]
+retrieveWhere conn whereClause = do
+  eitherExEntities <- GpSafe.retrieveWhere @a conn whereClause
   case eitherExEntities of
     Left ex -> throw ex
     Right entities -> pure entities
