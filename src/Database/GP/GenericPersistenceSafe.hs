@@ -30,10 +30,9 @@ module Database.GP.GenericPersistenceSafe
     typeInfo,
     PersistenceException(..),
     WhereClauseExpr,
-    --CompareOp (..),
     (&&.),
     (||.),
-    (!.), -- not
+    (!.),
     (==.),
     (>.),
     (<.),
