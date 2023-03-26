@@ -4,18 +4,17 @@ module Database.GP.SqlGenerator
   ( insertStmtFor,
     updateStmtFor,
     selectStmtFor,
-    selectFrom,
+    selectFromStmt,
     deleteStmtFor,
     selectAllStmtFor,
-    selectAllWhereStmtFor,
     createTableStmtFor,
     dropTableStmtFor,
-    WhereClauseExpr (..),
-    CompareOp (..),
+    WhereClauseExpr,
+    -- CompareOp (..),
     whereClauseValues,
     (&&.),
     (||.),
-    (!.), -- not
+    (!.),
     (==.),
     (>.),
     (<.),
@@ -28,13 +27,11 @@ where
 
 import           Data.List          (intercalate)
 import           Database.GP.Entity
-import Database.HDBC (SqlValue, toSql)
-import Data.Convertible
+import           Database.GP.Query
 
-{- | 
-  This module defines some basic SQL statements for Record Data Types that are instances of 'Entity'.
-  The SQL statements are generated using Haskell generics to provide compile time reflection capabilities.
--}
+-- |
+--  This module defines some basic SQL statements for Record Data Types that are instances of 'Entity'.
+--  The SQL statements are generated using Haskell generics to provide compile time reflection capabilities.
 
 -- | A function that returns an SQL insert statement for an entity. Type 'a' must be an instance of Data.
 -- The function will use the field names of the data type to generate the column names in the insert statement.
@@ -96,63 +93,8 @@ selectAllStmtFor =
     ++ tableName @a
     ++ ";"
 
-selectAllWhereStmtFor :: forall a. (Entity a) => String -> String
-selectAllWhereStmtFor field =
-  "SELECT "
-    ++ intercalate ", " (columnNamesFor @a)
-    ++ " FROM "
-    ++ tableName @a
-    ++ " WHERE "
-    ++ column
-    ++ " = ?;"
-  where
-    column = columnNameFor @a field
-
-data CompareOp = Eqq | Gt | Lt | GtEq | LtEq | NotEq | Like  
-  deriving (Show, Eq)
-
-type FieldName = String
-
-opToSql :: CompareOp -> String
-opToSql Eqq = "="
-opToSql Gt = ">"
-opToSql Lt = "<"
-opToSql GtEq = ">="
-opToSql LtEq = "<="
-opToSql NotEq = "<>"
-opToSql Like = "LIKE"
-
-(==.), (>.), (<.), (>=.), (<=.), (!=.), like :: (Convertible b SqlValue) => FieldName -> b -> WhereClauseExpr
-a ==. b = Where a Eqq (toSql b)
-a >. b = Where a Gt (toSql b)
-a <. b = Where a Lt (toSql b)
-a >=. b = Where a GtEq (toSql b)
-a <=. b = Where a LtEq (toSql b)
-a !=. b = Where a NotEq (toSql b)
-a `like` b = Where a Like (toSql b)
-
-infixl 3 &&.
-(&&.) :: WhereClauseExpr -> WhereClauseExpr -> WhereClauseExpr
-(&&.) = And
-
-infixl 2 ||.
-(||.) :: WhereClauseExpr -> WhereClauseExpr -> WhereClauseExpr
-(||.) = Or
-
-(!.) :: WhereClauseExpr -> WhereClauseExpr
-(!.) = Not
-
-
-data WhereClauseExpr =
-    Where FieldName CompareOp SqlValue
-  | And WhereClauseExpr WhereClauseExpr
-  | Or WhereClauseExpr WhereClauseExpr
-  | Not WhereClauseExpr
-  deriving (Show, Eq)
-
-
-selectFrom :: forall a. (Entity a) => WhereClauseExpr-> String
-selectFrom whereClauseExpr =
+selectFromStmt :: forall a. (Entity a) => WhereClauseExpr -> String
+selectFromStmt whereClauseExpr =
   "SELECT "
     ++ intercalate ", " (columnNamesFor @a)
     ++ " FROM "
@@ -160,20 +102,6 @@ selectFrom whereClauseExpr =
     ++ " WHERE "
     ++ whereClauseExprToSql @a whereClauseExpr
     ++ ";"
-
-whereClauseExprToSql :: forall a. (Entity a) => WhereClauseExpr -> String
-whereClauseExprToSql (Where fieldName op _) = column ++ " " ++ opToSql op ++ " ?"
-  where
-    column = columnNameFor @a fieldName
-whereClauseExprToSql (And e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") AND (" ++ whereClauseExprToSql @a e2 ++ ")"
-whereClauseExprToSql (Or e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") OR (" ++ whereClauseExprToSql @a e2 ++ ")"
-whereClauseExprToSql (Not e) = "NOT (" ++ whereClauseExprToSql @a e ++ ")"
-
-whereClauseValues :: WhereClauseExpr -> [SqlValue]
-whereClauseValues (Where _ _ v) = [toSql v]
-whereClauseValues (And e1 e2) = whereClauseValues e1 ++ whereClauseValues e2
-whereClauseValues (Or e1 e2) = whereClauseValues e1 ++ whereClauseValues e2
-whereClauseValues (Not e) = whereClauseValues e
 
 deleteStmtFor :: forall a. (Entity a) => String
 deleteStmtFor =

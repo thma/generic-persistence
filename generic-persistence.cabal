@@ -33,6 +33,7 @@ library
       Database.GP.Entity
       Database.GP.GenericPersistence
       Database.GP.GenericPersistenceSafe
+      Database.GP.Query
       Database.GP.SqlGenerator
       Database.GP.TypeInfo
   other-modules:

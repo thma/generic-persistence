@@ -1,6 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
---{-# OPTIONS_GHC -Wno-orphans #-}
-
 module Database.GP.GenericPersistence
   ( retrieveById,
     retrieveAll,
@@ -15,9 +13,9 @@ module Database.GP.GenericPersistence
     deleteMany,
     setupTableFor,
     idValue,
-    Conn(..),
+    Conn (..),
     connect,
-    Database(..),
+    Database (..),
     Entity (..),
     GToRow,
     GFromRow,
@@ -27,8 +25,7 @@ module Database.GP.GenericPersistence
     TypeInfo (..),
     typeInfo,
     PersistenceException (..),
-    WhereClauseExpr (..),
-    CompareOp (..),
+    WhereClauseExpr,
     (&&.),
     (||.),
     (!.), -- not
@@ -42,25 +39,24 @@ module Database.GP.GenericPersistence
   )
 where
 
-import           Data.Convertible         (Convertible)
-import           Data.List                (elemIndex)
+import           Control.Exception
+import           Control.Monad                      (when)
+import           Data.Convertible                   (Convertible)
+import           Data.List                          (elemIndex)
 import           Database.GP.Conn
 import           Database.GP.Entity
+import           Database.GP.GenericPersistenceSafe (PersistenceException)
+import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
-import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.HDBC
-import Control.Monad (when)
-import Control.Exception
-import Database.GP.GenericPersistenceSafe (PersistenceException)
 
-{- | 
- This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
- I call instances of such a data type Entities.
-
- The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
- HDBC is used to access the RDBMS.
--}
+-- |
+-- This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
+-- I call instances of such a data type Entities.
+--
+-- The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
+-- HDBC is used to access the RDBMS.
 
 -- | A function that retrieves an entity from a database.
 -- The function takes entity id as parameter.
@@ -72,8 +68,8 @@ retrieveById conn idx = do
   eitherExEntity <- GpSafe.retrieveById conn idx
   case eitherExEntity of
     Left (GpSafe.EntityNotFound _) -> pure Nothing
-    Left ex -> throw ex
-    Right entity -> pure $ Just entity
+    Left ex                        -> throw ex
+    Right entity                   -> pure $ Just entity
 
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
@@ -82,9 +78,8 @@ retrieveAll :: forall a. (Entity a) => Conn -> IO [a]
 retrieveAll conn = do
   eitherExRow <- GpSafe.retrieveAll @a conn
   case eitherExRow of
-    Left ex -> throw ex
+    Left ex    -> throw ex
     Right rows -> pure rows
-
 
 -- | This function retrieves all entities of type `a` that match some query criteria.
 --   The function takes an HDBC connection and a `WhereClauseExpr` as parameters.
@@ -95,7 +90,7 @@ retrieveWhere :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO [a]
 retrieveWhere conn whereClause = do
   eitherExEntities <- GpSafe.retrieveWhere @a conn whereClause
   case eitherExEntities of
-    Left ex -> throw ex
+    Left ex        -> throw ex
     Right entities -> pure entities
 
 -- | This function converts a list of database rows, represented as a `[[SqlValue]]` to a list of entities.
@@ -108,7 +103,7 @@ entitiesFromRows :: forall a. (Entity a) => Conn -> [[SqlValue]] -> IO [a]
 entitiesFromRows conn rows = do
   eitherExEntities <- GpSafe.entitiesFromRows @a conn rows
   case eitherExEntities of
-    Left ex -> throw ex
+    Left ex        -> throw ex
     Right entities -> pure entities
 
 fromEitherExUnit :: IO (Either PersistenceException ()) -> IO ()
@@ -124,7 +119,6 @@ fromEitherExUnit ioEitherExUnit = do
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: forall a. (Entity a) => Conn -> a -> IO ()
 persist = (fromEitherExUnit .) . GpSafe.persist
-
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO ()
@@ -177,7 +171,7 @@ idValue conn x = do
 -- | returns the index of a field of an entity.
 --   The index is the position of the field in the list of fields of the entity.
 --   If no such field exists, an error is thrown.
---   The function takes an field name as parameters, 
+--   The function takes an field name as parameters,
 --   the type of the entity is determined by the context.
 fieldIndex :: forall a. (Entity a) => String -> Int
 fieldIndex fieldName =
@@ -191,4 +185,3 @@ fieldIndex fieldName =
 expectJust :: String -> Maybe a -> a
 expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
-
