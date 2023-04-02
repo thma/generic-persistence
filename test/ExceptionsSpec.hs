@@ -30,6 +30,9 @@ data Article = Article
   }
   deriving (Generic, Entity, Show, Eq)
 
+yearField :: FieldName
+yearField = fieldName "year"
+
 article :: Article
 article = Article 1 "The Hitchhiker's Guide to the Galaxy" 1979
 
@@ -85,7 +88,7 @@ spec = do
       _ <- delete conn article :: IO (Either PersistenceException ())
       _ <- retrieveById conn "1" :: IO (Either PersistenceException Article)
       _ <- retrieveAll conn :: IO (Either PersistenceException [Article])
-      _ <- retrieveWhere conn ("year" =. "2023")  :: IO (Either PersistenceException [Article])
+      _ <- retrieveWhere conn (yearField =. "2023")  :: IO (Either PersistenceException [Article])
       _ <- insertMany conn [article] :: IO (Either PersistenceException ())
       _ <- updateMany conn [article] :: IO (Either PersistenceException ())
       _ <- deleteMany conn [article] :: IO (Either PersistenceException ())

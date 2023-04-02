@@ -2,6 +2,8 @@
 
 module Database.GP.Query
   ( WhereClauseExpr,
+    FieldName,
+    fieldName,
     whereClauseExprToSql,
     whereClauseValues,
     (&&.),
@@ -13,11 +15,13 @@ module Database.GP.Query
     (<=.),
     (<>.),
     like,
+    contains,
     between,
     in',
     isNull,
     not',
     params,
+    sqlFun,
   )
 where
 
@@ -37,10 +41,11 @@ import           Database.HDBC      (SqlValue, toSql)
 import Data.List (intercalate)
 
 
-data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like
+data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like | Contains
   deriving (Show, Eq)
 
-type FieldName = String
+data FieldName = FieldName [String] String
+  deriving (Show, Eq)
 
 data WhereClauseExpr
   = Where FieldName CompareOp SqlValue
@@ -52,6 +57,12 @@ data WhereClauseExpr
   | Not WhereClauseExpr
   deriving (Show, Eq)
 
+fieldName :: String -> FieldName
+fieldName = FieldName []
+
+getName :: FieldName -> String
+getName (FieldName _fns n) = n
+
 infixl 3 &&.
 
 (&&.) :: WhereClauseExpr -> WhereClauseExpr -> WhereClauseExpr
@@ -62,7 +73,7 @@ infixl 2 ||.
 (||.) :: WhereClauseExpr -> WhereClauseExpr -> WhereClauseExpr
 (||.) = Or
 
-infixl 4 =., >., <., >=., <=., <>., `like`, `between`, `in'` 
+infixl 4 =., >., <., >=., <=., <>., `like`, `between`, `in'`, `contains`
 
 (=.), (>.), (<.), (>=.), (<=.), (<>.), like :: (Convertible b SqlValue) => FieldName -> b -> WhereClauseExpr
 a =. b = Where a Eq (toSql b)
@@ -72,6 +83,9 @@ a >=. b = Where a GtEq (toSql b)
 a <=. b = Where a LtEq (toSql b)
 a <>. b = Where a NotEq (toSql b)
 a `like` b = Where a Like (toSql b)
+
+contains :: Convertible a SqlValue => FieldName -> a -> WhereClauseExpr
+a `contains` b = Where a Contains (toSql b)
 
 between :: (Convertible a1 SqlValue, Convertible a2 SqlValue) => FieldName -> (a1, a2) -> WhereClauseExpr
 a `between` (b,c) = WhereBetween a (toSql b, toSql c) 
@@ -85,10 +99,13 @@ isNull = WhereIsNull
 not' :: WhereClauseExpr -> WhereClauseExpr
 not' = Not
 
+sqlFun :: String -> FieldName -> FieldName
+sqlFun fun (FieldName funs name) = FieldName (fun:funs) name
+
 whereClauseExprToSql :: forall a. (Entity a) => WhereClauseExpr -> String
-whereClauseExprToSql (Where fieldName op _) = column ++ " " ++ opToSql op ++ " ?"
+whereClauseExprToSql (Where field op _) = column ++ " " ++ opToSql op ++ " ?"
   where
-    column = columnNameFor @a fieldName
+    column = expandFunctions field $ columnNameFor @a (getName field)
     
     opToSql :: CompareOp -> String
     opToSql Eq    = "="
@@ -98,19 +115,24 @@ whereClauseExprToSql (Where fieldName op _) = column ++ " " ++ opToSql op ++ " ?
     opToSql LtEq  = "<="
     opToSql NotEq = "<>"
     opToSql Like  = "LIKE"
+    opToSql Contains = "CONTAINS"
 whereClauseExprToSql (And e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") AND (" ++ whereClauseExprToSql @a e2 ++ ")"
 whereClauseExprToSql (Or e1 e2)  = "(" ++ whereClauseExprToSql @a e1 ++ ") OR (" ++ whereClauseExprToSql @a e2 ++ ")"
 whereClauseExprToSql (Not e)     = "NOT (" ++ whereClauseExprToSql @a e ++ ")"
-whereClauseExprToSql (WhereBetween fieldName (_v1,_v2)) = column ++ " BETWEEN ? AND ?"
+whereClauseExprToSql (WhereBetween field (_v1,_v2)) = column ++ " BETWEEN ? AND ?"
   where
-    column = columnNameFor @a fieldName
-whereClauseExprToSql (WhereIn fieldName v) = column ++ " IN (" ++ args ++ ")"
+    column = expandFunctions field $ columnNameFor @a (getName field)
+whereClauseExprToSql (WhereIn field v) = column ++ " IN (" ++ args ++ ")"
   where
-    column = columnNameFor @a fieldName
+    column = expandFunctions field $ columnNameFor @a (getName field)
     args = intercalate ", " (params (length v))
-whereClauseExprToSql (WhereIsNull fieldName) = column ++ " IS NULL"
+whereClauseExprToSql (WhereIsNull field) = column ++ " IS NULL"
   where
-    column = columnNameFor @a fieldName
+    column = expandFunctions field $ columnNameFor @a (getName field)
+
+expandFunctions :: FieldName -> String -> String
+expandFunctions (FieldName [] _name) col = col
+expandFunctions (FieldName (f:fs) name) col = f ++ "(" ++ expandFunctions (FieldName fs name) col ++ ")"
 
 whereClauseValues :: WhereClauseExpr -> [SqlValue]
 whereClauseValues (Where _ _ v) = [toSql v]

@@ -34,12 +34,12 @@ data Person = Person
   }
   deriving (Generic, Entity, Show, Eq)
 
-nameField :: String
-nameField = "name"
-ageField :: String
-ageField = "age"
-addressField :: String
-addressField = "address"
+nameField :: FieldName
+nameField = fieldName "name"
+ageField :: FieldName
+ageField = fieldName "age"
+addressField :: FieldName
+addressField = fieldName "address"
 
 data Book = Book
   { book_id  :: Int,
@@ -79,6 +79,12 @@ manyPersons =
 
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
+
+lower :: FieldName -> FieldName
+lower = sqlFun "LOWER";
+
+upper :: FieldName -> FieldName
+upper = sqlFun "UPPER";
 
 spec :: Spec
 spec = do
@@ -134,6 +140,8 @@ spec = do
       length noOne `shouldBe` 0
       allPersons <- retrieveWhere conn (not' $ isNull nameField) :: IO [Person]
       length allPersons `shouldBe` 3
+      peopleFromWestStreet <- retrieveWhere conn ((lower(upper(addressField))) `like` "west street %") :: IO [Person]
+      length peopleFromWestStreet `shouldBe` 3
       
     it "persists new Entities using Generics" $ do
       conn <- prepareDB

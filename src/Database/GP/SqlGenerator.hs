@@ -10,6 +10,8 @@ module Database.GP.SqlGenerator
     createTableStmtFor,
     dropTableStmtFor,
     WhereClauseExpr,
+    FieldName,
+    fieldName,
     whereClauseValues,
     (&&.),
     (||.),
@@ -20,10 +22,12 @@ module Database.GP.SqlGenerator
     (<=.),
     (<>.),
     like,
+    contains,
     between,
     in',
     isNull,
     not',
+    sqlFun,
   )
 where
 

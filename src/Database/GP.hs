@@ -25,6 +25,8 @@ module Database.GP
     typeInfo,
     PersistenceException(..),
     WhereClauseExpr,
+    FieldName,
+    fieldName,
     (&&.),
     (||.),
     (=.),
@@ -34,10 +36,12 @@ module Database.GP
     (<=.),
     (<>.),
     like,
+    contains,
     between,
     in',
     isNull,
     not',
+    sqlFun,
   )
 where
 

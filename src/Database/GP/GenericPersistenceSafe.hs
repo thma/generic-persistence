@@ -30,6 +30,8 @@ module Database.GP.GenericPersistenceSafe
     typeInfo,
     PersistenceException(..),
     WhereClauseExpr,
+    FieldName,
+    fieldName,
     (&&.),
     (||.),
     (=.),
@@ -39,10 +41,12 @@ module Database.GP.GenericPersistenceSafe
     (<=.),
     (<>.),
     like,
+    contains,
     between,
     in',
     isNull,
     not',
+    sqlFun,
   )
 where
 
@@ -273,10 +277,10 @@ idValue conn x = do
 --   The function takes an field name as parameters,
 --   the type of the entity is determined by the context.
 fieldIndex :: forall a. (Entity a) => String -> Int
-fieldIndex fieldName =
+fieldIndex field =
   expectJust
-    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
-    (elemIndex fieldName fieldList)
+    ("Field " ++ field ++ " is not present in type " ++ constructorName ti)
+    (elemIndex field fieldList)
   where
     ti = typeInfo @a
     fieldList = fieldNames ti
