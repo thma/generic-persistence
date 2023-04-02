@@ -10,18 +10,20 @@ module Database.GP.SqlGenerator
     createTableStmtFor,
     dropTableStmtFor,
     WhereClauseExpr,
-    -- CompareOp (..),
     whereClauseValues,
     (&&.),
     (||.),
-    (!.),
-    (==.),
+    (=.),
     (>.),
     (<.),
     (>=.),
     (<=.),
-    (!=.),
+    (<>.),
     like,
+    between,
+    in',
+    isNull,
+    not',
   )
 where
 
@@ -53,9 +55,6 @@ columnNamesFor :: forall a. Entity a => [String]
 columnNamesFor = map snd fieldColumnPairs
   where
     fieldColumnPairs = fieldsToColumns @a
-
-params :: Int -> [String]
-params n = replicate n "?"
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Entity.
 updateStmtFor :: forall a. (Entity a) => String

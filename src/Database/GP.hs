@@ -27,14 +27,17 @@ module Database.GP
     WhereClauseExpr,
     (&&.),
     (||.),
-    (!.),
-    (==.),
+    (=.),
     (>.),
     (<.),
     (>=.),
     (<=.),
-    (!=.),
+    (<>.),
     like,
+    between,
+    in',
+    isNull,
+    not',
   )
 where
 

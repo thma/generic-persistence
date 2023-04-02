@@ -30,8 +30,7 @@ and persist it to any RDBMS without any additional effort.
 The library is in an early stage of development. All test cases are green and it should be ready for early adopters.
 Several things are still missing:
 
-- A query language
-- Handling auto-incrementing primary keys
+- auto-incrementing primary keys
 - caching
 - coding free support for 1:1 and 1:n relationships (using more generics magic)
 - schema migration

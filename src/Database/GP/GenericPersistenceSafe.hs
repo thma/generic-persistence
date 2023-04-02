@@ -32,14 +32,17 @@ module Database.GP.GenericPersistenceSafe
     WhereClauseExpr,
     (&&.),
     (||.),
-    (!.),
-    (==.),
+    (=.),
     (>.),
     (<.),
     (>=.),
     (<=.),
-    (!=.),
+    (<>.),
     like,
+    between,
+    in',
+    isNull,
+    not',
   )
 where
 
