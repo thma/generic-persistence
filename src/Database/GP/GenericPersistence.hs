@@ -1,8 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 module Database.GP.GenericPersistence
-  ( retrieveById,
-    retrieveAll,
-    retrieveWhere,
+  ( selectById,
+    select,
     entitiesFromRows,
     persist,
     insert,
@@ -26,8 +25,8 @@ module Database.GP.GenericPersistence
     typeInfo,
     PersistenceException(..),
     WhereClauseExpr,
-    FieldName,
-    fieldName,
+    Field,
+    field,
     (&&.),
     (||.),
     (=.),
@@ -43,6 +42,8 @@ module Database.GP.GenericPersistence
     isNull,
     not',
     sqlFun,
+    allEntries,
+    byId,
   )
 where
 
@@ -70,9 +71,9 @@ import           Database.HDBC
 -- If an entity with the given id exists in the database, it is returned as a Just value.
 -- If no such entity exists, Nothing is returned.
 -- An error is thrown if there are more than one entity with the given id.
-retrieveById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Maybe a)
-retrieveById conn idx = do
-  eitherExEntity <- GpSafe.retrieveById conn idx
+selectById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Maybe a)
+selectById conn idx = do
+  eitherExEntity <- GpSafe.selectById conn idx
   case eitherExEntity of
     Left (GpSafe.EntityNotFound _) -> pure Nothing
     Left ex                        -> throw ex
@@ -81,21 +82,21 @@ retrieveById conn idx = do
 -- | This function retrieves all entities of type `a` from a database.
 --  The function takes an HDBC connection as parameter.
 --  The type `a` is determined by the context of the function call.
-retrieveAll :: forall a. (Entity a) => Conn -> IO [a]
-retrieveAll conn = do
-  eitherExRow <- GpSafe.retrieveAll @a conn
-  case eitherExRow of
-    Left ex    -> throw ex
-    Right rows -> pure rows
+-- retrieveAll :: forall a. (Entity a) => Conn -> IO [a]
+-- retrieveAll conn = do
+--   eitherExRow <- GpSafe.retrieveAll @a conn
+--   case eitherExRow of
+--     Left ex    -> throw ex
+--     Right rows -> pure rows
 
 -- | This function retrieves all entities of type `a` that match some query criteria.
 --   The function takes an HDBC connection and a `WhereClauseExpr` as parameters.
 --   The type `a` is determined by the context of the function call.
 --   The function returns a (possibly empty) list of all matching entities.
 --   The `WhereClauseExpr` is typically constructed using any tiny query dsl based on infix operators.
-retrieveWhere :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO [a]
-retrieveWhere conn whereClause = do
-  eitherExEntities <- GpSafe.retrieveWhere @a conn whereClause
+select :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO [a]
+select conn whereClause = do
+  eitherExEntities <- GpSafe.select @a conn whereClause
   case eitherExEntities of
     Left ex        -> throw ex
     Right entities -> pure entities
@@ -181,10 +182,10 @@ idValue conn x = do
 --   The function takes an field name as parameters,
 --   the type of the entity is determined by the context.
 fieldIndex :: forall a. (Entity a) => String -> Int
-fieldIndex field =
+fieldIndex fieldName =
   expectJust
-    ("Field " ++ field ++ " is not present in type " ++ constructorName ti)
-    (elemIndex field fieldList)
+    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
+    (elemIndex fieldName fieldList)
   where
     ti = typeInfo @a
     fieldList = fieldNames ti

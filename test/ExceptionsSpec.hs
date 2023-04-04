@@ -30,8 +30,8 @@ data Article = Article
   }
   deriving (Generic, Entity, Show, Eq)
 
-yearField :: FieldName
-yearField = fieldName "year"
+yearField :: Field
+yearField = field "year"
 
 article :: Article
 article = Article 1 "The Hitchhiker's Guide to the Galaxy" 1979
@@ -56,9 +56,9 @@ spec = do
       case eitherExRes of
         Left (DuplicateInsert _) -> expectationSuccess
         _                        -> expectationFailure "Expected DuplicateInsert exception"        
-    it "detects missing entities in retrieveById" $ do
+    it "detects missing entities in selectById" $ do
       conn <- prepareDB
-      eitherExRes <- retrieveById conn "1" :: IO (Either PersistenceException Article)
+      eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left (EntityNotFound _) -> expectationSuccess
         _                       -> expectationFailure "Expected EntityNotFound exception"
@@ -86,9 +86,9 @@ spec = do
       _ <- insert conn article :: IO (Either PersistenceException ())
       _ <- persist conn article :: IO (Either PersistenceException ())
       _ <- delete conn article :: IO (Either PersistenceException ())
-      _ <- retrieveById conn "1" :: IO (Either PersistenceException Article)
-      _ <- retrieveAll conn :: IO (Either PersistenceException [Article])
-      _ <- retrieveWhere conn (yearField =. "2023")  :: IO (Either PersistenceException [Article])
+      _ <- selectById conn "1" :: IO (Either PersistenceException Article)
+      _ <- select conn allEntries :: IO (Either PersistenceException [Article])
+      _ <- select conn (yearField =. "2023")  :: IO (Either PersistenceException [Article])
       _ <- insertMany conn [article] :: IO (Either PersistenceException ())
       _ <- updateMany conn [article] :: IO (Either PersistenceException ())
       _ <- deleteMany conn [article] :: IO (Either PersistenceException ())

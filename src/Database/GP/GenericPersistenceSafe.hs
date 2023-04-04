@@ -4,9 +4,8 @@
 {-# LANGUAGE LambdaCase          #-}
 
 module Database.GP.GenericPersistenceSafe
-  ( retrieveById,
-    retrieveAll,
-    retrieveWhere,
+  ( selectById,
+    select,
     entitiesFromRows,
     persist,
     insert,
@@ -30,8 +29,8 @@ module Database.GP.GenericPersistenceSafe
     typeInfo,
     PersistenceException(..),
     WhereClauseExpr,
-    FieldName,
-    fieldName,
+    Field,
+    field,
     (&&.),
     (||.),
     (=.),
@@ -47,6 +46,8 @@ module Database.GP.GenericPersistenceSafe
     isNull,
     not',
     sqlFun,
+    allEntries,
+    byId,
   )
 where
 
@@ -84,8 +85,8 @@ data PersistenceException =
 -- If an entity with the given id exists in the database, it is returned as a Just value.
 -- If no such entity exists, Nothing is returned.
 -- An error is thrown if there are more than one entity with the given id.
-retrieveById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException a)
-retrieveById conn idx = do
+selectById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException a)
+selectById conn idx = do
   eitherExResultRows <- try $ quickQuery conn stmt [eid]
   case eitherExResultRows of
     Left ex -> return $ Left $ fromException ex
@@ -100,23 +101,12 @@ retrieveById conn idx = do
         _ -> return $ Left $ NoUniqueKey $ "More than one " ++ constructorName ti ++ " found for id " ++ show eid
   where
     ti = typeInfo @a
-    stmt = selectStmtFor @a
+    --stmt = selectStmtFor @a
+    stmt = selectFromStmt @a (byId idx)
     eid = toSql idx
 
 fromException :: SomeException -> PersistenceException
 fromException ex = DatabaseError $ show ex
-
--- | This function retrieves all entities of type `a` from a database.
---  The function takes an HDBC connection as parameter.
---  The type `a` is determined by the context of the function call.
-retrieveAll :: forall a. (Entity a) => Conn -> IO (Either PersistenceException [a])
-retrieveAll conn = do
-  eitherExRows <- tryPE $ quickQuery conn stmt []
-  case eitherExRows of
-    Left ex          -> return $ Left ex
-    Right resultRows -> entitiesFromRows conn resultRows
-  where
-    stmt = selectAllStmtFor @a
 
 
 -- | This function retrieves all entities of type `a` that match some query criteria.
@@ -124,8 +114,8 @@ retrieveAll conn = do
 --   The type `a` is determined by the context of the function call.
 --   The function returns a (possibly empty) list of all matching entities.
 --   The `WhereClauseExpr` is typically constructed using any tiny query dsl based on infix operators.
-retrieveWhere :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
-retrieveWhere conn whereClause = do
+select :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
+select conn whereClause = do
   eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
     Left ex          -> return $ Left ex
@@ -160,7 +150,8 @@ persist conn entity = do
     Left ex   -> return $ Left $ fromException ex
     Right res -> return res
   where
-    preparedSelectStmt = selectStmtFor @a
+    preparedSelectStmt = selectFromStmt @a (byId "?")  --selectStmtFor @a
+    --idx = idValue conn entity
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
@@ -277,10 +268,10 @@ idValue conn x = do
 --   The function takes an field name as parameters,
 --   the type of the entity is determined by the context.
 fieldIndex :: forall a. (Entity a) => String -> Int
-fieldIndex field =
+fieldIndex fieldName =
   expectJust
-    ("Field " ++ field ++ " is not present in type " ++ constructorName ti)
-    (elemIndex field fieldList)
+    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
+    (elemIndex fieldName fieldList)
   where
     ti = typeInfo @a
     fieldList = fieldNames ti

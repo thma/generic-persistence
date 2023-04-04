@@ -83,7 +83,7 @@ spec = do
     it "works like a charm" $ do
       conn <- prepareDB
       insert conn article
-      article' <- retrieveById conn "1" :: IO (Maybe Article)
+      article' <- selectById conn "1" :: IO (Maybe Article)
       article' `shouldBe` Just article
-      allArticles <- retrieveAll conn :: IO [Article]
+      allArticles <- select conn allEntries :: IO [Article]
       allArticles `shouldBe` [article]

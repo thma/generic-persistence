@@ -52,7 +52,7 @@ instance Entity Article where
 
   fromRow :: Conn -> [SqlValue] -> IO Article
   fromRow conn row = do    
-    authorById <- fromJust <$> retrieveById conn (row !! 2)  -- load author by foreign key
+    authorById <- fromJust <$> selectById conn (row !! 2)  -- load author by foreign key
     return $ rawArticle {author = authorById}                -- add author to article
     where
       rawArticle = Article (col 0) (col 1)                   -- create article from row, 
@@ -92,8 +92,8 @@ spec = do
       conn <- prepareDB
       insert conn article
 
-      author' <- retrieveById conn "2" :: IO (Maybe Author)
+      author' <- selectById conn "2" :: IO (Maybe Author)
       author' `shouldBe` Just arthur
 
-      article' <- retrieveById conn "1" :: IO (Maybe Article)
+      article' <- selectById conn "1" :: IO (Maybe Article)
       article' `shouldBe` Just article

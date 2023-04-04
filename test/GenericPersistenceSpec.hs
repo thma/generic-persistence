@@ -34,12 +34,12 @@ data Person = Person
   }
   deriving (Generic, Entity, Show, Eq)
 
-nameField :: FieldName
-nameField = fieldName "name"
-ageField :: FieldName
-ageField = fieldName "age"
-addressField :: FieldName
-addressField = fieldName "address"
+nameField :: Field
+nameField = field "name"
+ageField :: Field
+ageField = field "age"
+addressField :: Field
+addressField = field "address"
 
 data Book = Book
   { book_id  :: Int,
@@ -80,10 +80,10 @@ manyPersons =
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
 
-lower :: FieldName -> FieldName
+lower :: Field -> Field
 lower = sqlFun "LOWER";
 
-upper :: FieldName -> FieldName
+upper :: Field -> Field
 upper = sqlFun "UPPER";
 
 spec :: Spec
@@ -95,10 +95,10 @@ spec = do
       runRaw conn "INSERT INTO Person (personID, name, age, address) VALUES (1, \"Bob\", 36, \"7 West Street\");"
       runRaw conn "INSERT INTO Person (personID, name, age, address) VALUES (2, \"Alice\", 25, \"7 West Street\");"
       runRaw conn "INSERT INTO Person (personID, name, age, address) VALUES (3, \"Frank\", 56, \"7 West Street\");"
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 3
       head allPersons `shouldBe` bob
-      person' <- retrieveById conn (1 :: Int) :: IO (Maybe Person)
+      person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just bob
     it "retrieves Entities using user implementation" $ do
       conn <- prepareDB
@@ -106,10 +106,10 @@ spec = do
       runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (1, \"The Hobbit\", \"J.R.R. Tolkien\", 1937, 0);"
       runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (2, \"The Lord of the Rings\", \"J.R.R. Tolkien\", 1955, 0);"
       runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967, 0);"
-      allBooks <- retrieveAll conn :: IO [Book]
+      allBooks <- select conn allEntries :: IO [Book]
       length allBooks `shouldBe` 3
       head allBooks `shouldBe` hobbit
-      book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book)
+      book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just hobbit
     it "retrieves Entities using a simple Query DSL" $ do
       conn <- prepareDB
@@ -117,142 +117,145 @@ spec = do
           alice = Person 2 "Alice" 25 "West Street 90"
           charlie = Person 3 "Charlie" 35 "West Street 40"
       insertMany conn [alice, bob, charlie]
-      one <- retrieveWhere conn (nameField =. "Bob" &&. ageField =. (36 :: Int))
+      one <- select conn (nameField =. "Bob" &&. ageField =. (36 :: Int))
       length one `shouldBe` 1
       head one `shouldBe` bob
-      two <- retrieveWhere conn (nameField =. "Bob" ||. ageField =. (25 :: Int))
+      two <- select conn (nameField =. "Bob" ||. ageField =. (25 :: Int))
       length two `shouldBe` 2
       two `shouldContain` [bob, alice]
-      three <- retrieveWhere conn (addressField `like` "West Street %") :: IO [Person]
+      three <- select conn (addressField `like` "West Street %") :: IO [Person]
       length three `shouldBe` 3
-      empty <- retrieveWhere conn (not' $ addressField `like` "West Street %") :: IO [Person]
+      empty <- select conn (not' $ addressField `like` "West Street %") :: IO [Person]
       length empty `shouldBe` 0
-      boomers <- retrieveWhere conn (ageField >. (30 :: Int))
+      boomers <- select conn (ageField >. (30 :: Int))
       length boomers `shouldBe` 2
       boomers `shouldContain` [bob, charlie]
-      thirtySomethings <- retrieveWhere conn (ageField `between` (30 :: Int, 40 :: Int)) :: IO [Person]
+      thirtySomethings <- select conn (ageField `between` (30 :: Int, 40 :: Int)) :: IO [Person]
       length thirtySomethings `shouldBe` 2
       thirtySomethings `shouldContain` [bob, charlie]
-      aliceAndCharlie <- retrieveWhere conn (nameField `in'` ["Alice", "Charlie"])
+      aliceAndCharlie <- select conn (nameField `in'` ["Alice", "Charlie"])
       length aliceAndCharlie `shouldBe` 2
       aliceAndCharlie `shouldContain` [alice, charlie]
-      noOne <- retrieveWhere conn (isNull nameField) :: IO [Person]
+      noOne <- select conn (isNull nameField) :: IO [Person]
       length noOne `shouldBe` 0
-      allPersons <- retrieveWhere conn (not' $ isNull nameField) :: IO [Person]
+      allPersons <- select conn (not' $ isNull nameField) :: IO [Person]
       length allPersons `shouldBe` 3
-      peopleFromWestStreet <- retrieveWhere conn ((lower(upper(addressField))) `like` "west street %") :: IO [Person]
+      peopleFromWestStreet <- select conn ((lower(upper(addressField))) `like` "west street %") :: IO [Person]
       length peopleFromWestStreet `shouldBe` 3
+      charlie' <- select conn (byId "3") :: IO [Person]
+      length charlie' `shouldBe` 1
+      head charlie' `shouldBe` charlie
       
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
       persist conn person
-      allPersons' <- retrieveAll conn :: IO [Person]
+      allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
-      person' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
+      person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person
     it "persists new Entities using user implementation" $ do
       conn <- prepareDB
-      allbooks <- retrieveAll conn :: IO [Book]
+      allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
       persist conn book
-      allbooks' <- retrieveAll conn :: IO [Book]
+      allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
-      book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book)
+      book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
     it "persists existing Entities using Generics" $ do
       conn <- prepareDB
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
       persist conn person
-      allPersons' <- retrieveAll conn :: IO [Person]
+      allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
       persist conn person {age = 26}
-      person' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
+      person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person {age = 26}
     it "persists existing Entities using user implementation" $ do
       conn <- prepareDB
-      allbooks <- retrieveAll conn :: IO [Book]
+      allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
       persist conn book
-      allbooks' <- retrieveAll conn :: IO [Book]
+      allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
       persist conn book {year = 1938}
-      book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book)
+      book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book {year = 1938}
     it "inserts Entities using Generics" $ do
       conn <- prepareDB
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
       insert conn person
-      allPersons' <- retrieveAll conn :: IO [Person]
+      allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
-      person' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
+      person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person
     it "inserts many Entities re-using a single prepared stmt" $ do
       conn <- prepareDB
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
       insertMany conn manyPersons
-      allPersons' <- retrieveAll conn :: IO [Person]
+      allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 6
     it "updates many Entities re-using a single prepared stmt" $ do
       conn <- prepareDB
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
       insertMany conn manyPersons
-      allPersons' <- retrieveAll conn :: IO [Person]
+      allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 6
       let manyPersons' = map (\p -> p {name = "Bob"}) manyPersons
       updateMany conn manyPersons'
-      allPersons'' <- retrieveAll conn :: IO [Person]
+      allPersons'' <- select conn allEntries :: IO [Person]
       all (\p -> name p == "Bob") allPersons'' `shouldBe` True
     it "deletes many Entities re-using a single prepared stmt" $ do
       conn <- prepareDB
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
       insertMany conn manyPersons
-      allPersons' <- retrieveAll conn :: IO [Person]
+      allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 6   
       deleteMany conn allPersons'
-      allPersons'' <- retrieveAll conn :: IO [Person]
+      allPersons'' <- select conn allEntries :: IO [Person]
       length allPersons'' `shouldBe` 0
 
     it "inserts Entities using user implementation" $ do
       conn <- prepareDB
-      allbooks <- retrieveAll conn :: IO [Book]
+      allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
       insert conn book
-      allbooks' <- retrieveAll conn :: IO [Book]
+      allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
-      book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book)
+      book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
     it "updates Entities using Generics" $ do
       conn <- prepareDB
       insert conn person
       update conn person {name = "Bob"}
-      person' <- retrieveById conn (123456 :: Int) :: IO (Maybe Person)
+      person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person {name = "Bob"}
     it "updates Entities using user implementation" $ do
       conn <- prepareDB
       insert conn book
       update conn book {title = "The Lord of the Rings"}
-      book' <- retrieveById conn (1 :: Int) :: IO (Maybe Book)
+      book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book {title = "The Lord of the Rings"}
     it "deletes Entities using Generics" $ do
       conn <- prepareDB
       insert conn person
-      allPersons <- retrieveAll conn :: IO [Person]
+      allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 1
       delete conn person
-      allPersons' <- retrieveAll conn :: IO [Person]
+      allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 0
     it "deletes Entities using user implementation" $ do
       conn <- prepareDB
       insert conn book
-      allBooks <- retrieveAll conn :: IO [Book]
+      allBooks <- select conn allEntries :: IO [Book]
       length allBooks `shouldBe` 1
       delete conn book
-      allBooks' <- retrieveAll conn :: IO [Book]
+      allBooks' <- select conn allEntries :: IO [Book]
       length allBooks' `shouldBe` 0

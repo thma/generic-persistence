@@ -3,15 +3,14 @@
 module Database.GP.SqlGenerator
   ( insertStmtFor,
     updateStmtFor,
-    selectStmtFor,
+    --selectStmtFor,
     selectFromStmt,
     deleteStmtFor,
-    selectAllStmtFor,
     createTableStmtFor,
     dropTableStmtFor,
     WhereClauseExpr,
-    FieldName,
-    fieldName,
+    Field,
+    field,
     whereClauseValues,
     (&&.),
     (||.),
@@ -28,6 +27,8 @@ module Database.GP.SqlGenerator
     isNull,
     not',
     sqlFun,
+    allEntries,
+    byId,
   )
 where
 
@@ -74,27 +75,18 @@ updateStmtFor =
   where
     updatePairs = map (++ " = ?") (columnNamesFor @a)
 
-idColumn :: forall a. (Entity a) => String
-idColumn = columnNameFor @a (idField @a)
+
 
 -- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
-selectStmtFor :: forall a. (Entity a) => String
-selectStmtFor =
-  "SELECT "
-    ++ intercalate ", " (columnNamesFor @a)
-    ++ " FROM "
-    ++ tableName @a
-    ++ " WHERE "
-    ++ idColumn @a
-    ++ " = ?;"
-
-selectAllStmtFor :: forall a. (Entity a) => String
-selectAllStmtFor =
-  "SELECT "
-    ++ intercalate ", " (columnNamesFor @a)
-    ++ " FROM "
-    ++ tableName @a
-    ++ ";"
+-- selectStmtFor :: forall a. (Entity a) => String
+-- selectStmtFor =
+--   "SELECT "
+--     ++ intercalate ", " (columnNamesFor @a)
+--     ++ " FROM "
+--     ++ tableName @a
+--     ++ " WHERE "
+--     ++ idColumn @a
+--     ++ " = ?;"
 
 selectFromStmt :: forall a. (Entity a) => WhereClauseExpr -> String
 selectFromStmt whereClauseExpr =
@@ -128,7 +120,7 @@ createTableStmtFor dbServer =
 -- | A function that returns the column type for a field of an entity.
 -- TODO: Support other databases than just SQLite.
 columnTypeFor :: forall a. (Entity a) => Database -> String -> String
-columnTypeFor SQLite field =
+columnTypeFor SQLite fieldName =
   case fType of
     "Int"    -> "INTEGER"
     "String" -> "TEXT"
@@ -137,7 +129,7 @@ columnTypeFor SQLite field =
     "Bool"   -> "INT"
     _        -> "TEXT"
   where
-    maybeFType = maybeFieldTypeFor @a field
+    maybeFType = maybeFieldTypeFor @a fieldName
     fType = maybe "OTHER" show maybeFType
 columnTypeFor other _ = error $ "Schema creation for " ++ show other ++ " not implemented yet"
 

@@ -1,7 +1,6 @@
 module Database.GP
-  ( retrieveById,
-    retrieveAll,
-    retrieveWhere,
+  ( selectById,
+    select,
     entitiesFromRows,
     persist,
     insert,
@@ -25,8 +24,8 @@ module Database.GP
     typeInfo,
     PersistenceException(..),
     WhereClauseExpr,
-    FieldName,
-    fieldName,
+    Field,
+    field,
     (&&.),
     (||.),
     (=.),
@@ -42,6 +41,7 @@ module Database.GP
     isNull,
     not',
     sqlFun,
+    allEntries,
   )
 where
 

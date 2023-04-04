@@ -53,7 +53,7 @@ instance Entity Author where
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
     let authID = head row                                 -- authorID is the first column
-    articlesBy <- retrieveWhere conn (fieldName "authorId" =. authID) -- retrieve all articles by this author
+    articlesBy <- select conn (field "authorId" =. authID) -- retrieve all articles by this author
     return rawAuthor {articles = articlesBy}              -- add the articles to the author
     where
       rawAuthor = Author (col 0) (col 1) (col 2) []       -- create the author from row (w/o articles)
@@ -111,12 +111,12 @@ spec = do
       insert conn arthur
       insert conn article1
 
-      authors <- retrieveAll conn :: IO [Author]
+      authors <- select conn allEntries :: IO [Author]
       length authors `shouldBe` 1
 
-      articles' <- retrieveAll conn :: IO [Article]
+      articles' <- select conn allEntries :: IO [Article]
       length articles' `shouldBe` 3
 
-      author2 <- retrieveById conn "2" :: IO (Maybe Author)
+      author2 <- selectById conn "2" :: IO (Maybe Author)
       fromJust author2 `shouldBe` arthur
       length (articles $ fromJust author2) `shouldBe` 2
