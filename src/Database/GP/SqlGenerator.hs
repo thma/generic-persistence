@@ -3,7 +3,6 @@
 module Database.GP.SqlGenerator
   ( insertStmtFor,
     updateStmtFor,
-    --selectStmtFor,
     selectFromStmt,
     deleteStmtFor,
     createTableStmtFor,
@@ -75,19 +74,8 @@ updateStmtFor =
   where
     updatePairs = map (++ " = ?") (columnNamesFor @a)
 
-
-
--- | A function that returns an SQL select statement for entity type `a` with primary key `id`.
--- selectStmtFor :: forall a. (Entity a) => String
--- selectStmtFor =
---   "SELECT "
---     ++ intercalate ", " (columnNamesFor @a)
---     ++ " FROM "
---     ++ tableName @a
---     ++ " WHERE "
---     ++ idColumn @a
---     ++ " = ?;"
-
+-- | A function that returns an SQL select statement for an entity. Type 'a' must be an instance of Entity.
+--   The function takes a where clause expression as parameter. This expression is used to filter the result set.
 selectFromStmt :: forall a. (Entity a) => WhereClauseExpr -> String
 selectFromStmt whereClauseExpr =
   "SELECT "

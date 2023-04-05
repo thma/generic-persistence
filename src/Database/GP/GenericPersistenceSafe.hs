@@ -139,9 +139,11 @@ entitiesFromRows = (tryPE .) . mapM . fromRow
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
 persist conn entity = do
-  eitherExRes <- try $
-    idValue conn entity >>= \eid ->
-    quickQuery conn preparedSelectStmt [eid] >>=
+  eitherExRes <- try $ do
+    eid <- idValue conn entity
+    let stmt = selectFromStmt @a (byId eid)
+    --idValue conn entity >>= \eid ->
+    quickQuery conn stmt [eid] >>=
       \case
         []           -> insert conn entity
         [_singleRow] -> update conn entity
@@ -149,9 +151,6 @@ persist conn entity = do
   case eitherExRes of
     Left ex   -> return $ Left $ fromException ex
     Right res -> return res
-  where
-    preparedSelectStmt = selectFromStmt @a (byId "?")  --selectStmtFor @a
-    --idx = idValue conn entity
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
