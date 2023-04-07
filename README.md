@@ -439,28 +439,28 @@ The function returns a (possibly empty) list of all matching entities.
 
 The `WhereClauseExpr` is constructed using a small set of functions and infix operators.
 
-There are a set of infix operators `(=.), (>.), (<.), (>=.), (<=.), (<>.), `like`, `between`, `in'`, `contains`` that define field comparisons:
+There are a set of infix operators `(=.), (>.), (<.), (>=.), (<=.), (<>.), like, between, in', contains` that define field comparisons:
 
 ```haskell
-(field "name" =. "John") 
+field "name" =. "John"
 
-(field "age" >=. 18)
+field "age" >=. 18
 
-(field "age" `between` (18, 30))
+field "age" `between` (18, 30)
 
-(field "name" `like` "J%")
+field "name" `like` "J%"
 
-(field "name" `in'` ["John", "Jane"])
+field "name" `in'` ["John", "Jane"]
 ```
 
 Then we have three function `isNull`, `allEntries` and `byId` that also define simple `WHERE` clauses:
 
 ```haskell
-(isNull (field "name")) -- matches all entries where the name field is NULL
+isNull (field "name") -- matches all entries where the name field is NULL
 
-(byId 42)               -- matches the entry where the primary key column has the value 42
+byId 42               -- matches the entry where the primary key column has the value 42
 
-(allEntries)            -- matches all entries of the table
+allEntries            -- matches all entries of the table
 ```
 
 It is also possible to apply SQL functions to fields:
@@ -468,17 +468,17 @@ It is also possible to apply SQL functions to fields:
 ```haskell
 lower = sqlFun "LOWER" -- define a function that applies the SQL function LOWER to a field
 
-(lower(field "name") =. "all lowercase")
+lower(field "name") =. "all lowercase"
 ```
 
 These field-wise comparisons can be combined using the logical operators `&&.`, `||.` and `not'`:
 
 ```haskell
-((field "name" `like` "J%") &&. (field "age" >=. 18))
+(field "name" `like` "J%") &&. (field "age" >=. 18)
 
-((field "name" =. "John") ||. (field "name" =. "Jane"))
+(field "name" =. "John") ||. (field "name" =. "Jane")
 
-(not' (field "name" =. "John"))
+not' (field "name" =. "John")
 ```
 
 The `select` function will then use the `WhereClauseExpr` constructed from these operators and functions to generate a SQL query that retrieves all matching entities:
@@ -488,7 +488,7 @@ The `select` function will then use the `WhereClauseExpr` constructed from these
 ageField :: Field
 ageField = field "age"
 
-thirtySomethings <- select conn (ageField `between` (30, 39)) :: IO [Person]
+thirtySomethings <- select @Person conn (ageField `between` (30, 39))
 ```
 
 You will find more examples in the [test suite](https://github.com/thma/generic-persistence/blob/main/test/GenericPersistenceSpec.hs#L116).
