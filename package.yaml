@@ -28,6 +28,7 @@ dependencies:
 - convertible
 - HDBC
 - generic-deriving
+- resource-pool
 
 
 ghc-options:

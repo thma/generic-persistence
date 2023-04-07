@@ -14,7 +14,8 @@ import           GHC.Generics
 import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. (start up stack repl --test to bring up ghci and have access to all the test functions)
+-- not needed for automatic spec discovery. 
+-- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
 
@@ -55,7 +56,8 @@ data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Ot
 
 instance Entity Book where
   idField = "book_id"
-  fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), ("year", "bookYear"), ("category", "bookCategory")]
+  fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), 
+                     ("year", "bookYear"), ("category", "bookCategory")]
   tableName = "BOOK_TBL"
   fromRow _c row = pure $ Book (col 0) (col 1) (col 2) (col 3) (col 4)
     where
@@ -140,7 +142,7 @@ spec = do
       length noOne `shouldBe` 0
       allPersons <- select conn (not' $ isNull nameField) :: IO [Person]
       length allPersons `shouldBe` 3
-      peopleFromWestStreet <- select conn ((lower(upper(addressField))) `like` "west street %") :: IO [Person]
+      peopleFromWestStreet <- select conn (lower(upper addressField) `like` "west street %") :: IO [Person]
       length peopleFromWestStreet `shouldBe` 3
       charlie' <- select conn (byId "3") :: IO [Person]
       length charlie' `shouldBe` 1
@@ -259,3 +261,11 @@ spec = do
       delete conn book
       allBooks' <- select conn allEntries :: IO [Book]
       length allBooks' `shouldBe` 0
+    it "provides a Connection Pool" $ do
+      connPool <- createConnPool SQLite ":memory:" connectSqlite3 :: IO ConnectionPool
+      withResource connPool $ \conn -> do
+        setupTableFor @Person conn
+        insert conn person
+        allPersons <- select conn allEntries :: IO [Person]
+        length allPersons `shouldBe` 1
+

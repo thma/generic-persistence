@@ -32,8 +32,8 @@ module Database.GP.SqlGenerator
 where
 
 import           Data.List          (intercalate)
-import           Database.GP.Entity
-import           Database.GP.Query
+import Database.GP.Entity
+import Database.GP.Query
 
 -- |
 --  This module defines some basic SQL statements for Record Data Types that are instances of 'Entity'.

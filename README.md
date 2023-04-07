@@ -86,36 +86,27 @@ main :: IO ()
 main = do
   -- connect to a database
   conn <- connect SQLite <$> connectSqlite3 "sqlite.db"
-
   -- initialize Person table
   setupTableFor @Person conn
-
   -- create a Person entity
   let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
-
   -- insert a Person into a database
   insert conn alice
-
   -- update a Person
   update conn alice {address = "Main Street 200"}
-
   -- select a Person from a database
   -- The result type must be provided by the call site, 
-  -- as `retrieveEntityById` has a polymorphic return type `IO (Maybe a)`.
-  alice' <- retrieveById @Person conn "123456" 
+  -- as `selectById` has a polymorphic return type `IO (Maybe a)`.
+  alice' <- selectById @Person conn "123456" 
   print alice'
-
-  -- select all Persons from a database
-  allPersons <- retrieveAll @Person conn
+  -- select all Persons from a database. again, the result type must be provided.
+  allPersons <- select @Person conn allEntries
   print allPersons
-
   -- delete a Person from a database
   delete conn alice
-
   -- select all Persons from a database. Now it should be empty.
-  allPersons' <- retrieveAll conn :: IO [Person]
+  allPersons' <- select conn allEntries :: IO [Person]
   print allPersons'
-
   -- close connection
   disconnect conn
 ```
