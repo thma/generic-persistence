@@ -47,6 +47,7 @@ library
     , convertible
     , generic-deriving
     , resource-pool
+    , time
   default-language: GHC2021
 
 test-suite generic-persistence-test
@@ -75,5 +76,6 @@ test-suite generic-persistence-test
     , hspec
     , hspec-discover
     , resource-pool
+    , time
   default-language: GHC2021
   build-tool-depends: hspec-discover:hspec-discover == 2.*

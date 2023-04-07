@@ -262,7 +262,7 @@ spec = do
       allBooks' <- select conn allEntries :: IO [Book]
       length allBooks' `shouldBe` 0
     it "provides a Connection Pool" $ do
-      connPool <- createConnPool SQLite ":memory:" connectSqlite3 :: IO ConnectionPool
+      connPool <- createConnPool SQLite ":memory:" connectSqlite3 10 10 100 :: IO ConnectionPool
       withResource connPool $ \conn -> do
         setupTableFor @Person conn
         insert conn person

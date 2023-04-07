@@ -8,9 +8,10 @@ module Database.GP.Conn
   )
 where
 
-import           Control.Monad ((>=>))
-import           Data.Pool     (Pool, createPool, withResource)
-import           Database.HDBC (IConnection (..))
+import           Control.Monad   ((>=>))
+import           Data.Pool       (Pool, createPool, withResource)
+import           Data.Time.Clock (NominalDiffTime)
+import           Database.HDBC   (IConnection (..))
 
 -- |
 --  This module defines a wrapper around an HDBC IConnection.
@@ -66,11 +67,27 @@ instance IConnection Conn where
   getTables w = withWConn w getTables
   describeTable w = withWConn w describeTable
 
--- connection pooling
+-- | A pool of connections.
 type ConnectionPool = Pool Conn
 
-createConnPool :: IConnection conn => Database -> String -> (String -> IO conn) -> IO ConnectionPool
-createConnPool db connectString connectFun = createPool freshConnection disconnect 10 10 100
+-- | Creates a connection pool.
+createConnPool ::
+  IConnection conn =>
+  -- | the database type e.g. Postgres, MySQL, SQLite
+  Database ->
+  -- | the connection string
+  String ->
+  -- | a function that takes a connection string and returns an IConnection
+  (String -> IO conn) ->
+  -- | the number of pool stripes
+  Int ->
+  -- | the time (in msecs) to keep idle connections open
+  NominalDiffTime ->
+  -- | the maximum number of connections to keep open
+  Int ->
+  -- | the resulting connection pool
+  IO ConnectionPool
+createConnPool db connectString connectFun = createPool freshConnection disconnect
   where
     freshConnection :: IO Conn
     freshConnection = connect db <$> connectFun connectString
