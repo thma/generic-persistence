@@ -270,4 +270,4 @@ spec = do
         length allPersons `shouldBe` 1
 
 sqlLitePool :: FilePath -> IO ConnectionPool
-sqlLitePool sqlLiteFile = createConnPool SQLite sqlLiteFile connectSqlite3 10 10 100
+sqlLitePool sqlLiteFile = createConnPool SQLite sqlLiteFile connectSqlite3 10 100

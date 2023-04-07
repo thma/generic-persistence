@@ -7,15 +7,16 @@ module DemoSpec
   )
 where
 
-import           Database.GP.GenericPersistence
-import           Database.HDBC
-import           Database.HDBC.Sqlite3
+import           Database.GP           (Database (SQLite), Entity, allEntries,
+                                        connect, delete, insert, select,
+                                        selectById, setupTableFor, update)
+import           Database.HDBC         (disconnect)
+import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
-
 import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
@@ -35,35 +36,35 @@ spec = do
     it "shows some basic use cases" $ do
       -- connect to a database
       conn <- connect SQLite <$> connectSqlite3 "sqlite.db"
-    
+
       -- initialize Person table
       setupTableFor @Person conn
-    
+
       -- create a Person entity
       let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
-    
+
       -- insert a Person into a database
       insert conn alice
-    
+
       -- update a Person
       update conn alice {address = "Main Street 200"}
-    
+
       -- select a Person from a database
-      -- The result type must be provided by the call site, 
+      -- The result type must be provided by the call site,
       -- as `selectById` has a polymorphic return type `IO (Maybe a)`.
-      alice' <- selectById @Person conn "123456" 
+      alice' <- selectById @Person conn "123456"
       print alice'
-    
+
       -- select all Persons from a database. again, the result type must be provided.
       allPersons <- select @Person conn allEntries
       print allPersons
-    
+
       -- delete a Person from a database
       delete conn alice
-    
+
       -- select all Persons from a database. Now it should be empty.
       allPersons' <- select conn allEntries :: IO [Person]
       print allPersons'
-    
+
       -- close connection
       disconnect conn

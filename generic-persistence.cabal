@@ -5,7 +5,7 @@ cabal-version: 1.12
 -- see: https://github.com/sol/hpack
 
 name:           generic-persistence
-version:        0.3.1.0
+version:        0.4.0.0
 synopsis:       Database persistence using generics
 description:    Please see the README on GitHub at <https://github.com/thma/generic-persistence#readme>
 category:       Database
@@ -47,7 +47,6 @@ library
     , convertible
     , generic-deriving
     , resource-pool
-    , time
   default-language: GHC2021
 
 test-suite generic-persistence-test
@@ -76,6 +75,5 @@ test-suite generic-persistence-test
     , hspec
     , hspec-discover
     , resource-pool
-    , time
   default-language: GHC2021
   build-tool-depends: hspec-discover:hspec-discover == 2.*

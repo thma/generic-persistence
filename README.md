@@ -6,13 +6,14 @@
 
 ## Introduction
 
-GenericPersistence is a minimalistic Haskell persistence layer for relational databases. 
+GenericPersistence is a small Haskell persistence layer for relational databases. 
 The approach relies on [GHC.Generics](https://hackage.haskell.org/package/base-4.17.0.0/docs/GHC-Generics.html). The actual database access is provided by the [HDBC](https://hackage.haskell.org/package/HDBC) library.
 
 The *functional goal* of the persistence layer is to provide hassle-free RDBMS persistence for Haskell data types in 
-Record notation (for brevity I call them *Entities*).
+Record notation (for simplicity I call these *Entities*).
 
-That is, it provides means for inserting, updating, deleting and quering such enties to/from relational databases.
+It therefore provides means for inserting, updating, deleting and querying such entities into/from relational databases.
+
 
 The main *design goal* is to minimize the *boilerplate* code required:
 
@@ -27,8 +28,8 @@ and persist it to any RDBMS without any additional effort.
 
 ## Status
 
-The library is in an early stage of development. All test cases are green and it should be ready for early adopters.
-Several things are still missing:
+The library is still work in progress. All test cases are green and it should be ready for early adopters.
+But API changes are still possible and several things are still missing:
 
 - auto-incrementing primary keys
 - caching
@@ -67,9 +68,11 @@ Here now follows a short demo that shows how the library looks and feels from th
 
 module Main (main) where
 
-import           Database.GP         
-import           Database.HDBC
-import           Database.HDBC.Sqlite3
+import           Database.GP           (Database (SQLite), Entity, allEntries,
+                                        connect, delete, insert, select,
+                                        selectById, setupTableFor, update)
+import           Database.HDBC         (disconnect)
+import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
 
 -- | An Entity data type with several fields, using record syntax.
@@ -349,7 +352,7 @@ instance Entity Article where
 
   fromRow :: Conn -> [SqlValue] -> IO Article
   fromRow conn row = do    
-    authorById <- fromJust <$> retrieveById conn (row !! 2)  -- load author by foreign key
+    authorById <- fromJust <$> selectById conn (row !! 2)  -- load author by foreign key
     return $ rawArticle {author = authorById}                -- add author to article
     where
       rawArticle = Article (col 0) (col 1)                   -- create article from row, 
@@ -405,12 +408,12 @@ instance Entity Author where
 
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
-    let authID = head row                                 -- authorID is the first column
-    articlesBy <- retrieveAllWhere conn "authorId" authID -- retrieve all articles by this author
-    return rawAuthor {articles = articlesBy}              -- add the articles to the author
+    let authID = head row                                  -- authorID is the first column
+    articlesBy <- select conn (field "authorId" =. authID) -- retrieve all articles by this author
+    return rawAuthor {articles = articlesBy}               -- add the articles to the author
     where
-      rawAuthor = Author (col 0) (col 1) (col 2) []       -- create the author from row (w/o articles)
-      col i = fromSql (row !! i)                          -- helper function to convert SqlValue to Haskell type
+      rawAuthor = Author (col 0) (col 1) (col 2) []        -- create the author from row (w/o articles)
+      col i = fromSql (row !! i)                           -- helper function to convert SqlValue to Haskell type
 
   toRow :: Conn -> Author -> IO [SqlValue]
   toRow conn a = do
@@ -422,13 +425,78 @@ instance Entity Author where
 Persisting all articles of an author as a side effect during the conversion of the author to a row may seem *special*...
 You can ommit this step. But then you have to persist the articles manually before persisting the author.
 
+## Performing queries with the Query DSL
+
+The library provides a simple DSL for performing `SELECT`queries. The `select` function 
+
+```haskell
+select :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO [a]
+```
+
+This function retrieves all entities of type `a` that match some query criteria.
+The function takes an HDBC connection (wrapped in a `Conn`) and a `WhereClauseExpr` as parameters.
+The function returns a (possibly empty) list of all matching entities.
+
+The `WhereClauseExpr` is constructed using a small set of functions and infix operators.
+
+There are a set of infix operators `(=.), (>.), (<.), (>=.), (<=.), (<>.), `like`, `between`, `in'`, `contains`` that define field comparisons:
+
+```haskell
+(field "name" =. "John") 
+
+(field "age" >=. 18)
+
+(field "age" `between` (18, 30))
+
+(field "name" `like` "J%")
+
+(field "name" `in'` ["John", "Jane"])
+```
+
+Then we have three function `isNull`, `allEntries` and `byId` that also define simple `WHERE` clauses:
+
+```haskell
+(isNull (field "name")) -- matches all entries where the name field is NULL
+
+(byId 42)               -- matches the entry where the primary key column has the value 42
+
+(allEntries)            -- matches all entries of the table
+```
+
+It is also possible to apply SQL functions to fields:
+
+```haskell
+lower = sqlFun "LOWER" -- define a function that applies the SQL function LOWER to a field
+
+(lower(field "name") =. "all lowercase")
+```
+
+These field-wise comparisons can be combined using the logical operators `&&.`, `||.` and `not'`:
+
+```haskell
+((field "name" `like` "J%") &&. (field "age" >=. 18))
+
+((field "name" =. "John") ||. (field "name" =. "Jane"))
+
+(not' (field "name" =. "John"))
+```
+
+The `select` function will then use the `WhereClauseExpr` constructed from these operators and functions to generate a SQL query that retrieves all matching entities:
+
+```haskell
+
+ageField :: Field
+ageField = field "age"
+
+thirtySomethings <- select conn (ageField `between` (30, 39)) :: IO [Person]
+```
+
+You will find more examples in the [test suite](https://github.com/thma/generic-persistence/blob/main/test/GenericPersistenceSpec.hs#L116).
+
+
 ## Integrating user defined queries
 
-As of now, the library only supports very basic support for queries:
-
-- `retrieveById` retrieves a single row of a table by its primary key
-- `retrieveAll` retrieves all rows of a table
-- `retrieveAllWhere` retrieves all rows of a table where a given column has a given value
+As we have seen in the previous section, the library provides two functions `select` and `selectById` to query the database for entities.
 
 If you want to use more complex queries, you can integrate HDBC SQL queries by using the `entitiesFromRows` function as in the following example:
 
@@ -453,7 +521,7 @@ main = do
   insertMany conn people
 
   -- perform a custom query with HDBC
-  stmt = "SELECT * FROM Person WHERE age >= ?"
+  stmt = "SELECT * FROM Person WHERE age >= ? ORDER BY age ASC"
   resultRows <- quickQuery conn stmt [toSql (40 :: Int)]
 
   -- convert the resulting rows into a list of Person objects
@@ -477,4 +545,31 @@ c <- connect SQLite <$> connectSqlite3 ":memory:"
 let conn = c {implicitCommit = False}
 ```
 
+## A simple Connection Pool
+
+The library provides a simple connection pool that can be used to manage a pool of database connections. 
+A connection pool will be used to manage the database connections in a multi-threaded environment where multiple threads may need to access the database at the same time. A typical use case is a REST service that uses a database to store its data. 
+
+The connection Pool is implemented based on the [resource-pool](https://hackage.haskell.org/package/resource-pool) library. `generic-persistence` exposes a `ConnectionPool` type and two function `createConnPool` and `withResource` to create and use a connection pool.
+
+The following example shows how to create a connection pool and how to use it to perform a database query:
+
+```haskell
+
+sqlLitePool :: FilePath -> IO ConnectionPool
+sqlLitePool sqlLiteFile = createConnPool SQLite sqlLiteFile connectSqlite3 10 100
+
+main :: IO ()
+main = do
+  connPool <- sqlLitePool ":memory:" 
+  let alice = Person 123456 "Alice" 25 "123 Main St"
+  withResource connPool $ \conn -> do
+    setupTableFor @Person conn
+    insert conn alice
+    allPersons <- select conn allEntries :: IO [Person]
+    print allPersons
+```
+
+You'll find a more complete example in the [servant-gp repo](https://github.com/thma/servant-gp/blob/main/src/ServerUtils.hs#L45).
+There I have set up a sample REST service based on Servant that uses *Generic-Persistence* and a connection pool to manage the database connections.
 

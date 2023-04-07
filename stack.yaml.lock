@@ -11,6 +11,13 @@ packages:
       size: 1427
   original:
     hackage: HDBC-sqlite3-2.3.3.1
+- completed:
+    hackage: resource-pool-0.4.0.0@sha256:9c1e448a159875e21a7e68697feee2b61a4e584720974fa465a2fa1bc0776c73,1342
+    pantry-tree:
+      sha256: 1008fbb9b6bd9d12925989f2708af612daa3a8ebf3a56763016231461d9e314f
+      size: 406
+  original:
+    hackage: resource-pool-0.4.0.0
 snapshots:
 - completed:
     sha256: 14ca51a9a597c32dd7804c10d079feea3d0ae40c5fbbb346cbd67b3ae49f6d01
