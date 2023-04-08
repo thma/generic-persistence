@@ -98,9 +98,9 @@ main = do
   -- update a Person
   update conn alice {address = "Main Street 200"}
   -- select a Person from a database
-  -- The result type must be provided by the call site, 
+  -- The concrete result type must be provided by the call site, 
   -- as `selectById` has a polymorphic return type `IO (Maybe a)`.
-  alice' <- selectById @Person conn "123456" 
+  alice' <- selectById conn "123456" :: IO (Maybe Person)
   print alice'
   -- select all Persons from a database. again, the result type must be provided.
   allPersons <- select @Person conn allEntries
@@ -113,6 +113,61 @@ main = do
   -- close connection
   disconnect conn
 ```
+
+## Deal with runtime exceptions or use total functions? Your choice!
+
+GenericPersistence provides two different APIs for accessing the database:
+- the default API (as shown in the above demo), which uses exceptions to signal errors
+- the total API, which uses `Either` to signal errors
+
+### Exceptions in the default API
+The default API is the easiest to use, but you will have to do exception handling to catch runtime errors. To use it you'll have to import the `Database.GP` module:
+
+```haskell
+import Database.GP 
+```
+
+These are the exceptions that can be thrown:
+
+```haskell
+data PersistenceException =
+    EntityNotFound String
+  | DuplicateInsert String
+  | DatabaseError String
+  | NoUniqueKey String
+  deriving (Show, Eq, Exception)
+```
+
+The `EntityNotFound` exception is thrown when you try to select an entity by its primary key, but no entity with the given primary key exists in the database.
+
+The `DuplicateInsert` exception is thrown when you try to insert an entity into the database, but an entity with the same primary key already exists in the database.
+
+The `DatabaseError` exception is thrown when the database backend returns an error.
+
+The `NoUniqueKey` exception is thrown when you try to select an entity by its primary key, but multiple rows are returned by the database. This can happen if there is no primary key constraint defined on the underlying database column.
+
+A real world example can be found in the [Servant GP - UserServer](https://github.com/thma/servant-gp/blob/main/src/UserServer.hs) module.
+
+### Total functions in the total API
+
+The total API is a bit more verbose, but it does not throw exceptions. To use it you'll have to import the `Database.GP.GenericPersistenceSafe` module:
+
+```haskell
+import Database.GP.GenericPersistenceSafe
+```
+
+This module provides the same function as `Database.GP`, but all functions return `Either PersistenceException a` instead of `IO a` or `IO (Maybe a)`.
+
+```haskell
+eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Person)
+case eitherExRes of
+  Left (EntityNotFound _) -> print "Entity not found"
+  Right person            -> print person
+```
+
+This may look a bit verbose, but in actual code this may work out better, as `Either` allows pattern matching and chaining of computations with the `do` notation.
+
+A real world example can be found in the [Servant GP - UserServerSafe](https://github.com/thma/servant-gp/blob/main/src/UserServerSafe.hs) module. The `UserServerSafe` module is a copy of the `UserServer` module, but it uses the total API instead of the default API. As you can see, the code of `UserServerSafe` is actually a bit more compact than the code of UserServer. (In the default API, we have to deal with the special case of `selectById` returning `Nothing`.)
 
 ## How it works
 
@@ -545,10 +600,10 @@ c <- connect SQLite <$> connectSqlite3 ":memory:"
 let conn = c {implicitCommit = False}
 ```
 
-## A simple Connection Pool
+## Connection Pooling
 
-The library provides a simple connection pool that can be used to manage a pool of database connections. 
-A connection pool will be used to manage the database connections in a multi-threaded environment where multiple threads may need to access the database at the same time. A typical use case is a REST service that uses a database to store its data. 
+The library provides a simple connection pool for managing database connections. 
+This is a must in multi-threaded environments where multiple threads may need to access the database at the same time. A typical use case is a REST service that uses a database to store its data. 
 
 The connection Pool is implemented based on the [resource-pool](https://hackage.haskell.org/package/resource-pool) library. `generic-persistence` exposes a `ConnectionPool` type and two function `createConnPool` and `withResource` to create and use a connection pool.
 

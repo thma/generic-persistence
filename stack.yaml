@@ -41,7 +41,6 @@ extra-deps:
   - HDBC-sqlite3-2.3.3.1   # not in lts-20.17
   - resource-pool-0.4.0.0  # 0.4 is not in lts-20.17
 
-  
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
