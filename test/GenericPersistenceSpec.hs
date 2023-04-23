@@ -35,13 +35,6 @@ data Person = Person
   }
   deriving (Generic, Entity, Show, Eq)
 
-nameField :: Field
-nameField = field "name"
-ageField :: Field
-ageField = field "age"
-addressField :: Field
-addressField = field "address"
-
 data Book = Book
   { book_id  :: Int,
     title    :: String,
@@ -78,15 +71,8 @@ manyPersons =
     Person 6 "Frank" 50 "1415 Walnut St"
   ]
 
-
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
-
-lower :: Field -> Field
-lower = sqlFun "LOWER";
-
-upper :: Field -> Field
-upper = sqlFun "UPPER";
 
 spec :: Spec
 spec = do
