@@ -25,6 +25,8 @@ module Database.GP.Query
     allEntries,
     idColumn,
     byId,
+    orderBy,
+    SortOrder (..),
   )
 where
 
@@ -59,7 +61,10 @@ data WhereClauseExpr
   | Not WhereClauseExpr
   | All
   | ById SqlValue
+  | OrderBy WhereClauseExpr [(Field, SortOrder)]
   deriving (Show, Eq)
+
+data SortOrder = ASC | DESC deriving (Show, Eq)
 
 field :: String -> Field
 field = Field []
@@ -112,6 +117,12 @@ byId = ById . toSql
 sqlFun :: String -> Field -> Field
 sqlFun fun (Field funs name) = Field (fun : funs) name
 
+infixl 1 `orderBy`
+
+orderBy :: WhereClauseExpr -> [(Field, SortOrder)] -> WhereClauseExpr
+orderBy = OrderBy
+
+
 whereClauseExprToSql :: forall a. (Entity a) => WhereClauseExpr -> String
 whereClauseExprToSql (Where f op _) = column ++ " " ++ opToSql op ++ " ?"
   where
@@ -144,6 +155,15 @@ whereClauseExprToSql (ById _eid) = column ++ " = ?"
   where
     column = idColumn @a
 
+whereClauseExprToSql (OrderBy clause pairs) = whereClauseExprToSql @a clause ++ " ORDER BY " ++ renderedPairs pairs
+  where
+    renderedPairs [(f,order)] = column f ++ " " ++ show order
+    renderedPairs (hd:tl) = renderedPairs [hd] ++ ", " ++ renderedPairs tl
+    renderedPairs [] = ""
+    column f = expandFunctions f $ columnNameFor @a (getName f)
+
+
+
 idColumn :: forall a. (Entity a) => String
 idColumn = columnNameFor @a (idField @a)
 
@@ -161,6 +181,7 @@ whereClauseValues (WhereIn _ v) = map toSql v
 whereClauseValues (WhereIsNull _) = []
 whereClauseValues All = []
 whereClauseValues (ById eid) = [toSql eid]
+whereClauseValues (OrderBy clause _) = whereClauseValues clause
 
 params :: Int -> [String]
 params n = replicate n "?"

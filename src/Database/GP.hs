@@ -45,6 +45,9 @@ module Database.GP
     not',
     sqlFun,
     allEntries,
+    byId,
+    orderBy,
+    SortOrder (..),
   )
 where
 

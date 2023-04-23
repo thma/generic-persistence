@@ -47,6 +47,8 @@ module Database.GP.GenericPersistence
     sqlFun,
     allEntries,
     byId,
+    orderBy,
+    SortOrder (..),
   )
 where
 

@@ -51,6 +51,8 @@ module Database.GP.GenericPersistenceSafe
     sqlFun,
     allEntries,
     byId,
+    orderBy,
+    SortOrder (..),
   )
 where
 
@@ -118,6 +120,7 @@ fromException ex = DatabaseError $ show ex
 --   The `WhereClauseExpr` is typically constructed using any tiny query dsl based on infix operators.
 select :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
 select conn whereClause = do
+  --print stmt
   eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
     Left ex          -> return $ Left ex

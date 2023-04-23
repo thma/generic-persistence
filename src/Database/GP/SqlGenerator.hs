@@ -28,6 +28,8 @@ module Database.GP.SqlGenerator
     sqlFun,
     allEntries,
     byId,
+    orderBy,
+    SortOrder (..),
   )
 where
 

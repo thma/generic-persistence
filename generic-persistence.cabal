@@ -59,6 +59,7 @@ test-suite generic-persistence-test
       ExceptionsSpec
       GenericPersistenceSpec
       OneToManySpec
+      QuerySpec
       ReferenceSpec
       Paths_generic_persistence
   hs-source-dirs:

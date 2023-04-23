@@ -112,42 +112,7 @@ spec = do
       length allBooks `shouldBe` 3
       head allBooks `shouldBe` hobbit
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
-      book' `shouldBe` Just hobbit
-    it "retrieves Entities using a simple Query DSL" $ do
-      conn <- prepareDB
-      let bob = Person 1 "Bob" 36 "West Street 79"
-          alice = Person 2 "Alice" 25 "West Street 90"
-          charlie = Person 3 "Charlie" 35 "West Street 40"
-      insertMany conn [alice, bob, charlie]
-      one <- select conn (nameField =. "Bob" &&. ageField =. (36 :: Int))
-      length one `shouldBe` 1
-      head one `shouldBe` bob
-      two <- select conn (nameField =. "Bob" ||. ageField =. (25 :: Int))
-      length two `shouldBe` 2
-      two `shouldContain` [bob, alice]
-      three <- select conn (addressField `like` "West Street %") :: IO [Person]
-      length three `shouldBe` 3
-      empty <- select conn (not' $ addressField `like` "West Street %") :: IO [Person]
-      length empty `shouldBe` 0
-      boomers <- select conn (ageField >. (30 :: Int))
-      length boomers `shouldBe` 2
-      boomers `shouldContain` [bob, charlie]
-      thirtySomethings <- select conn (ageField `between` (30 :: Int, 40 :: Int)) :: IO [Person]
-      length thirtySomethings `shouldBe` 2
-      thirtySomethings `shouldContain` [bob, charlie]
-      aliceAndCharlie <- select conn (nameField `in'` ["Alice", "Charlie"])
-      length aliceAndCharlie `shouldBe` 2
-      aliceAndCharlie `shouldContain` [alice, charlie]
-      noOne <- select conn (isNull nameField) :: IO [Person]
-      length noOne `shouldBe` 0
-      allPersons <- select conn (not' $ isNull nameField) :: IO [Person]
-      length allPersons `shouldBe` 3
-      peopleFromWestStreet <- select conn (lower(upper addressField) `like` "west street %") :: IO [Person]
-      length peopleFromWestStreet `shouldBe` 3
-      charlie' <- select conn (byId "3") :: IO [Person]
-      length charlie' `shouldBe` 1
-      head charlie' `shouldBe` charlie
-      
+      book' `shouldBe` Just hobbit      
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
