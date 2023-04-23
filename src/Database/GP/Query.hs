@@ -139,6 +139,9 @@ whereClauseExprToSql (Where f op _) = column ++ " " ++ opToSql op ++ " ?"
     opToSql Contains = "CONTAINS"
 whereClauseExprToSql (And e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") AND (" ++ whereClauseExprToSql @a e2 ++ ")"
 whereClauseExprToSql (Or e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") OR (" ++ whereClauseExprToSql @a e2 ++ ")"
+whereClauseExprToSql (Not (WhereIsNull f)) = column ++ " IS NOT NULL"
+  where
+    column = expandFunctions f $ columnNameFor @a (getName f)
 whereClauseExprToSql (Not e) = "NOT (" ++ whereClauseExprToSql @a e ++ ")"
 whereClauseExprToSql (WhereBetween f (_v1, _v2)) = column ++ " BETWEEN ? AND ?"
   where
