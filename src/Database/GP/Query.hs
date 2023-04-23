@@ -27,6 +27,8 @@ module Database.GP.Query
     byId,
     orderBy,
     SortOrder (..),
+    limit,
+    limitOffset,
   )
 where
 
@@ -62,6 +64,8 @@ data WhereClauseExpr
   | All
   | ById SqlValue
   | OrderBy WhereClauseExpr [(Field, SortOrder)]
+  | Limit WhereClauseExpr Int
+  | LimitOffset WhereClauseExpr Int Int
   deriving (Show, Eq)
 
 data SortOrder = ASC | DESC deriving (Show, Eq)
@@ -122,50 +126,46 @@ infixl 1 `orderBy`
 orderBy :: WhereClauseExpr -> [(Field, SortOrder)] -> WhereClauseExpr
 orderBy = OrderBy
 
+limit :: WhereClauseExpr -> Int -> WhereClauseExpr
+limit = Limit 
+
+limitOffset :: WhereClauseExpr -> (Int, Int) -> WhereClauseExpr
+limitOffset c (offset, lim) = LimitOffset c offset lim
+
 
 whereClauseExprToSql :: forall a. (Entity a) => WhereClauseExpr -> String
-whereClauseExprToSql (Where f op _) = column ++ " " ++ opToSql op ++ " ?"
-  where
-    column = expandFunctions f $ columnNameFor @a (getName f)
-
-    opToSql :: CompareOp -> String
-    opToSql Eq       = "="
-    opToSql Gt       = ">"
-    opToSql Lt       = "<"
-    opToSql GtEq     = ">="
-    opToSql LtEq     = "<="
-    opToSql NotEq    = "<>"
-    opToSql Like     = "LIKE"
-    opToSql Contains = "CONTAINS"
+whereClauseExprToSql (Where f op _) = columnToSql @a f ++ " " ++ opToSql op ++ " ?"
 whereClauseExprToSql (And e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") AND (" ++ whereClauseExprToSql @a e2 ++ ")"
 whereClauseExprToSql (Or e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") OR (" ++ whereClauseExprToSql @a e2 ++ ")"
-whereClauseExprToSql (Not (WhereIsNull f)) = column ++ " IS NOT NULL"
-  where
-    column = expandFunctions f $ columnNameFor @a (getName f)
+whereClauseExprToSql (Not (WhereIsNull f)) = columnToSql @a f ++ " IS NOT NULL"
 whereClauseExprToSql (Not e) = "NOT (" ++ whereClauseExprToSql @a e ++ ")"
-whereClauseExprToSql (WhereBetween f (_v1, _v2)) = column ++ " BETWEEN ? AND ?"
+whereClauseExprToSql (WhereBetween f (_v1, _v2)) = columnToSql @a f ++ " BETWEEN ? AND ?"
+whereClauseExprToSql (WhereIn f v) = columnToSql @a f ++ " IN (" ++ args ++ ")"
   where
-    column = expandFunctions f $ columnNameFor @a (getName f)
-whereClauseExprToSql (WhereIn f v) = column ++ " IN (" ++ args ++ ")"
-  where
-    column = expandFunctions f $ columnNameFor @a (getName f)
     args = intercalate ", " (params (length v))
-whereClauseExprToSql (WhereIsNull f) = column ++ " IS NULL"
-  where
-    column = expandFunctions f $ columnNameFor @a (getName f)
+whereClauseExprToSql (WhereIsNull f) = columnToSql @a f ++ " IS NULL"
 whereClauseExprToSql All = "1=1"
-whereClauseExprToSql (ById _eid) = column ++ " = ?"
-  where
-    column = idColumn @a
-
+whereClauseExprToSql (ById _eid) = idColumn @a ++ " = ?"
 whereClauseExprToSql (OrderBy clause pairs) = whereClauseExprToSql @a clause ++ " ORDER BY " ++ renderedPairs pairs
   where
-    renderedPairs [(f,order)] = column f ++ " " ++ show order
-    renderedPairs (hd:tl) = renderedPairs [hd] ++ ", " ++ renderedPairs tl
     renderedPairs [] = ""
-    column f = expandFunctions f $ columnNameFor @a (getName f)
+    renderedPairs [(f,order)] = columnToSql @a f ++ " " ++ show order
+    renderedPairs (hd:tl) = renderedPairs [hd] ++ ", " ++ renderedPairs tl
+whereClauseExprToSql (Limit clause x) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show x
+whereClauseExprToSql (LimitOffset clause offset lim) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show lim ++ " OFFSET " ++ show offset 
+    
+opToSql :: CompareOp -> String
+opToSql Eq       = "="
+opToSql Gt       = ">"
+opToSql Lt       = "<"
+opToSql GtEq     = ">="
+opToSql LtEq     = "<="
+opToSql NotEq    = "<>"
+opToSql Like     = "LIKE"
+opToSql Contains = "CONTAINS"
 
-
+columnToSql :: forall a. (Entity a) => Field -> String
+columnToSql f = expandFunctions f $ columnNameFor @a (getName f)
 
 idColumn :: forall a. (Entity a) => String
 idColumn = columnNameFor @a (idField @a)
@@ -185,6 +185,8 @@ whereClauseValues (WhereIsNull _) = []
 whereClauseValues All = []
 whereClauseValues (ById eid) = [toSql eid]
 whereClauseValues (OrderBy clause _) = whereClauseValues clause
+whereClauseValues (Limit clause _) = whereClauseValues clause
+whereClauseValues (LimitOffset clause _ _) = whereClauseValues clause
 
 params :: Int -> [String]
 params n = replicate n "?"

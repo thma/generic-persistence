@@ -53,6 +53,8 @@ module Database.GP.GenericPersistenceSafe
     byId,
     orderBy,
     SortOrder (..),
+    limit,
+    limitOffset,
   )
 where
 

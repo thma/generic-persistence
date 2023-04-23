@@ -49,6 +49,8 @@ module Database.GP.GenericPersistence
     byId,
     orderBy,
     SortOrder (..),
+    limit,
+    limitOffset,
   )
 where
 

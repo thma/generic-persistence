@@ -30,6 +30,8 @@ module Database.GP.SqlGenerator
     byId,
     orderBy,
     SortOrder (..),
+    limit,
+    limitOffset,
   )
 where
 

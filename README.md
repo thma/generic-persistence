@@ -4,6 +4,27 @@
 
 ![GP Logo](https://github.com/thma/generic-persistence/blob/main/gp-logo-300.png?raw=true)
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Status](#status)
+- [Available on Hackage](#available-on-hackage)
+- [Short demo](#short-demo)
+- [Deal with runtime exceptions or use total functions? Your choice!](#deal-with-runtime-exceptions-or-use-total-functions-your-choice)
+  - [Exceptions in the default API](#exceptions-in-the-default-api)
+  - [Total functions in the safe API](#total-functions-in-the-safe-api)
+- [How it works](#how-it-works)
+  - [Default Behaviour](#default-behaviour)
+  - [Customizing The Default Behaviour](#customizing-the-default-behaviour)
+- [Handling enumeration fields](#handling-enumeration-fields)
+- [Handling embedded Objects](#handling-embedded-objects)
+- [Handling 1:1 references](#handling-11-references)
+- [Handling 1:N references](#handling-1n-references)
+- [Performing queries with the Query DSL](#performing-queries-with-the-query-dsl)
+- [Integrating user defined queries](#integrating-user-defined-queries)
+- [The Conn ConnectionContext Type](#the-conn-connection-type)
+- [Connection Pooling](#connection-pooling)
+
 ## Introduction
 
 GenericPersistence is a small Haskell persistence layer for relational databases. 
@@ -13,7 +34,6 @@ The *functional goal* of the persistence layer is to provide hassle-free RDBMS p
 Record notation (for simplicity I call these *Entities*).
 
 It therefore provides means for inserting, updating, deleting and querying such entities into/from relational databases.
-
 
 The main *design goal* is to minimize the *boilerplate* code required:
 
@@ -118,7 +138,7 @@ main = do
 
 GenericPersistence provides two different APIs for accessing the database:
 - the default API (as shown in the above demo), which uses exceptions to signal errors
-- the total API, which uses `Either` to signal errors
+- the safe API, which uses `Either` to signal errors
 
 ### Exceptions in the default API
 The default API is the easiest to use, but you will have to do exception handling to catch runtime errors. To use it you'll have to import the `Database.GP` module:
@@ -148,9 +168,9 @@ The `NoUniqueKey` exception is thrown when you try to select an entity by its pr
 
 A real world example can be found in the [Servant GP - UserServer](https://github.com/thma/servant-gp/blob/main/src/UserServer.hs) module.
 
-### Total functions in the total API
+### Total functions in the safe API
 
-The total API is a bit more verbose, but it does not throw exceptions. To use it you'll have to import the `Database.GP.GenericPersistenceSafe` module:
+The safe API is a bit more verbose, but it does not throw exceptions. To use it you'll have to import the `Database.GP.GenericPersistenceSafe` module:
 
 ```haskell
 import Database.GP.GenericPersistenceSafe
@@ -167,7 +187,7 @@ case eitherExRes of
 
 This may look a bit verbose, but in actual code this may work out better, as `Either` allows pattern matching and chaining of computations with the `do` notation.
 
-A real world example can be found in the [Servant GP - UserServerSafe](https://github.com/thma/servant-gp/blob/main/src/UserServerSafe.hs) module. The `UserServerSafe` module is a copy of the `UserServer` module, but it uses the total API instead of the default API. As you can see, the code of `UserServerSafe` is actually a bit more compact than the code of UserServer. (In the default API, we have to deal with the special case of `selectById` returning `Nothing`.)
+A real world example can be found in the [Servant GP - UserServerSafe](https://github.com/thma/servant-gp/blob/main/src/UserServerSafe.hs) module. The `UserServerSafe` module is a copy of the `UserServer` module, but it uses the safe API instead of the default API. As you can see, the code of `UserServerSafe` is actually a bit more compact than the code of UserServer. (In the default API, we have to deal with the special case of `selectById` returning `Nothing`.)
 
 ## How it works
 
@@ -546,7 +566,17 @@ ageField = field "age"
 thirtySomethings <- select @Person conn (ageField `between` (30, 39))
 ```
 
-You will find more examples in the [test suite](https://github.com/thma/generic-persistence/blob/main/test/GenericPersistenceSpec.hs#L116).
+It is also possible to add `ORDER BY` and `LIMIT` clauses to the query:
+
+```haskell
+sortedPersons <- select @Person conn (allEntries `orderBy` [(ageField,ASC), (nameField,DESC)])
+
+limitedPersons <- select @Person conn (allEntries `limit` 25)
+
+pageOfPersons <- select @Person conn (allEntries `limitOffset` (100,10))
+```
+
+You will find more examples in the [test suite](https://github.com/thma/generic-persistence/blob/main/test/QuerySpec.hs).
 
 
 ## Integrating user defined queries

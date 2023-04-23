@@ -48,6 +48,8 @@ module Database.GP
     byId,
     orderBy,
     SortOrder (..),
+    limit,
+    limitOffset,
   )
 where
 
