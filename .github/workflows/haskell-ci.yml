@@ -47,6 +47,12 @@ jobs:
       run: |
         stack test --system-ghc --coverage
 
+    - name: Install & run hpc-CodeCov
+      run: |
+        stack install hpc-codecov
+        hpc-codecov stack:all -o codecov.json
+        
+
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:
