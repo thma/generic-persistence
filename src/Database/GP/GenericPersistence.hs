@@ -37,7 +37,7 @@ module Database.GP.GenericPersistence
     (<=.),
     (<>.),
     like,
-    contains,
+    --contains,
     between,
     in',  
     isNull,

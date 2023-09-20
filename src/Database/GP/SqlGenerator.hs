@@ -20,7 +20,6 @@ module Database.GP.SqlGenerator
     (<=.),
     (<>.),
     like,
-    contains,
     between,
     in',
     isNull,

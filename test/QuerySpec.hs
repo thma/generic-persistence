@@ -76,6 +76,14 @@ spec = do
       boomers <- select conn (ageField >. (30 :: Int))
       length boomers `shouldBe` 2
       boomers `shouldContain` [bob, charlie]
+      teens <- select conn (ageField <. (20 :: Int)) :: IO [Person]
+      length teens `shouldBe` 0
+      wisePerson <- select conn (ageField >=. (50 :: Int)) :: IO [Person]
+      length wisePerson `shouldBe` 0
+      notAbove25 <- select conn (ageField <=. (25 :: Int)) :: IO [Person]
+      length notAbove25 `shouldBe` 1
+      allButBob <- select conn (ageField <>. (36 :: Int)) :: IO [Person]
+      length allButBob `shouldBe` 2
     it "supports BETWEEN" $ do
       conn <- prepareDB
       thirtySomethings <- select conn (ageField `between` (30 :: Int, 40 :: Int)) :: IO [Person]

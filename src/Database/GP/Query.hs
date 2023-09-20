@@ -15,7 +15,6 @@ module Database.GP.Query
     (<=.),
     (<>.),
     like,
-    contains,
     between,
     in',
     isNull,
@@ -47,11 +46,9 @@ import           Data.List          (intercalate)
 import           Database.GP.Entity (Entity, columnNameFor, idField)
 import           Database.HDBC      (SqlValue, toSql)
 
-data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like | Contains
-  deriving (Show, Eq)
+data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like 
 
 data Field = Field [String] String
-  deriving (Show, Eq)
 
 data WhereClauseExpr
   = Where Field CompareOp SqlValue
@@ -66,9 +63,9 @@ data WhereClauseExpr
   | OrderBy WhereClauseExpr [(Field, SortOrder)]
   | Limit WhereClauseExpr Int
   | LimitOffset WhereClauseExpr Int Int
-  deriving (Show, Eq)
 
-data SortOrder = ASC | DESC deriving (Show, Eq)
+data SortOrder = ASC | DESC 
+  deriving (Show)
 
 field :: String -> Field
 field = Field []
@@ -86,7 +83,7 @@ infixl 2 ||.
 (||.) :: WhereClauseExpr -> WhereClauseExpr -> WhereClauseExpr
 (||.) = Or
 
-infixl 4 =., >., <., >=., <=., <>., `like`, `between`, `in'`, `contains`
+infixl 4 =., >., <., >=., <=., <>., `like`, `between`, `in'` 
 
 (=.), (>.), (<.), (>=.), (<=.), (<>.), like :: (Convertible b SqlValue) => Field -> b -> WhereClauseExpr
 a =. b = Where a Eq (toSql b)
@@ -96,9 +93,6 @@ a >=. b = Where a GtEq (toSql b)
 a <=. b = Where a LtEq (toSql b)
 a <>. b = Where a NotEq (toSql b)
 a `like` b = Where a Like (toSql b)
-
-contains :: Convertible a SqlValue => Field -> a -> WhereClauseExpr
-a `contains` b = Where a Contains (toSql b)
 
 between :: (Convertible a1 SqlValue, Convertible a2 SqlValue) => Field -> (a1, a2) -> WhereClauseExpr
 a `between` (b, c) = WhereBetween a (toSql b, toSql c)
@@ -162,7 +156,6 @@ opToSql GtEq     = ">="
 opToSql LtEq     = "<="
 opToSql NotEq    = "<>"
 opToSql Like     = "LIKE"
-opToSql Contains = "CONTAINS"
 
 columnToSql :: forall a. (Entity a) => Field -> String
 columnToSql f = expandFunctions f $ columnNameFor @a (getName f)

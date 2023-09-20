@@ -37,7 +37,7 @@ module Database.GP
     (<=.),
     (<>.),
     like,
-    contains,
+    --contains,
     between,
     in',
     isNull,
