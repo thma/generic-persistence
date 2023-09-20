@@ -1,6 +1,7 @@
 # GenericPersistence - A Haskell Persistence Layer using Generics
 
 [![Actions Status](https://github.com/thma/generic-persistence/workflows/Haskell%20CI/badge.svg)](https://github.com/thma/generic-persistence/actions)
+[![codecov](https://codecov.io/gh/thma/generic-persistence/graph/badge.svg?token=DBCFLEA8JZ)](https://codecov.io/gh/thma/generic-persistence)
 
 ![GP Logo](https://github.com/thma/generic-persistence/blob/main/gp-logo-300.png?raw=true)
 
