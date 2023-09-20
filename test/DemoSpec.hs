@@ -14,6 +14,7 @@ import           Database.HDBC         (disconnect)
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
 import           Test.Hspec
+import           Prelude               hiding (print)
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery.
@@ -29,6 +30,12 @@ data Person = Person
     address  :: String
   }
   deriving (Generic, Entity, Show) -- deriving Entity allows us to use the GenericPersistence API
+
+--print :: Show a => a -> IO ()
+--print = putStrLn . show
+
+print :: a -> IO ()
+print _ = pure ()
 
 spec :: Spec
 spec = do

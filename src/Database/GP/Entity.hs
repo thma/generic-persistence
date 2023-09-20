@@ -9,7 +9,6 @@
 module Database.GP.Entity
   ( Entity (..),
     columnNameFor,
-    toString,
     gtoRow,
     GToRow,
     GFromRow,
@@ -27,7 +26,6 @@ import           Database.GP.TypeInfo
 import           Database.HDBC        (SqlValue)
 import           GHC.Generics
 import           GHC.TypeNats
-import           Generics.Deriving.Show (GShow' (..), gshowsPrecdefault)
 import           Database.GP.Conn
 
 {- | This is the Entity class. It is a type class that is used to define the mapping
@@ -117,18 +115,7 @@ maybeFieldTypeFor field = lookup field (fieldsAndTypes (typeInfo @a))
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]
     fieldsAndTypes ti = zip (fieldNames ti) (fieldTypes ti)
 
--- | Returns a string representation of a value of type 'a'.
-toString :: forall a. (Generic a, GShow' (Rep a)) => a -> String
-toString = gshow
-  where
-    gshows :: a -> ShowS
-    gshows = gshowsPrecdefault 0
-
-    gshow :: a -> String
-    gshow x = gshows x ""
-
 -- generics based implementations for gFromRow and gToRow
--- toRow
 class GToRow f where
   gtoRow :: f a -> [SqlValue]
 
@@ -144,7 +131,6 @@ instance (GToRow a, GToRow b) => GToRow (a :*: b) where
 instance GToRow a => GToRow (M1 i c a) where
   gtoRow (M1 a) = gtoRow a
 
--- fromRow
 class GFromRow f where
   gfromRow :: [SqlValue] -> f a
 

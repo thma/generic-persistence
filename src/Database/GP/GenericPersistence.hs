@@ -11,7 +11,6 @@ module Database.GP.GenericPersistence
     delete,
     deleteMany,
     setupTableFor,
-    idValue,
     Conn(..),
     connect,
     Database(..),
@@ -23,7 +22,6 @@ module Database.GP.GenericPersistence
     GFromRow,
     columnNameFor,
     maybeFieldTypeFor,
-    toString,
     TypeInfo (..),
     typeInfo,
     PersistenceException(..),
@@ -57,7 +55,6 @@ where
 import           Control.Exception
 import           Control.Monad                      (when)
 import           Data.Convertible                   (Convertible)
-import           Data.List                          (elemIndex)
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.GenericPersistenceSafe (PersistenceException)
@@ -173,30 +170,3 @@ setupTableFor conn = do
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ createTableStmtFor @a (db conn)
   when (implicitCommit conn) $ commit conn
-
--- | A function that returns the primary key value of an entity as a SqlValue.
---   The function takes an HDBC connection and an entity as parameters.
-idValue :: forall a. (Entity a) => Conn -> a -> IO SqlValue
-idValue conn x = do
-  sqlValues <- toRow conn x
-  return (sqlValues !! idFieldIndex)
-  where
-    idFieldIndex = fieldIndex @a (idField @a)
-
--- | returns the index of a field of an entity.
---   The index is the position of the field in the list of fields of the entity.
---   If no such field exists, an error is thrown.
---   The function takes an field name as parameters,
---   the type of the entity is determined by the context.
-fieldIndex :: forall a. (Entity a) => String -> Int
-fieldIndex fieldName =
-  expectJust
-    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
-    (elemIndex fieldName fieldList)
-  where
-    ti = typeInfo @a
-    fieldList = fieldNames ti
-
-expectJust :: String -> Maybe a -> a
-expectJust _ (Just x)  = x
-expectJust err Nothing = error ("expectJust " ++ err)

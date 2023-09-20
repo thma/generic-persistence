@@ -39,7 +39,7 @@ data Conn = forall conn.
 
 -- | An enumeration of the supported database types.
 data Database = Postgres | MySQL | SQLite | Oracle | MSSQL
-  deriving (Show, Eq, Enum)
+  deriving (Show)
 
 -- | a smart constructor for the Conn type.
 connect :: forall conn. IConnection conn => Database -> conn -> Conn
