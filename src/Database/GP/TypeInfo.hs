@@ -23,7 +23,7 @@ data TypeInfo a = TypeInfo
     fieldNames      :: [String],
     fieldTypes      :: [SomeTypeRep]
   }
-  deriving (Show)
+  --deriving (Show)
 
 -- | this function is a smart constructor for TypeInfo objects.
 --   It takes a value of type `a` and returns a `TypeInfo a` object.
@@ -32,12 +32,12 @@ data TypeInfo a = TypeInfo
 typeInfo :: forall a. (HasConstructor (Rep a), HasSelectors (Rep a), Generic a) => TypeInfo a
 typeInfo =
   TypeInfo
-    { constructorName = gConstrName x,
-      fieldNames = map fst (gSelectors x),
-      fieldTypes = map snd (gSelectors x)
+    { constructorName = gConstrName (undefined :: a),
+      fieldNames = map fst (gSelectors (undefined :: a)),
+      fieldTypes = map snd (gSelectors (undefined :: a))
     }
-  where
-    x = undefined :: a
+  --where
+  --  x = undefined :: a
 
 -- Generic implementations
 
