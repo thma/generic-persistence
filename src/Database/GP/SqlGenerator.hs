@@ -7,6 +7,7 @@ module Database.GP.SqlGenerator
     deleteStmtFor,
     createTableStmtFor,
     dropTableStmtFor,
+    columnTypeFor,
     WhereClauseExpr,
     Field,
     field,

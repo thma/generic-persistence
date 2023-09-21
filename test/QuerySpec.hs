@@ -6,6 +6,7 @@ module QuerySpec
 where 
 
 import           Database.GP
+import           Database.GP.SqlGenerator
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 import           GHC.Generics
 import           Test.Hspec
@@ -133,3 +134,23 @@ spec = do
       limitedPersons <- select @Person conn (allEntries `limitOffset` (2,1))
       length limitedPersons `shouldBe` 1
       head limitedPersons `shouldBe` charlie
+    it "can create column types for a data type" $ do
+      columnTypeFor @SomeRecord SQLite "someRecordID" `shouldBe` "INTEGER"
+      columnTypeFor @SomeRecord SQLite "someRecordName" `shouldBe` "TEXT"
+      columnTypeFor @SomeRecord SQLite "someRecordAge" `shouldBe` "REAL"
+      columnTypeFor @SomeRecord SQLite "someRecordTax" `shouldBe` "REAL"
+      columnTypeFor @SomeRecord SQLite "someRecordFlag" `shouldBe` "INT"
+      columnTypeFor @SomeRecord SQLite "someRecordDate" `shouldBe` "TEXT"
+      print (columnTypeFor @SomeRecord Postgres "someRecordID") `shouldThrow` anyException
+
+      
+data SomeRecord = SomeRecord
+  { someRecordID :: Int,
+    someRecordName :: String,
+    someRecordAge :: Double,
+    someRecordTax :: Float,
+    someRecordFlag :: Bool,
+    someRecordDate :: Integer
+  }
+  deriving (Generic, Entity, Show, Eq)
+
