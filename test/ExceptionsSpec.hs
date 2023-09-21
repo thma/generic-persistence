@@ -56,7 +56,7 @@ spec = do
       eitherExRes <- insertMany conn [article,article] :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (DuplicateInsert _) -> expectationSuccess
-        _                        -> expectationFailure "Expected DuplicateInsert exception"        
+        _                        -> expectationFailure "Expected DuplicateInsert exception"
     it "detects missing entities in selectById" $ do
       conn <- prepareDB
       eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
@@ -95,3 +95,10 @@ spec = do
       _ <- deleteMany conn [article] :: IO (Either PersistenceException ())
 
       expectationSuccess
+
+    it "can find column names" $ do
+      let columnName = columnNameFor @Article "articleID"
+      columnName `shouldBe` "articleID"
+    it "throws an exception when column name is not found" $ do
+      let columnName = columnNameFor @Article "unknown"
+      print columnName `shouldThrow` errorCall "columnNameFor: Article has no column mapping for unknown"
