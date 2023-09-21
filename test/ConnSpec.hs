@@ -38,13 +38,26 @@ spec = do
     it "can work with embedded connection" $ do
       Conn{db=db',implicitCommit=ic, connection=conn} <- prepareDB
       db' `shouldBe` SQLite
+      show db' `shouldBe` "SQLite"
       ic `shouldBe` True
       
       runRaw conn "DROP TABLE IF EXISTS Person;"
       let conn' = connect SQLite conn
 
-      allPersons <- select conn' allEntries :: IO [Article]
-      allPersons `shouldBe` []
+      allArticles <- select conn' allEntries :: IO [Article]
+      allArticles `shouldBe` []
+
+    it "can handle rollback" $ do
+      conn <- prepareDB
+      let conn' = conn{implicitCommit=False}
+      let article = Article 1 "Hello" 2023
+      
+      insert conn' article
+      allArticles <- select conn' allEntries :: IO [Article]
+      allArticles `shouldBe` [article]
+      rollback conn'
+      allArticles' <- select conn' allEntries :: IO [Article]
+      allArticles' `shouldBe` []
 
     it "provide the IConnection methods" $ do
       conn <- prepareDB
@@ -52,6 +65,31 @@ spec = do
 
       desc <- describeTable conn "Article" 
       length desc `shouldBe` 3
+
+      let driverName = hdbcDriverName conn
+      driverName `shouldBe` "sqlite3"
+
+      let clientVer = hdbcClientVer conn
+      head clientVer `shouldBe` '3'
+
+      let proxiedClient = proxiedClientName conn
+      proxiedClient `shouldBe` "sqlite3"
+
+      let proxiedClientVerion = proxiedClientVer conn
+      head proxiedClientVerion `shouldBe` '3'
+
+      let serverVer = dbServerVer conn
+      head serverVer `shouldBe` '3'
+
+      let txSupport = dbTransactionSupport conn
+      txSupport `shouldBe` True
+
+      clonedConn <- clone conn
+      db clonedConn `shouldBe` db conn
+
+
+
+
       
       
       
