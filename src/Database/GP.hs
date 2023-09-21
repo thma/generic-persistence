@@ -1,7 +1,6 @@
 module Database.GP
   ( selectById,
     select,
-    entitiesFromRows,
     persist,
     insert,
     insertMany,
@@ -10,7 +9,6 @@ module Database.GP
     delete,
     deleteMany,
     setupTableFor,
-    --idValue,
     Conn(..),
     connect,
     Database(..),
@@ -37,7 +35,6 @@ module Database.GP
     (<=.),
     (<>.),
     like,
-    --contains,
     between,
     in',
     isNull,

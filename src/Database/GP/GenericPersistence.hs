@@ -2,7 +2,6 @@
 module Database.GP.GenericPersistence
   ( selectById,
     select,
-    entitiesFromRows,
     persist,
     insert,
     insertMany,
@@ -101,19 +100,6 @@ selectById conn idx = do
 select :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO [a]
 select conn whereClause = do
   eitherExEntities <- GpSafe.select @a conn whereClause
-  case eitherExEntities of
-    Left ex        -> throw ex
-    Right entities -> pure entities
-
--- | This function converts a list of database rows, represented as a `[[SqlValue]]` to a list of entities.
---   The function takes an HDBC connection and a list of database rows as parameters.
---   The type `a` is determined by the context of the function call.
---   The function returns a (possibly empty) list of all matching entities.
---   The function is used internally by `retrieveAll` and `retrieveAllWhere`.
---   But it can also be used to convert the result of a custom SQL query to a list of entities.
-entitiesFromRows :: forall a. (Entity a) => Conn -> [[SqlValue]] -> IO [a]
-entitiesFromRows conn rows = do
-  eitherExEntities <- GpSafe.entitiesFromRows @a conn rows
   case eitherExEntities of
     Left ex        -> throw ex
     Right entities -> pure entities
