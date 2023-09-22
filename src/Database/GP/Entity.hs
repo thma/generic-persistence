@@ -119,8 +119,8 @@ maybeFieldTypeFor field = lookup field (fieldsAndTypes (typeInfo @a))
 class GToRow f where
   gtoRow :: f a -> [SqlValue]
 
-instance GToRow U1 where
-  gtoRow U1 = mempty
+-- instance GToRow U1 where
+--   gtoRow U1 = mempty
 
 instance (Convertible a SqlValue) => GToRow (K1 i a) where
   gtoRow (K1 a) = pure $ convert a
@@ -134,8 +134,8 @@ instance GToRow a => GToRow (M1 i c a) where
 class GFromRow f where
   gfromRow :: [SqlValue] -> f a
 
-instance GFromRow U1 where
-  gfromRow = pure U1
+-- instance GFromRow U1 where
+--   gfromRow = pure U1
 
 instance (Convertible SqlValue a) => GFromRow (K1 i a) where
   gfromRow = K1 <$> convert . head
