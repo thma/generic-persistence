@@ -48,38 +48,38 @@ spec = do
       _ <- insert conn article
       eitherExRes <- insert conn article :: IO (Either PersistenceException ())
       case eitherExRes of
-        Left (DuplicateInsert _) -> expectationSuccess
+        Left (DuplicateInsert msg) -> do print msg; expectationSuccess
         _                        -> expectationFailure "Expected DuplicateInsert exception"
     it "detects duplicate inserts in insertMany" $ do
       conn <- prepareDB
       _ <- insert conn article
       eitherExRes <- insertMany conn [article,article] :: IO (Either PersistenceException ())
       case eitherExRes of
-        Left (DuplicateInsert _) -> expectationSuccess
+        Left (DuplicateInsert msg) -> do print msg; expectationSuccess
         _                        -> expectationFailure "Expected DuplicateInsert exception"
     it "detects missing entities in selectById" $ do
       conn <- prepareDB
       eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
       case eitherExRes of
-        Left (EntityNotFound _) -> expectationSuccess
+        Left (EntityNotFound msg) -> do print msg; expectationSuccess
         _                       -> expectationFailure "Expected EntityNotFound exception"
     it "detects missing entities in update" $ do
       conn <- prepareDB
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
       case eitherExRes of
-        Left (EntityNotFound _) -> expectationSuccess
+        Left (EntityNotFound msg) -> do print msg; expectationSuccess
         _                       -> expectationFailure "Expected EntityNotFound exception"
     it "detects missing entities in delete" $ do
       conn <- prepareDB
       eitherExRes <- delete conn article :: IO (Either PersistenceException ())
       case eitherExRes of
-        Left (EntityNotFound _) -> expectationSuccess
+        Left (EntityNotFound msg) -> do print msg; expectationSuccess
         _                       -> expectationFailure "Right: Expected EntityNotFound exception"
     it "detects general backend issues" $ do
       conn <- connect SQLite <$> connectSqlite3 ":memory:"
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
       case eitherExRes of
-        Left (DatabaseError _) -> expectationSuccess
+        Left (DatabaseError msg) -> do print msg; expectationSuccess
         _                      -> expectationFailure "Expected DatabaseError exception"
     it "has no leaking backend exceptions" $ do
       conn <- connect SQLite <$> connectSqlite3 ":memory:"
@@ -102,3 +102,4 @@ spec = do
     it "throws an exception when column name is not found" $ do
       let columnName = columnNameFor @Article "unknown"
       print columnName `shouldThrow` errorCall "columnNameFor: Article has no column mapping for unknown"
+    
