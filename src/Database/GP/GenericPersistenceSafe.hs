@@ -53,6 +53,7 @@ module Database.GP.GenericPersistenceSafe
     SortOrder (..),
     limit,
     limitOffset,
+    fieldIndex
   )
 where
 
@@ -168,9 +169,10 @@ insert conn entity = do
     Right _ -> return $ Right ()
 
 handleDuplicateInsert :: SomeException -> PersistenceException
-handleDuplicateInsert ex = if "UNIQUE constraint failed" `isInfixOf` show ex
-  then DuplicateInsert "Entity already exists in DB, use update instead"
-  else fromException ex
+handleDuplicateInsert ex = 
+  if "UNIQUE constraint failed" `isInfixOf` show ex
+    then DuplicateInsert "Entity already exists in DB, use update instead"
+    else fromException ex
 
 tryPE :: IO a -> IO (Either PersistenceException a)
 tryPE action = do

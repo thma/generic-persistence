@@ -11,6 +11,7 @@ import           Database.GP.GenericPersistenceSafe
 import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec
+import Database.HDBC
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. 
@@ -63,6 +64,15 @@ spec = do
       case eitherExRes of
         Left (EntityNotFound msg) -> do print msg; expectationSuccess
         _                       -> expectationFailure "Expected EntityNotFound exception"
+    it "detects non unique entities in selectById" $ do
+      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
+      _ <- insert conn article
+      _ <- insert conn article{title="another title"}
+      eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
+      case eitherExRes of
+        Left (NoUniqueKey msg) -> do print msg; expectationSuccess
+        _                          -> expectationFailure "Expected DuplicateEntity exception"
     it "detects missing entities in update" $ do
       conn <- prepareDB
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
@@ -102,4 +112,7 @@ spec = do
     it "throws an exception when column name is not found" $ do
       let columnName = columnNameFor @Article "unknown"
       print columnName `shouldThrow` errorCall "columnNameFor: Article has no column mapping for unknown"
+    it "reports unknown fields" $ do
+      let index = fieldIndex @Article "unknown"
+      print index `shouldThrow` errorCall "expectJust Field unknown is not present in type Article"
     
