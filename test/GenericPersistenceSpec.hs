@@ -10,7 +10,7 @@ where
 import           Database.GP.GenericPersistence
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
-import           GHC.Generics
+import           GHC.Generics hiding (Selector)
 import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
@@ -74,6 +74,9 @@ manyPersons =
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
 
+anyPersistenceException :: Selector PersistenceException
+anyPersistenceException = const True
+
 spec :: Spec
 spec = do
   describe "GenericPersistence" $ do
@@ -88,6 +91,13 @@ spec = do
       head allPersons `shouldBe` bob
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just bob
+    it "selectById returns Nothing if no Entity was found" $ do
+      conn <- prepareDB
+      person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
+      person' `shouldBe` Nothing
+    it "selectById throws an exception if things go wrong" $ do 
+      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      (selectById conn (1 :: Int) :: IO (Maybe Person)) `shouldThrow` anyPersistenceException
     it "retrieves Entities using user implementation" $ do
       conn <- prepareDB
       let hobbit = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
@@ -98,7 +108,14 @@ spec = do
       length allBooks `shouldBe` 3
       head allBooks `shouldBe` hobbit
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
-      book' `shouldBe` Just hobbit      
+      book' `shouldBe` Just hobbit     
+    it "select returns Nothing if no Entity was found" $ do
+      conn <- prepareDB
+      allPersons' <- select @Person conn allEntries
+      allPersons' `shouldBe` []
+    it "select throws an exception if things go wrong" $ do 
+      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      select @Person conn allEntries `shouldThrow` anyPersistenceException      
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
@@ -117,6 +134,9 @@ spec = do
       length allbooks' `shouldBe` 1
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
+    it "persist throws an exception if things go wrong" $ do 
+      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      persist conn book `shouldThrow` anyPersistenceException   
     it "persists existing Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]

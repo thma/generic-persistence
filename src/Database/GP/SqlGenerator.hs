@@ -115,7 +115,7 @@ columnTypeFor :: forall a. (Entity a) => Database -> String -> String
 columnTypeFor SQLite fieldName =
   case fType of
     "Int"    -> "INTEGER"
-    "String" -> "TEXT"
+    "[Char]" -> "TEXT"
     "Double" -> "REAL"
     "Float"  -> "REAL"
     "Bool"   -> "INT"

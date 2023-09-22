@@ -141,7 +141,7 @@ spec = do
       columnTypeFor @SomeRecord SQLite "someRecordTax" `shouldBe` "REAL"
       columnTypeFor @SomeRecord SQLite "someRecordFlag" `shouldBe` "INT"
       columnTypeFor @SomeRecord SQLite "someRecordDate" `shouldBe` "TEXT"
-      print (columnTypeFor @SomeRecord Postgres "someRecordID") `shouldThrow` anyException
+      print (columnTypeFor @SomeRecord Postgres "someRecordID") `shouldThrow` errorCall "Schema creation for Postgres not implemented yet"
 
       
 data SomeRecord = SomeRecord

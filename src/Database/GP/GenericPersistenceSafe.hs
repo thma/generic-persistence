@@ -83,7 +83,7 @@ data PersistenceException =
   | DuplicateInsert String
   | DatabaseError String
   | NoUniqueKey String
-  deriving (Show, Eq, Exception)
+  deriving (Show, Exception)
 
 -- | A function that retrieves an entity from a database.
 -- The function takes entity id as parameter.
