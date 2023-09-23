@@ -41,7 +41,6 @@ module Database.GP.GenericPersistenceSafe
     (<=.),
     (<>.),
     like,
-    --contains,
     between,
     in',
     isNull,
@@ -57,7 +56,7 @@ module Database.GP.GenericPersistenceSafe
   )
 where
 
-import           Control.Exception        (Exception, SomeException, try, throw)
+import           Control.Exception        (Exception, SomeException, try)
 import           Control.Monad            (when)
 import           Data.Convertible         (ConvertResult, Convertible)
 import           Data.Convertible.Base    (Convertible (safeConvert))
@@ -107,7 +106,7 @@ selectById conn idx = do
         _ -> return $ Left $ NoUniqueKey $ "More than one " ++ constructorName ti ++ " found for id " ++ show eid
   where
     ti = typeInfo @a
-    stmt = selectFromStmt @a (byId idx)
+    stmt = selectFromStmt @a byIdColumn
     eid = toSql idx
 
 fromException :: SomeException -> PersistenceException
@@ -147,7 +146,7 @@ persist :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException 
 persist conn entity = do
   eitherExRes <- try $ do
     eid <- idValue conn entity
-    let stmt = selectFromStmt @a (byId eid)
+    let stmt = selectFromStmt @a byIdColumn
     quickQuery conn stmt [eid] >>=
       \case
         []           -> insert conn entity

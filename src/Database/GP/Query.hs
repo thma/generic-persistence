@@ -24,6 +24,7 @@ module Database.GP.Query
     allEntries,
     idColumn,
     byId,
+    byIdColumn,
     orderBy,
     SortOrder (..),
     limit,
@@ -60,6 +61,7 @@ data WhereClauseExpr
   | Not WhereClauseExpr
   | All
   | ById SqlValue
+  | ByIdColumn
   | OrderBy WhereClauseExpr [(Field, SortOrder)]
   | Limit WhereClauseExpr Int
   | LimitOffset WhereClauseExpr Int Int
@@ -112,6 +114,9 @@ allEntries = All
 byId :: (Convertible a SqlValue) => a -> WhereClauseExpr
 byId = ById . toSql
 
+byIdColumn :: WhereClauseExpr
+byIdColumn = ByIdColumn
+
 sqlFun :: String -> Field -> Field
 sqlFun fun (Field funs name) = Field (fun : funs) name
 
@@ -140,6 +145,7 @@ whereClauseExprToSql (WhereIn f v) = columnToSql @a f ++ " IN (" ++ args ++ ")"
 whereClauseExprToSql (WhereIsNull f) = columnToSql @a f ++ " IS NULL"
 whereClauseExprToSql All = "1=1"
 whereClauseExprToSql (ById _eid) = idColumn @a ++ " = ?"
+whereClauseExprToSql ByIdColumn  = idColumn @a ++ " = ?"
 whereClauseExprToSql (OrderBy clause pairs) = whereClauseExprToSql @a clause ++ " ORDER BY " ++ renderedPairs pairs
   where
     renderedPairs [] = ""
@@ -177,6 +183,7 @@ whereClauseValues (WhereIn _ v) = map toSql v
 whereClauseValues (WhereIsNull _) = []
 whereClauseValues All = []
 whereClauseValues (ById eid) = [toSql eid]
+whereClauseValues ByIdColumn = []
 whereClauseValues (OrderBy clause _) = whereClauseValues clause
 whereClauseValues (Limit clause _) = whereClauseValues clause
 whereClauseValues (LimitOffset clause _ _) = whereClauseValues clause

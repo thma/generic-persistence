@@ -31,10 +31,10 @@ data TypeInfo a = TypeInfo
 typeInfo :: forall a. (HasConstructor (Rep a), HasSelectors (Rep a), Generic a) => TypeInfo a
 typeInfo =
   TypeInfo
-    { constructorName = gConstrName x,
-      fieldNames = map fst (gSelectors x),
-      fieldTypes = map snd (gSelectors x)
-    } where x = undefined :: a
+    { constructorName = gConstrName (undefined :: a),
+      fieldNames = map fst (gSelectors (undefined :: a)),
+      fieldTypes = map snd (gSelectors (undefined :: a))
+    } 
 
 -- Generic implementations
 gConstrName :: (HasConstructor (Rep a), Generic a) => a -> String

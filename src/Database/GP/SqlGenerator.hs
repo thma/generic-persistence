@@ -28,6 +28,7 @@ module Database.GP.SqlGenerator
     sqlFun,
     allEntries,
     byId,
+    byIdColumn,
     orderBy,
     SortOrder (..),
     limit,
