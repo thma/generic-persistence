@@ -12,6 +12,7 @@ import           Database.HDBC
 import           Database.HDBC.Sqlite3
 import           GHC.Generics hiding (Selector)
 import           Test.Hspec
+import           Control.Exception
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. 
@@ -74,9 +75,6 @@ manyPersons =
 book :: Book
 book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
 
-anyPersistenceException :: Selector PersistenceException
-anyPersistenceException = const True
-
 spec :: Spec
 spec = do
   describe "GenericPersistence" $ do
@@ -95,9 +93,13 @@ spec = do
       conn <- prepareDB
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Nothing
-    it "selectById throws an exception if things go wrong" $ do 
+    it "selectById throws a DatabaseError if things go wrong in the DB" $ do 
       conn <- connect SQLite <$> connectSqlite3 ":memory:"
-      (selectById conn (1 :: Int) :: IO (Maybe Person)) `shouldThrow` anyPersistenceException
+      eitherEA <- try (selectById conn (1 :: Int) :: IO (Maybe Person))
+      case eitherEA of
+        Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
+        Left  _ -> expectationFailure "Expected DatabaseError"
+        Right _ -> expectationFailure "Expected DatabaseError"  
     it "retrieves Entities using user implementation" $ do
       conn <- prepareDB
       let hobbit = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
@@ -113,9 +115,13 @@ spec = do
       conn <- prepareDB
       allPersons' <- select @Person conn allEntries
       allPersons' `shouldBe` []
-    it "select throws an exception if things go wrong" $ do 
+    it "select throws a DatabaseError if things go wrong" $ do 
       conn <- connect SQLite <$> connectSqlite3 ":memory:"
-      select @Person conn allEntries `shouldThrow` anyPersistenceException      
+      eitherEA <- try (select @Person conn allEntries)
+      case eitherEA of
+        Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
+        Left  _ -> expectationFailure "Expected DatabaseError"
+        Right _ -> expectationFailure "Expected DatabaseError"  
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
@@ -136,7 +142,11 @@ spec = do
       book' `shouldBe` Just book
     it "persist throws an exception if things go wrong" $ do 
       conn <- connect SQLite <$> connectSqlite3 ":memory:"
-      persist conn book `shouldThrow` anyPersistenceException   
+      eitherEA <- try (persist conn book)
+      case eitherEA of
+        Left (DatabaseError msg) -> msg `shouldContain` "no such table: BOOK_TBL"
+        Left  _ -> expectationFailure "Expected DatabaseError"
+        Right _ -> expectationFailure "Expected DatabaseError" 
     it "persists existing Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
@@ -154,7 +164,10 @@ spec = do
       persist conn book
       allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
-      persist conn book {year = 1938}
+      eitherEA <- try $ persist conn book {year = 1938} :: IO (Either PersistenceException ())
+      case eitherEA of
+        Left  _ -> expectationFailure "should not throw an exception"
+        Right x -> x `shouldBe` ()
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book {year = 1938}
     it "inserts Entities using Generics" $ do
