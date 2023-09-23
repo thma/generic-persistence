@@ -57,7 +57,7 @@ module Database.GP.GenericPersistenceSafe
   )
 where
 
-import           Control.Exception        (Exception, SomeException, try)
+import           Control.Exception        (Exception, SomeException, try, throw)
 import           Control.Monad            (when)
 import           Data.Convertible         (ConvertResult, Convertible)
 import           Data.Convertible.Base    (Convertible (safeConvert))
@@ -152,7 +152,7 @@ persist conn entity = do
       \case
         []           -> insert conn entity
         [_singleRow] -> update conn entity
-        _            -> error $ "More than one entity found for id " ++ show eid
+        _            -> return $ Left $ NoUniqueKey $ "More than one entity found for id " ++ show eid
   case eitherExRes of
     Left ex   -> return $ Left $ fromException ex
     Right res -> return res
