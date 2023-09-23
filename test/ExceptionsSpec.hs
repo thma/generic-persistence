@@ -12,6 +12,7 @@ import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec
 import           Database.HDBC
+import Control.Exception (throw)
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. 
@@ -32,6 +33,27 @@ data Article = Article
   }
   deriving (Generic, Entity, Show, Eq)
 
+data Bogus = Bogus
+  { bogusID :: Int,
+    bogusTitle :: String,
+    bogusYear :: Int
+  }
+  deriving (Generic, Show, Eq)
+
+instance Entity Bogus where
+  tableName = "Article"
+
+  fieldsToColumns :: [(String, String)]                  -- ommitting the articles field, 
+  fieldsToColumns =                                      -- as this can not be mapped to a single column
+    [ ("bogusID", "articleID"),
+      ("bogusTitle", "title"),
+      ("bogusYear", "year")
+    ]
+
+  fromRow :: Conn -> [SqlValue] -> IO Bogus
+  fromRow _conn _row = throw $ DatabaseError "can't create bogus"
+
+
 yearField :: Field
 yearField = field "year"
 
@@ -49,7 +71,7 @@ spec = do
       _ <- insert conn article
       eitherExRes <- insert conn article :: IO (Either PersistenceException ())
       case eitherExRes of
-        Left (DuplicateInsert msg) -> msg `shouldContain` "Entity already exists"
+        Left di@(DuplicateInsert _msg) -> show di `shouldContain` "Entity already exists"
         _                          -> expectationFailure "Expected DuplicateInsert exception"
     it "detects duplicate inserts in insertMany" $ do
       conn <- prepareDB
@@ -83,6 +105,16 @@ spec = do
       case eitherExRes of
         Left (NoUniqueKey msg) -> msg `shouldContain` "More than one Article found for id SqlString \"1\""
         _                      -> expectationFailure "Expected DuplicateEntity exception"
+
+    it "detects bogus data in selectById" $ do
+      conn <- prepareDB
+      _ <- insert conn article
+      eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Bogus)
+      case eitherExRes of
+        Left (DatabaseError msg) -> msg `shouldContain` "can't create bogus"
+        Left pe                  -> expectationFailure $ "Expected DatabaseError exception, got " ++ show pe
+        _                        -> expectationFailure "Expected DatabaseError exception"
+
     it "detects missing entities in update" $ do
       conn <- prepareDB
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
