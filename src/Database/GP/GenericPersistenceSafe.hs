@@ -52,7 +52,8 @@ module Database.GP.GenericPersistenceSafe
     SortOrder (..),
     limit,
     limitOffset,
-    fieldIndex
+    fieldIndex,
+    handleDuplicateInsert
   )
 where
 
@@ -83,7 +84,7 @@ data PersistenceException =
   | DuplicateInsert String
   | DatabaseError String
   | NoUniqueKey String
-  deriving (Show, Exception)
+  deriving (Show, Eq, Exception)
 
 -- | A function that retrieves an entity from a database.
 -- The function takes entity id as parameter.

@@ -28,7 +28,7 @@ module Database.GP.Query
     orderBy,
     SortOrder (..),
     limit,
-    limitOffset,
+    limitOffset
   )
 where
 
@@ -71,9 +71,6 @@ data SortOrder = ASC | DESC
 
 field :: String -> Field
 field = Field []
-
-getName :: Field -> String
-getName (Field _fns n) = n
 
 infixl 3 &&.
 
@@ -164,14 +161,14 @@ opToSql NotEq    = "<>"
 opToSql Like     = "LIKE"
 
 columnToSql :: forall a. (Entity a) => Field -> String
-columnToSql f = expandFunctions f $ columnNameFor @a (getName f)
+columnToSql = expandFunctions @a
 
 idColumn :: forall a. (Entity a) => String
 idColumn = columnNameFor @a (idField @a)
 
-expandFunctions :: Field -> String -> String
-expandFunctions (Field [] _name) col = col
-expandFunctions (Field (f : fs) name) col = f ++ "(" ++ expandFunctions (Field fs name) col ++ ")"
+expandFunctions :: forall a. (Entity a) => Field -> String -- -> String
+expandFunctions (Field [] name) = columnNameFor @a name
+expandFunctions (Field (f : fs) name) = f ++ "(" ++ expandFunctions @a (Field fs name) ++ ")"
 
 whereClauseValues :: WhereClauseExpr -> [SqlValue]
 whereClauseValues (Where _ _ v) = [toSql v]

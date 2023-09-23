@@ -142,7 +142,8 @@ spec = do
       columnTypeFor @SomeRecord SQLite "someRecordFlag" `shouldBe` "INT"
       columnTypeFor @SomeRecord SQLite "someRecordDate" `shouldBe` "TEXT"
       print (columnTypeFor @SomeRecord Postgres "someRecordID") `shouldThrow` errorCall "Schema creation for Postgres not implemented yet"
-
+    it "can create whereclauses" $ do
+      whereClauseValues byIdColumn `shouldBe` []
       
 data SomeRecord = SomeRecord
   { someRecordID :: Int,

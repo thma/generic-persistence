@@ -12,7 +12,7 @@ import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec
 import           Database.HDBC
-import Control.Exception (throw)
+import           Control.Exception
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery. 
@@ -158,4 +158,7 @@ spec = do
     it "reports unknown fields" $ do
       let index = fieldIndex @Article "unknown"
       print index `shouldThrow` errorCall "expectJust Field unknown is not present in type Article"
+
+    it "handles duplicate insert exceptions" $ do
+      handleDuplicateInsert (toException $ EntityNotFound "24" ) `shouldBe` DatabaseError "EntityNotFound \"24\""
     
