@@ -33,6 +33,7 @@ module Database.GP.SqlGenerator
     SortOrder (..),
     limit,
     limitOffset,
+    NonEmpty(..)
   )
 where
 

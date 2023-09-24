@@ -46,6 +46,7 @@ module Database.GP
     SortOrder (..),
     limit,
     limitOffset,
+    NonEmpty(..)
   )
 where
 

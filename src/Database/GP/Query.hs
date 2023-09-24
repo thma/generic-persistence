@@ -28,7 +28,8 @@ module Database.GP.Query
     orderBy,
     SortOrder (..),
     limit,
-    limitOffset
+    limitOffset,
+    NonEmpty(..)
   )
 where
 
@@ -46,6 +47,8 @@ import           Data.Convertible   (Convertible)
 import           Data.List          (intercalate)
 import           Database.GP.Entity (Entity, columnNameFor, idField)
 import           Database.HDBC      (SqlValue, toSql)
+import qualified Data.List.NonEmpty as NE
+import           Data.List.NonEmpty (NonEmpty(..))
 
 data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like 
 
@@ -62,7 +65,7 @@ data WhereClauseExpr
   | All
   | ById SqlValue
   | ByIdColumn
-  | OrderBy WhereClauseExpr [(Field, SortOrder)]
+  | OrderBy WhereClauseExpr (NonEmpty (Field, SortOrder))
   | Limit WhereClauseExpr Int
   | LimitOffset WhereClauseExpr Int Int
 
@@ -119,7 +122,7 @@ sqlFun fun (Field funs name) = Field (fun : funs) name
 
 infixl 1 `orderBy`
 
-orderBy :: WhereClauseExpr -> [(Field, SortOrder)] -> WhereClauseExpr
+orderBy :: WhereClauseExpr -> NonEmpty (Field, SortOrder) -> WhereClauseExpr
 orderBy = OrderBy
 
 limit :: WhereClauseExpr -> Int -> WhereClauseExpr
@@ -145,9 +148,8 @@ whereClauseExprToSql (ById _eid) = idColumn @a ++ " = ?"
 whereClauseExprToSql ByIdColumn  = idColumn @a ++ " = ?"
 whereClauseExprToSql (OrderBy clause pairs) = whereClauseExprToSql @a clause ++ " ORDER BY " ++ renderedPairs pairs
   where
-    renderedPairs [] = ""
-    renderedPairs [(f,order)] = columnToSql @a f ++ " " ++ show order
-    renderedPairs (hd:tl) = renderedPairs [hd] ++ ", " ++ renderedPairs tl
+    renderedPairs :: NonEmpty (Field, SortOrder) -> String
+    renderedPairs ne = intercalate ", " (NE.toList (NE.map (\(f,order) -> columnToSql @a f ++ " " ++ show order) ne))
 whereClauseExprToSql (Limit clause x) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show x
 whereClauseExprToSql (LimitOffset clause offset lim) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show lim ++ " OFFSET " ++ show offset 
     

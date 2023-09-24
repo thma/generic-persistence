@@ -48,6 +48,7 @@ module Database.GP.GenericPersistence
     SortOrder (..),
     limit,
     limitOffset,
+    NonEmpty(..)
   )
 where
 

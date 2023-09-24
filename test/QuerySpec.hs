@@ -114,13 +114,13 @@ spec = do
       head charlie' `shouldBe` charlie
     it "supports ORDER BY" $ do
       conn <- prepareDB
-      sortedPersons <- select @Person conn (allEntries `orderBy` [(ageField,ASC)])
+      sortedPersons <- select @Person conn (allEntries `orderBy` (ageField,ASC) :| [])
       length sortedPersons `shouldBe` 3
       sortedPersons `shouldBe` [alice, charlie, bob]
     it "supports multiple columns in ORDER BY" $ do
       conn <- prepareDB
       insert conn dave -- dave and charlie have the same age
-      sortedPersons <- select @Person conn (allEntries `orderBy` [(ageField,ASC), (nameField,DESC)])
+      sortedPersons <- select @Person conn (allEntries `orderBy` (ageField,ASC) :| [(nameField,DESC)])
       length sortedPersons `shouldBe` 4
       sortedPersons `shouldBe` [alice, dave, charlie, bob]
     it "supports LIMIT" $ do
