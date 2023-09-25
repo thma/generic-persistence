@@ -157,13 +157,18 @@ persist conn entity = do
     Left ex   -> return $ Left $ fromException ex
     Right res -> return res
 
+-- | A function that commits a transaction if the connection is in auto commit mode.
+--   The function takes an HDBC connection as parameter.
+commitIfAutoCommit :: Conn -> IO ()
+commitIfAutoCommit conn = when (implicitCommit conn) $ commit conn
+
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
 insert conn entity = do
   eitherExUnit <- try $ do
     row <- toRow conn entity
     _rowcount <- run conn (insertStmtFor @a) row
-    when (implicitCommit conn) $ commit conn
+    commitIfAutoCommit conn
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right _ -> return $ Right ()
@@ -190,7 +195,7 @@ insertMany conn entities = do
     rows <- mapM (toRow conn) entities
     stmt <- prepare conn (insertStmtFor @a)
     executeMany stmt rows
-    when (implicitCommit conn) $ commit conn
+    commitIfAutoCommit conn
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right _ -> return $ Right ()
@@ -206,7 +211,7 @@ update conn entity = do
     if rowcount == 0
       then return (Left (EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")))
       else do
-        when (implicitCommit conn) $ commit conn
+        commitIfAutoCommit conn
         return $ Right ()
   case eitherExUnit of
     Left ex      -> return $ Left $ fromException ex
@@ -222,7 +227,7 @@ updateMany conn entities = tryPE $ do
   stmt <- prepare conn (updateStmtFor @a)
   -- the update statement has one more parameter than the row: the id value for the where clause
   executeMany stmt (zipWith (\l x -> l ++ [x]) rows eids)
-  when (implicitCommit conn) $ commit conn
+  commitIfAutoCommit conn
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
@@ -234,7 +239,7 @@ delete conn entity = do
     if rowCount == 0
       then return (Left (EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")))
       else do
-        when (implicitCommit conn) $ commit conn
+        commitIfAutoCommit conn
         return $ Right ()
   case eitherExRes of
     Left ex      -> return $ Left $ fromException ex
@@ -248,7 +253,7 @@ deleteMany conn entities = tryPE $ do
   eids <- mapM (idValue conn) entities
   stmt <- prepare conn (deleteStmtFor @a)
   executeMany stmt (map (: []) eids)
-  when (implicitCommit conn) $ commit conn
+  commitIfAutoCommit conn
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection as parameter.
@@ -256,7 +261,7 @@ setupTableFor :: forall a. (Entity a) => Conn -> IO ()
 setupTableFor conn = do
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ createTableStmtFor @a (db conn)
-  when (implicitCommit conn) $ commit conn
+  commitIfAutoCommit conn
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.
