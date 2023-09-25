@@ -59,8 +59,8 @@ test-suite generic-persistence-test
       EnumSpec
       ExceptionsSpec
       GenericPersistenceSpec
+      OneToManySafeSpec
       OneToManySpec
-      OneToManySpecSafe
       QuerySpec
       ReferenceSpec
       Paths_generic_persistence

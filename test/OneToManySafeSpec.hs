@@ -1,7 +1,7 @@
 -- allows automatic derivation from Entity type class
 {-# LANGUAGE DeriveAnyClass #-}
 
-module OneToManySpecSafe
+module OneToManySafeSpec
   ( test,
     spec,
   )
@@ -109,13 +109,14 @@ spec = do
     it "works like a charm" $ do
       conn <- prepareDB
 
-      _ <- insert conn arthur
+      eitherPeUnit <- insert conn arthur
+      print eitherPeUnit
       _ <- insert conn article1
 
       authors <- fromRight [] <$> select @Author conn allEntries
       length authors `shouldBe` 1
 
-      articles' <- fromRight [] <$> select @Article conn allEntries
+      articles' <- fromRight [] <$> select @Article conn allEntries
       length articles' `shouldBe` 3
 
       eitherPeAuthor <- selectById @Author conn "2"
@@ -128,3 +129,46 @@ spec = do
       _ <- persist conn arthur {address = "New York"}
       eitherPeAuthor' <- selectById @Author conn "2"
       eitherPeAuthor' `shouldBe` Right arthur {address = "New York"}
+    it "delete returns unit in case of success" $ do
+      conn <- prepareDB
+      _ <- insert conn arthur
+      eitherPeUnit <- delete conn arthur
+      eitherPeUnit `shouldBe` Right ()
+    it "delete handles exceptions" $ do
+      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      eitherPeUnit <- delete conn arthur
+      case eitherPeUnit of
+        Left (DatabaseError msg) -> msg `shouldContain` "no such table: Author"
+        _ -> fail "should not happen"
+    it "insertMany works with references" $ do
+      conn <- prepareDB
+      let authors = [arthur, arthur{name="Bob", authorID=3, articles=[]}]
+      eitherPeUnit <- insertMany conn authors
+      eitherPeUnit `shouldBe` Right ()
+      eitherPeAuthors <- select @Author conn allEntries
+      eitherPeAuthors `shouldBe` Right authors
+    it "update works with references" $ do
+      conn <- prepareDB
+      _ <- insert conn arthur
+      eitherPeUnit <- update conn arthur {address = "New York"}
+      eitherPeUnit `shouldBe` Right ()
+      eitherPeAuthor <- selectById @Author conn "2"
+      eitherPeAuthor `shouldBe` Right arthur {address = "New York"}
+    it "updateMany works with references" $ do
+      conn <- prepareDB
+      let authors = [arthur, arthur{name="Bob", authorID=3, articles=[]}]
+      _ <- insertMany conn authors
+      eitherPeUnit <- updateMany conn (map (\a -> a {address = "New York"}) authors)
+      eitherPeUnit `shouldBe` Right ()
+      eitherPeAuthors <- select @Author conn allEntries
+      eitherPeAuthors `shouldBe` Right (map (\a -> a {address = "New York"}) authors)
+    it "deleteMany works with references" $ do
+      conn <- prepareDB
+      let authors = [arthur, arthur{name="Bob", authorID=3, articles=[]}]
+      _ <- insertMany conn authors
+      eitherPeUnit <- deleteMany conn authors
+      eitherPeUnit `shouldBe` Right ()
+      eitherPeAuthors <- select @Author conn allEntries
+      eitherPeAuthors `shouldBe` Right []
+
+
