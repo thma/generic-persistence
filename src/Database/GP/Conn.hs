@@ -38,7 +38,7 @@ data Conn = forall conn.
   }
 
 -- | An enumeration of the supported database types.
-data Database = Postgres | MySQL | SQLite | Oracle | MSSQL
+data Database = Postgres | SQLite -- | Oracle | MSSQL | MySQL
   deriving (Show, Eq)
 
 -- | a smart constructor for the Conn type.

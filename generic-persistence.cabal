@@ -61,6 +61,7 @@ test-suite generic-persistence-test
       GenericPersistenceSpec
       OneToManySafeSpec
       OneToManySpec
+      PostgresSpec
       QuerySpec
       ReferenceSpec
       Paths_generic_persistence
@@ -69,6 +70,7 @@ test-suite generic-persistence-test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HDBC
+    , HDBC-postgresql
     , HDBC-sqlite3
     , QuickCheck
     , base >=4.7 && <5

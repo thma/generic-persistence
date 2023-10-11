@@ -93,6 +93,7 @@ data PersistenceException =
 -- An error is thrown if there are more than one entity with the given id.
 selectById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException a)
 selectById conn idx = do
+  --print stmt
   eitherExResultRows <- try $ quickQuery conn stmt [eid]
   case eitherExResultRows of
     Left ex -> return $ Left $ fromException ex
@@ -259,9 +260,12 @@ deleteMany conn entities = tryPE $ do
 --   The function takes an HDBC connection as parameter.
 setupTableFor :: forall a. (Entity a) => Conn -> IO ()
 setupTableFor conn = do
+  print stmt
   runRaw conn $ dropTableStmtFor @a
-  runRaw conn $ createTableStmtFor @a (db conn)
+  runRaw conn $ stmt -- createTableStmtFor @a (db conn)
   commitIfAutoCommit conn
+  where
+    stmt = createTableStmtFor @a (db conn)
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.

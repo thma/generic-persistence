@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE LambdaCase          #-}
 
 module Database.GP.SqlGenerator
   ( insertStmtFor,
@@ -112,20 +113,33 @@ createTableStmtFor dbServer =
     optionalPK f = if isIdField f then " PRIMARY KEY" else ""
 
 -- | A function that returns the column type for a field of an entity.
--- TODO: Support other databases than just SQLite.
+-- TODO: Support other databases than just SQLite and Postgres.
 columnTypeFor :: forall a. (Entity a) => Database -> String -> String
-columnTypeFor SQLite fieldName =
-  case fType of
-    "Int"    -> "INTEGER"
-    "[Char]" -> "TEXT"
-    "Double" -> "REAL"
-    "Float"  -> "REAL"
-    "Bool"   -> "INT"
-    _        -> "TEXT"
+columnTypeFor dbDialect fieldName =
+  case dbDialect of
+    SQLite   -> columnTypeForSQLite fType
+    Postgres -> columnTypeForPostgres fType
   where
     maybeFType = maybeFieldTypeFor @a fieldName
     fType = maybe "OTHER" show maybeFType
-columnTypeFor other _ = error $ "Schema creation for " ++ show other ++ " not implemented yet"
+  
+    columnTypeForSQLite :: String -> String
+    columnTypeForSQLite = \case  
+        "Int"    -> "INTEGER"
+        "[Char]" -> "TEXT"
+        "Double" -> "REAL"
+        "Float"  -> "REAL"
+        "Bool"   -> "INT"
+        _        -> "TEXT"
+
+    columnTypeForPostgres :: String -> String
+    columnTypeForPostgres = \case  
+        "Int"    -> "numeric"
+        "[Char]" -> "varchar"
+        "Double" -> "numeric"
+        "Float"  -> "numeric"
+        "Bool"   -> "boolean"
+        _        -> "varchar"
 
 dropTableStmtFor :: forall a. (Entity a) => String
 dropTableStmtFor =
