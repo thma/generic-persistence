@@ -50,10 +50,12 @@ and persist it to any RDBMS without any additional effort.
 ## Status
 
 The library is still work in progress. All test cases are green and it should be ready for early adopters.
-But API changes are still possible and several things are still missing:
+As of now there is full support for SQLite and PostgreSQL. 
+Support for other databases will be implemented on demand.
+
+API changes are still possible and several things are still missing:
 
 - auto-incrementing primary keys
-- caching
 - coding free support for 1:1 and 1:n relationships (using more generics magic)
 - schema migration
 - ...
