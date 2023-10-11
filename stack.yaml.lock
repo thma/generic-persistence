@@ -12,6 +12,13 @@ packages:
   original:
     hackage: HDBC-sqlite3-2.3.3.1
 - completed:
+    hackage: HDBC-postgresql-2.5.0.1@sha256:37bb911cd996d12c91fa711002877f32f91bcc488de76d85a05865c3af9dc580,3032
+    pantry-tree:
+      sha256: bb1e349a28844e59ed36e1a3963cd6946e57f5e39244a6d36397d6291d68a138
+      size: 1611
+  original:
+    hackage: HDBC-postgresql-2.5.0.1
+- completed:
     hackage: resource-pool-0.4.0.0@sha256:9c1e448a159875e21a7e68697feee2b61a4e584720974fa465a2fa1bc0776c73,1342
     pantry-tree:
       sha256: 1008fbb9b6bd9d12925989f2708af612daa3a8ebf3a56763016231461d9e314f

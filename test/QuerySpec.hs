@@ -134,14 +134,20 @@ spec = do
       limitedPersons <- select @Person conn (allEntries `limitOffset` (2,1))
       length limitedPersons `shouldBe` 1
       head limitedPersons `shouldBe` charlie
-    it "can create column types for a data type" $ do
+    it "can create column types for a SqlLite" $ do
       columnTypeFor @SomeRecord SQLite "someRecordID" `shouldBe` "INTEGER"
       columnTypeFor @SomeRecord SQLite "someRecordName" `shouldBe` "TEXT"
       columnTypeFor @SomeRecord SQLite "someRecordAge" `shouldBe` "REAL"
       columnTypeFor @SomeRecord SQLite "someRecordTax" `shouldBe` "REAL"
       columnTypeFor @SomeRecord SQLite "someRecordFlag" `shouldBe` "INT"
       columnTypeFor @SomeRecord SQLite "someRecordDate" `shouldBe` "TEXT"
-      print (columnTypeFor @SomeRecord Postgres "someRecordID") `shouldThrow` errorCall "Schema creation for Postgres not implemented yet"
+    it "can create column types for a Postgres" $ do
+      columnTypeFor @SomeRecord Postgres "someRecordID" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord Postgres "someRecordName" `shouldBe` "varchar"
+      columnTypeFor @SomeRecord Postgres "someRecordAge" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord Postgres "someRecordTax" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord Postgres "someRecordFlag" `shouldBe` "boolean"
+      columnTypeFor @SomeRecord Postgres "someRecordDate" `shouldBe` "varchar"
     it "can create whereclauses" $ do
       whereClauseValues byIdColumn `shouldBe` []
       
