@@ -64,12 +64,12 @@ spec = do
       head one `shouldBe` bob
       commit conn
     -- TODO: FIXME  
-    -- it "supports disjunction with ||." $ do
-    --   conn <- prepareDB
-    --   two <- select conn (nameField =. "Bob" ||. ageField =. (25 :: Int))
-    --   length two `shouldBe` 2
-    --   two `shouldContain` [bob, alice]
-    --   commit conn
+    it "supports disjunction with ||." $ do
+      conn <- prepareDB
+      two <- select @Person conn (nameField =. "Bob" ||. ageField =. (25 :: Int))
+      length two `shouldBe` 2
+      two `shouldContain` [alice,bob]
+      commit conn
     it "supports LIKE" $ do
       conn <- prepareDB
       three <- select conn (addressField `like` "West Street %") :: IO [Person]

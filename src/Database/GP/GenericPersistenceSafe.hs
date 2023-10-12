@@ -260,7 +260,7 @@ deleteMany conn entities = tryPE $ do
 --   The function takes an HDBC connection as parameter.
 setupTableFor :: forall a. (Entity a) => Conn -> IO ()
 setupTableFor conn = do
-  print stmt
+  --print stmt
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ stmt -- createTableStmtFor @a (db conn)
   commitIfAutoCommit conn
