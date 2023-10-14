@@ -183,7 +183,7 @@ insertReturning conn entity = do
   eitherExUnit <- try $ do
     row <- toRow conn entity
     rowInserted <- quickQuery conn (insertReturningStmtFor @a) (tail row)
-    commitIfAutoCommit conn
+    --commitIfAutoCommit conn
     case rowInserted of
       [singleRow] -> fromRow conn singleRow
       _     -> error "insertReturning: more than one row inserted"

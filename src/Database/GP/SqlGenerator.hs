@@ -77,7 +77,7 @@ insertReturningStmtFor =
   where
     columns = columnNamesFor @a  
     insertColumns = filter (/= idColumn @a) columns 
-    returnColumns = "(" ++ intercalate ", " columns ++ ")" 
+    returnColumns = intercalate ", " columns -- ++ ")" 
 
 
 columnNamesFor :: forall a. Entity a => [String]

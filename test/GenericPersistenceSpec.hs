@@ -37,6 +37,12 @@ data Person = Person
   }
   deriving (Generic, Entity, Show, Eq)
 
+data Car = Car
+  { carID :: Int,
+    carType  :: String
+  }
+  deriving (Generic, Entity, Show, Eq)
+
 data Book = Book
   { book_id  :: Int,
     title    :: String,
@@ -192,6 +198,12 @@ spec = do
       length allPersons' `shouldBe` 1
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person
+    it "inserts Entities with autoincrement handling" $ do
+      conn <- prepareDB
+      _ <- run conn "CREATE TABLE Car (carID INTEGER PRIMARY KEY AUTOINCREMENT, carType TEXT);" []
+      myCar@(Car carId _) <- insertReturning conn (Car 0 "Honda Jazz")
+      myCar' <- selectById conn carId :: IO (Maybe Car)
+      myCar' `shouldBe` Just myCar
     it "inserts many Entities re-using a single prepared stmt" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]

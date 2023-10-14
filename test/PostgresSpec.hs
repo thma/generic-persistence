@@ -21,10 +21,12 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  con <- connect Postgres <$> connectPostgreSQL  "host=localhost dbname=postgres user=postgres password=admin port=5432" 
+  con <- connect Postgres <$> connectPostgreSQL  "host=localhost dbname=postgres user=postgres password=admin port=5431" 
   let conn = con{implicitCommit=False}
   setupTableFor @Person conn
   setupTableFor @Book conn
+  _ <- run conn "DROP TABLE IF EXISTS Car;" []
+  _ <- run conn "CREATE TABLE Car (carID serial4 PRIMARY KEY, carType varchar);" []
   commit conn
   return conn
 
@@ -34,6 +36,12 @@ data Person = Person
     name     :: String,
     age      :: Int,
     address  :: String
+  }
+  deriving (Generic, Entity, Show, Eq)
+
+data Car = Car
+  { carID :: Int,
+    carType  :: String
   }
   deriving (Generic, Entity, Show, Eq)
 
@@ -208,6 +216,12 @@ spec = do
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person
       commit conn
+    it "inserts Entities with autoincrement handling" $ do
+      conn <- prepareDB
+      myCar@(Car carId _) <- insertReturning conn (Car 0 "Honda Jazz")
+      myCar' <- selectById conn carId :: IO (Maybe Car)
+      myCar' `shouldBe` Just myCar
+      commit conn
     it "inserts many Entities re-using a single prepared stmt" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
@@ -291,7 +305,7 @@ spec = do
       length allBooks' `shouldBe` 0
       commit conn
     it "provides a Connection Pool" $ do
-      connPool <- postgreSQLPool "host=localhost dbname=postgres user=postgres password=admin port=5432" 
+      connPool <- postgreSQLPool "host=localhost dbname=postgres user=postgres password=admin port=5431" 
       withResource connPool $ \conn -> do
         setupTableFor @Person conn
         insert conn person

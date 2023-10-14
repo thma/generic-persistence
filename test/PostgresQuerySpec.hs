@@ -19,7 +19,7 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  con <- connect Postgres <$> connectPostgreSQL  "host=localhost dbname=postgres user=postgres password=admin port=5432" 
+  con <- connect Postgres <$> connectPostgreSQL  "host=localhost dbname=postgres user=postgres password=admin port=5431" 
   let conn = con{implicitCommit=False}
   setupTableFor @Person conn
 

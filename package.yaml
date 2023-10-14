@@ -16,6 +16,15 @@ description:         Please see the README on GitHub at <https://github.com/thma
 language: GHC2021    # See https://ghc-proposals.readthedocs.io/en/latest/proposals/0380-ghc2021.html
 tested-with: GHC==9.2.5, GHC==9.4.4
 
+default-extensions:
+- DuplicateRecordFields
+- DeriveAnyClass
+- DerivingStrategies
+#- OverloadedStrings
+- OverloadedRecordDot
+- TemplateHaskell
+- QuasiQuotes
+
 dependencies:
 - base >= 4.7 && < 5
 - convertible

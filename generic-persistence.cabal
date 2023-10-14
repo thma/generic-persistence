@@ -40,6 +40,13 @@ library
       Paths_generic_persistence
   hs-source-dirs:
       src
+  default-extensions:
+      DuplicateRecordFields
+      DeriveAnyClass
+      DerivingStrategies
+      OverloadedRecordDot
+      TemplateHaskell
+      QuasiQuotes
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       HDBC
@@ -70,6 +77,13 @@ test-suite generic-persistence-test
       Paths_generic_persistence
   hs-source-dirs:
       test
+  default-extensions:
+      DuplicateRecordFields
+      DeriveAnyClass
+      DerivingStrategies
+      OverloadedRecordDot
+      TemplateHaskell
+      QuasiQuotes
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HDBC
