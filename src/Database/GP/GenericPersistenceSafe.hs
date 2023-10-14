@@ -178,7 +178,8 @@ insert conn entity = do
 
 handleDuplicateInsert :: SomeException -> PersistenceException
 handleDuplicateInsert ex = 
-  if "UNIQUE constraint failed" `isInfixOf` show ex
+  if "UNIQUE constraint failed" `isInfixOf` show ex ||
+     "duplicate key value violates unique constraint" `isInfixOf` show ex
     then DuplicateInsert "Entity already exists in DB, use update instead"
     else fromException ex
 
