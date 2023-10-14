@@ -69,7 +69,7 @@ insertReturningStmtFor =
     ++ tableName @a
     ++ " ("
     ++ intercalate ", " insertColumns
-    ++ "VALUES ("
+    ++ ") VALUES ("
     ++ intercalate ", " (params (length insertColumns))
     ++ ") RETURNING "
     ++ returnColumns
