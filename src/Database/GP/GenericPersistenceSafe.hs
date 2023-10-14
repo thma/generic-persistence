@@ -182,7 +182,7 @@ insertReturning :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceEx
 insertReturning conn entity = do
   eitherExUnit <- try $ do
     row <- toRow conn entity
-    rowInserted <- quickQuery conn (insertReturningStmtFor @a) row
+    rowInserted <- quickQuery conn (insertReturningStmtFor @a) (tail row)
     commitIfAutoCommit conn
     case rowInserted of
       [singleRow] -> fromRow conn singleRow
