@@ -8,7 +8,6 @@ where
 import           Database.GP
 import           Database.GP.SqlGenerator
 import           Database.HDBC.PostgreSQL
-import           Database.HDBC
 import           GHC.Generics
 import           Test.Hspec
 

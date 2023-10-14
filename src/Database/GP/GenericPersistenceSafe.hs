@@ -10,6 +10,7 @@ module Database.GP.GenericPersistenceSafe
     sql,
     persist,
     insert,
+    insertReturning,
     insertMany,
     update,
     updateMany,
@@ -69,6 +70,7 @@ import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
 import           Text.RawString.QQ
+import           Language.Haskell.TH.Quote (QuasiQuoter)
 
 {- |
  This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
@@ -175,6 +177,19 @@ insert conn entity = do
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right _ -> return $ Right ()
+
+insertReturning :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a)
+insertReturning conn entity = do
+  eitherExUnit <- try $ do
+    row <- toRow conn entity
+    rowInserted <- quickQuery conn (insertReturningStmtFor @a) row
+    commitIfAutoCommit conn
+    case rowInserted of
+      [singleRow] -> fromRow conn singleRow
+      _     -> error "insertReturning: more than one row inserted"
+  case eitherExUnit of
+    Left ex -> return $ Left $ handleDuplicateInsert ex
+    Right a -> return $ Right a    
 
 handleDuplicateInsert :: SomeException -> PersistenceException
 handleDuplicateInsert ex = 
@@ -298,6 +313,7 @@ expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
 
 -- an alias for a simple quasiqouter
+sql :: QuasiQuoter
 sql = r
 
 -- | These instances are needed to make the Convertible type class work with Enum types out of the box.

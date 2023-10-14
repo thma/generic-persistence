@@ -3,6 +3,7 @@
 
 module Database.GP.SqlGenerator
   ( insertStmtFor,
+    insertReturningStmtFor,
     updateStmtFor,
     selectFromStmt,
     deleteStmtFor,
@@ -61,6 +62,23 @@ insertStmtFor =
     ++ ");"
   where
     columns = columnNamesFor @a
+
+insertReturningStmtFor :: forall a. Entity a => String
+insertReturningStmtFor =
+  "INSERT INTO "
+    ++ tableName @a
+    ++ " ("
+    ++ intercalate ", " insertColumns
+    ++ "VALUES ("
+    ++ intercalate ", " (params (length insertColumns))
+    ++ ") RETURNING "
+    ++ returnColumns
+    ++ ";"
+  where
+    columns = columnNamesFor @a  
+    insertColumns = filter (/= idColumn @a) columns 
+    returnColumns = "(" ++ intercalate ", " columns ++ ")" 
+
 
 columnNamesFor :: forall a. Entity a => [String]
 columnNamesFor = map snd fieldColumnPairs

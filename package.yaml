@@ -23,6 +23,7 @@ dependencies:
 - generic-deriving
 - resource-pool
 - raw-strings-qq
+- template-haskell
 
 ghc-options:
 - -Wall

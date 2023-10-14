@@ -48,6 +48,7 @@ library
     , generic-deriving
     , raw-strings-qq
     , resource-pool
+    , template-haskell
   default-language: GHC2021
 
 test-suite generic-persistence-test
@@ -83,5 +84,6 @@ test-suite generic-persistence-test
     , hspec-discover
     , raw-strings-qq
     , resource-pool
+    , template-haskell
   default-language: GHC2021
   build-tool-depends: hspec-discover:hspec-discover == 2.*

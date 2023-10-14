@@ -7,8 +7,7 @@ module PostgresSpec
   )
 where
 
-import           Database.GP.GenericPersistence
-import           Database.HDBC
+import           Database.GP
 import           Database.HDBC.PostgreSQL
 import           GHC.Generics hiding (Selector)
 import           Test.Hspec
