@@ -2,6 +2,8 @@
 module Database.GP.GenericPersistence
   ( selectById,
     select,
+    entitiesFromRows,
+    sql,
     persist,
     insert,
     insertMany,
@@ -57,7 +59,7 @@ import           Control.Monad                      (when)
 import           Data.Convertible                   (Convertible)
 import           Database.GP.Conn
 import           Database.GP.Entity
-import           Database.GP.GenericPersistenceSafe (PersistenceException)
+import           Database.GP.GenericPersistenceSafe (PersistenceException, sql)
 import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
@@ -105,50 +107,58 @@ select conn whereClause = do
     Left ex        -> throw ex
     Right entities -> pure entities
 
-fromEitherExUnit :: IO (Either PersistenceException ()) -> IO ()
-fromEitherExUnit ioEitherExUnit = do
+fromEitherExOrA :: IO (Either PersistenceException a) -> IO a
+fromEitherExOrA ioEitherExUnit = do
   eitherExUnit <- ioEitherExUnit
   case eitherExUnit of
     Left ex -> throw ex
-    Right _ -> pure ()
+    Right a -> pure a
+
+-- | A function that constructs a list of entities from a list of rows.
+--   The function takes an HDBC connection and a list of rows as parameters.
+--   The type `a` is determined by the context of the function call.
+--   The function returns a list of entities.
+--   This can be useful if you want to use your own SQL queries.
+entitiesFromRows :: forall a. (Entity a) => Conn -> [[SqlValue]] -> IO [a]
+entitiesFromRows = (fromEitherExOrA .) . GpSafe.entitiesFromRows
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 persist :: forall a. (Entity a) => Conn -> a -> IO ()
-persist = (fromEitherExUnit .) . GpSafe.persist
+persist = (fromEitherExOrA .) . GpSafe.persist
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO ()
-insert = (fromEitherExUnit .) . GpSafe.insert
+insert = (fromEitherExOrA .) . GpSafe.insert
 
 -- | A function that inserts a list of entities into a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The insert-statement is compiled only once and then executed for each entity.
 insertMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
-insertMany = (fromEitherExUnit .) . GpSafe.insertMany
+insertMany = (fromEitherExOrA .) . GpSafe.insertMany
 
 -- | A function that explicitely updates an entity in a database.
 update :: forall a. (Entity a) => Conn -> a -> IO ()
-update = (fromEitherExUnit .) . GpSafe.update
+update = (fromEitherExOrA .) . GpSafe.update
 
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
 updateMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
-updateMany = (fromEitherExUnit .) . GpSafe.updateMany
+updateMany = (fromEitherExOrA .) . GpSafe.updateMany
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
 delete :: forall a. (Entity a) => Conn -> a -> IO ()
-delete = (fromEitherExUnit .) . GpSafe.delete
+delete = (fromEitherExOrA .) . GpSafe.delete
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
 deleteMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
-deleteMany = (fromEitherExUnit .) . GpSafe.deleteMany
+deleteMany = (fromEitherExOrA .) . GpSafe.deleteMany
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection as parameter.

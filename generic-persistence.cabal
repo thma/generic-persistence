@@ -46,6 +46,7 @@ library
     , base >=4.7 && <5
     , convertible
     , generic-deriving
+    , raw-strings-qq
     , resource-pool
   default-language: GHC2021
 
@@ -80,6 +81,7 @@ test-suite generic-persistence-test
     , generic-persistence
     , hspec
     , hspec-discover
+    , raw-strings-qq
     , resource-pool
   default-language: GHC2021
   build-tool-depends: hspec-discover:hspec-discover == 2.*

@@ -661,3 +661,10 @@ main = do
 You'll find a more complete example in the [servant-gp repo](https://github.com/thma/servant-gp/blob/main/src/ServerUtils.hs#L45).
 There I have set up a sample REST service based on Servant that uses *Generic-Persistence* and a connection pool to manage the database connections.
 
+## Roadmap
+
+- [ ] support RETURNING statement for insert
+- [x] entitiesFromRows in GP api also
+- [ ] support for auto-incrementing primary keys
+- [x] provide a simple quasi-qoter for defining sql queries
+- [x] expose some HDBC functions in the GP API

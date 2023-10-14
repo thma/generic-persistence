@@ -7,6 +7,7 @@ module Database.GP.GenericPersistenceSafe
   ( selectById,
     select,
     entitiesFromRows,
+    sql,
     persist,
     insert,
     insertMany,
@@ -67,6 +68,7 @@ import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
+import           Text.RawString.QQ
 
 {- |
  This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
@@ -293,6 +295,9 @@ fieldIndex fieldName =
 expectJust :: String -> Maybe a -> a
 expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
+
+-- an alias for a simple quasiqouter
+sql = r
 
 -- | These instances are needed to make the Convertible type class work with Enum types out of the box.
 --   This is needed because the Convertible type class is used to convert SqlValues to Haskell types.

@@ -22,6 +22,7 @@ dependencies:
 - HDBC
 - generic-deriving
 - resource-pool
+- raw-strings-qq
 
 ghc-options:
 - -Wall

@@ -1,6 +1,8 @@
 module Database.GP
   ( selectById,
     select,
+    entitiesFromRows,
+    sql,
     persist,
     insert,
     insertMany,
@@ -46,9 +48,22 @@ module Database.GP
     SortOrder (..),
     limit,
     limitOffset,
-    NonEmpty(..)
+    NonEmpty(..),
+    SqlValue,
+    fromSql,
+    toSql,
+    quickQuery,
+    run,
+    commit,
+    rollback,
+    withTransaction,
+    runRaw,
+    disconnect
   )
 where
 
 -- We are just re-exporting from the GenericPersistence module.
 import           Database.GP.GenericPersistence
+import           Database.HDBC (SqlValue, fromSql, toSql, quickQuery, run, 
+                                commit, rollback, withTransaction,
+                                IConnection(runRaw, disconnect))

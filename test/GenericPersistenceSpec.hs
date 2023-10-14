@@ -1,5 +1,6 @@
 -- allows automatic derivation from Entity type class
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module GenericPersistenceSpec
   ( test,
@@ -122,6 +123,18 @@ spec = do
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
         Left  _ -> expectationFailure "Expected DatabaseError"
         Right _ -> expectationFailure "Expected DatabaseError"  
+    it "can materialize Entities from user defined SQL queries" $ do 
+      conn <- prepareDB
+      insertMany conn manyPersons
+      let stmt = [sql|
+                    SELECT * 
+                    FROM Person 
+                    WHERE age >= ?
+                    ORDER BY age ASC
+                    |]
+      resultRows <- quickQuery conn stmt [toSql (40 :: Int)]
+      allPersons <- entitiesFromRows @Person conn resultRows
+      length allPersons `shouldBe` 3
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
