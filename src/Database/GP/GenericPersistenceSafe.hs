@@ -20,6 +20,7 @@ module Database.GP.GenericPersistenceSafe
     Conn(..),
     connect,
     Database(..),
+    TxHandling (..),
     ConnectionPool,
     createConnPool,
     withResource,
@@ -276,14 +277,14 @@ deleteMany conn entities = tryPE $ do
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection as parameter.
-setupTableFor :: forall a. (Entity a) => Conn -> IO ()
-setupTableFor conn = do
+setupTableFor :: forall a. (Entity a) => Database -> Conn -> IO ()
+setupTableFor db conn = do
   --print stmt
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ stmt -- createTableStmtFor @a (db conn)
   commitIfAutoCommit conn
   where
-    stmt = createTableStmtFor @a (db conn)
+    stmt = createTableStmtFor @a db 
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.

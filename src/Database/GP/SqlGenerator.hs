@@ -35,7 +35,8 @@ module Database.GP.SqlGenerator
     SortOrder (..),
     limit,
     limitOffset,
-    NonEmpty(..)
+    NonEmpty(..),
+    Database (..),
   )
 where
 
@@ -118,6 +119,10 @@ deleteStmtFor =
     ++ " WHERE "
     ++ idColumn @a
     ++ " = ?;"
+
+-- | An enumeration of the supported database types.
+data Database = Postgres | SQLite -- | Oracle | MSSQL | MySQL
+  deriving (Show, Eq)
 
 createTableStmtFor :: forall a. (Entity a) => Database -> String
 createTableStmtFor dbServer =

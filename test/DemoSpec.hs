@@ -7,10 +7,7 @@ module DemoSpec
   )
 where
 
-import           Database.GP           (Database (SQLite), Entity, allEntries,
-                                        connect, delete, insert, select,
-                                        selectById, setupTableFor, update)
-import           Database.HDBC         (disconnect)
+import           Database.GP
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
 import           Test.Hspec
@@ -41,11 +38,11 @@ spec :: Spec
 spec = do
   describe "A simple demo" $ do
     it "shows some basic use cases" $ do
-      -- connect to a database
-      conn <- connect SQLite <$> connectSqlite3 "sqlite.db"
+      -- connect to a database in auto commit mode
+      conn <- connect AutoCommit <$> connectSqlite3 "sqlite.db"
 
       -- initialize Person table
-      setupTableFor @Person conn
+      setupTableFor @Person SQLite conn
 
       -- create a Person entity
       let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
@@ -66,11 +63,15 @@ spec = do
       allPersons <- select @Person conn allEntries
       print allPersons
 
+      -- select all Persons from a database, where age is smaller 30.
+      allPersonsUnder30 <- select @Person conn ((field "age") <. (30 :: Int))
+      print allPersonsUnder30
+
       -- delete a Person from a database
       delete conn alice
 
       -- select all Persons from a database. Now it should be empty.
-      allPersons' <- select conn allEntries :: IO [Person]
+      allPersons' <- select @Person conn allEntries
       print allPersons'
 
       -- close connection

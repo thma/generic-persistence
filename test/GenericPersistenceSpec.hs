@@ -23,9 +23,9 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  conn <- connect SQLite <$> connectSqlite3 ":memory:"
-  setupTableFor @Person conn
-  setupTableFor @Book conn
+  conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+  setupTableFor @Person SQLite conn
+  setupTableFor @Book SQLite conn
   return conn
 
 -- | A data type with several fields, using record syntax.
@@ -101,7 +101,7 @@ spec = do
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Nothing
     it "selectById throws a DatabaseError if things go wrong in the DB" $ do 
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherEA <- try (selectById conn (1 :: Int) :: IO (Maybe Person))
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
@@ -123,7 +123,7 @@ spec = do
       allPersons' <- select @Person conn allEntries
       allPersons' `shouldBe` []
     it "select throws a DatabaseError if things go wrong" $ do 
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherEA <- try (select @Person conn allEntries)
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
@@ -160,7 +160,7 @@ spec = do
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
     it "persist throws an exception if things go wrong" $ do 
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherEA <- try (persist conn book)
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: BOOK_TBL"
@@ -273,10 +273,10 @@ spec = do
     it "provides a Connection Pool" $ do
       connPool <- sqlLitePool ":memory:" 
       withResource connPool $ \conn -> do
-        setupTableFor @Person conn
+        setupTableFor @Person SQLite conn
         insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1
 
 sqlLitePool :: FilePath -> IO ConnectionPool
-sqlLitePool sqlLiteFile = createConnPool SQLite sqlLiteFile connectSqlite3 10 100
+sqlLitePool sqlLiteFile = createConnPool AutoCommit sqlLiteFile connectSqlite3 10 100

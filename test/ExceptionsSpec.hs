@@ -22,8 +22,8 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  conn <- connect SQLite <$> connectSqlite3 ":memory:"
-  setupTableFor @Article conn
+  conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+  setupTableFor @Article SQLite conn
   return conn
 
 data Article = Article
@@ -81,7 +81,7 @@ spec = do
         Left (DuplicateInsert msg) -> msg `shouldContain` "Entity already exists"
         _                          -> expectationFailure "Expected DuplicateInsert exception"
     it "detects duplicate inserts in persist" $ do
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
       _ <- insert conn article
       _ <- insert conn article{title="another title"}
@@ -97,7 +97,7 @@ spec = do
         Left (EntityNotFound msg) -> msg `shouldContain` "not found"
         _                         -> expectationFailure "Expected EntityNotFound exception"
     it "detects non unique entities in selectById" $ do
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
       _ <- insert conn article
       _ <- insert conn article{title="another title"}
@@ -128,13 +128,13 @@ spec = do
         Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
         _                         -> expectationFailure "Right: Expected EntityNotFound exception"
     it "detects general backend issues" $ do
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (DatabaseError msg) -> msg `shouldContain` "SqlError"
         _                        -> expectationFailure "Expected DatabaseError exception"
     it "has no leaking backend exceptions" $ do
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       _ <- update conn article :: IO (Either PersistenceException ())
       _ <- insert conn article :: IO (Either PersistenceException ())
       _ <- persist conn article :: IO (Either PersistenceException ())

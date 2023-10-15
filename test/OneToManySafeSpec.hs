@@ -22,9 +22,9 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  conn <- connect SQLite <$> connectSqlite3 ":memory:"
-  setupTableFor @Article conn
-  setupTableFor @Author conn
+  conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+  setupTableFor @Article SQLite conn
+  setupTableFor @Author SQLite conn
   return conn
 
 data Article = Article
@@ -135,7 +135,7 @@ spec = do
       eitherPeUnit <- delete conn arthur
       eitherPeUnit `shouldBe` Right ()
     it "delete handles exceptions" $ do
-      conn <- connect SQLite <$> connectSqlite3 ":memory:"
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherPeUnit <- delete conn arthur
       case eitherPeUnit of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Author"

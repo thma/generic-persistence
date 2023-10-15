@@ -22,9 +22,9 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  conn <- connect SQLite <$> connectSqlite3 ":memory:"
-  setupTableFor @Article conn
-  setupTableFor @Author conn
+  conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+  setupTableFor @Article SQLite conn
+  setupTableFor @Author SQLite conn
   return conn
 
 data Article = Article
@@ -66,8 +66,6 @@ instance Entity Article where
     persist conn (author a)                                  -- persist author first
     return [toSql (articleID a), toSql (title a),            -- return row for article table where 
             toSql $ authorID (author a), toSql (year a)]     -- authorID is foreign key to author table 
-
-
 
 article :: Article
 article =

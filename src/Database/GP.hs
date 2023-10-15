@@ -15,6 +15,7 @@ module Database.GP
     Conn(..),
     connect,
     Database(..),
+    TxHandling (..),
     ConnectionPool,
     createConnPool,
     withResource,

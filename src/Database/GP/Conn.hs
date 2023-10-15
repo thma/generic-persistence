@@ -1,7 +1,8 @@
+{-# LANGUAGE LambdaCase                #-}
 module Database.GP.Conn
   ( Conn (..),
     connect,
-    Database (..),
+    TxHandling (..),
     ConnectionPool,
     createConnPool,
     withResource,
@@ -29,25 +30,25 @@ import           Database.HDBC (IConnection (..))
 data Conn = forall conn.
   IConnection conn =>
   Conn
-  { -- | The database type
-    db             :: Database,
+  { 
     -- | If True, the GenericPersistence functions will commit the transaction after each operation.
     implicitCommit :: Bool,
     -- | The wrapped connection
     connection     :: conn
   }
 
--- | An enumeration of the supported database types.
-data Database = Postgres | SQLite -- | Oracle | MSSQL | MySQL
-  deriving (Show, Eq)
+data TxHandling = AutoCommit | ExplicitCommit  
 
 -- | a smart constructor for the Conn type.
-connect :: forall conn. IConnection conn => Database -> conn -> Conn
-connect db = Conn db True
+connect :: forall conn. IConnection conn => TxHandling -> conn ->  Conn
+connect = \case
+  AutoCommit     -> Conn True
+  ExplicitCommit -> Conn False
+  
 
 -- | allows to execute a function that requires an `IConnection` argument on a `Conn`.
 withWConn :: forall b. Conn -> (forall conn. IConnection conn => conn -> b) -> b
-withWConn (Conn _db _ic conn) f = f conn
+withWConn (Conn _ic conn) f = f conn
 
 -- | manually implement the IConnection type class for the Conn type.
 instance IConnection Conn where
@@ -57,7 +58,7 @@ instance IConnection Conn where
   runRaw w = withWConn w runRaw
   run w = withWConn w run
   prepare w = withWConn w prepare
-  clone w@(Conn db ic _) = withWConn w (clone >=> return . Conn db ic)
+  clone w@(Conn ic _) = withWConn w (clone >=> return . Conn ic)
   hdbcDriverName w = withWConn w hdbcDriverName
   hdbcClientVer w = withWConn w hdbcClientVer
   proxiedClientName w = withWConn w proxiedClientName
@@ -72,8 +73,8 @@ type ConnectionPool = Pool Conn
 
 -- | Creates a connection pool.
 createConnPool :: IConnection conn =>
-  -- | the database type e.g. Postgres, MySQL, SQLite
-  Database ->
+  -- | the transaction mode 
+  TxHandling ->
   -- | the connection string
   String ->
   -- | a function that takes a connection string and returns an IConnection
@@ -84,9 +85,9 @@ createConnPool :: IConnection conn =>
   Int ->
   -- | the resulting connection pool
   IO ConnectionPool
-createConnPool db connectString connectFun idle numConns = newPool poolConfig
+createConnPool txHandling connectString connectFun idle numConns = newPool poolConfig
   where
     freshConnection :: IO Conn
-    freshConnection = connect db <$> connectFun connectString
+    freshConnection = connect txHandling <$> connectFun connectString
     poolConfig :: PoolConfig Conn
     poolConfig = defaultPoolConfig freshConnection disconnect idle numConns

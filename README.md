@@ -2,8 +2,11 @@
 
 [![Actions Status](https://github.com/thma/generic-persistence/workflows/Haskell%20CI/badge.svg)](https://github.com/thma/generic-persistence/actions)
 [![codecov](https://codecov.io/gh/thma/generic-persistence/graph/badge.svg?token=DBCFLEA8JZ)](https://codecov.io/gh/thma/generic-persistence)
+[![Available on Hackage](https://img.shields.io/hackage/v/generic-persistence.svg?style=flat)](https://github.com/thma/generic-persistence)
 
 ![GP Logo](https://github.com/thma/generic-persistence/blob/main/gp-logo-300.png?raw=true)
+
+
 
 ## Table of Contents
 
@@ -49,16 +52,19 @@ and persist it to any RDBMS without any additional effort.
 
 ## Status
 
-The library is still work in progress. All test cases are green and it should be ready for early adopters.
 As of now there is full support for SQLite and PostgreSQL. 
 Support for other databases will be implemented on demand.
 
-API changes are still possible and several things are still missing:
+### new features in v0.5
 
-- auto-incrementing primary keys
-- coding free support for 1:1 and 1:n relationships (using more generics magic)
-- schema migration
-- ...
+- support for PostgreSQL
+- support RETURNING statement for insert
+- support for auto-incrementing primary keys
+- entitiesFromRows now available in GP api also
+- provide a simple quasi-qoter for defining sql queries
+- expose some HDBC functions in the GP API
+- explicit setting of transaction mode
+
 
 Feature requests, feedback and pull requests are welcome!
 
@@ -91,10 +97,7 @@ Here now follows a short demo that shows how the library looks and feels from th
 
 module Main (main) where
 
-import           Database.GP           (Database (SQLite), Entity, allEntries,
-                                        connect, delete, insert, select,
-                                        selectById, setupTableFor, update)
-import           Database.HDBC         (disconnect)
+import           Database.GP          
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
 
@@ -110,29 +113,42 @@ data Person = Person
 
 main :: IO ()
 main = do
-  -- connect to a database
-  conn <- connect SQLite <$> connectSqlite3 "sqlite.db"
+  -- connect to a database in auto commit mode
+  conn <- connect AutoCommit <$> connectSqlite3 "sqlite.db"
+
   -- initialize Person table
-  setupTableFor @Person conn
+  setupTableFor @Person SQLite conn
+
   -- create a Person entity
   let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
+
   -- insert a Person into a database
   insert conn alice
+
   -- update a Person
   update conn alice {address = "Main Street 200"}
+
   -- select a Person from a database
-  -- The concrete result type must be provided by the call site, 
+  -- The result type must be provided by the call site,
   -- as `selectById` has a polymorphic return type `IO (Maybe a)`.
-  alice' <- selectById conn "123456" :: IO (Maybe Person)
+  alice' <- selectById @Person conn "123456"
   print alice'
+
   -- select all Persons from a database. again, the result type must be provided.
   allPersons <- select @Person conn allEntries
   print allPersons
+
+  -- select all Persons from a database, where age is under 30.
+  allPersonsUnder30 <- select @Person conn ((field "age") <. (30 :: Int))
+  print allPersonsUnder30
+
   -- delete a Person from a database
   delete conn alice
+
   -- select all Persons from a database. Now it should be empty.
-  allPersons' <- select conn allEntries :: IO [Person]
+  allPersons' <- select @Person conn allEntries
   print allPersons'
+
   -- close connection
   disconnect conn
 ```
@@ -660,11 +676,3 @@ main = do
 
 You'll find a more complete example in the [servant-gp repo](https://github.com/thma/servant-gp/blob/main/src/ServerUtils.hs#L45).
 There I have set up a sample REST service based on Servant that uses *Generic-Persistence* and a connection pool to manage the database connections.
-
-## Roadmap
-
-- [ ] support RETURNING statement for insert
-- [x] entitiesFromRows in GP api also
-- [ ] support for auto-incrementing primary keys
-- [x] provide a simple quasi-qoter for defining sql queries
-- [x] expose some HDBC functions in the GP API

@@ -21,10 +21,10 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  con <- connect Postgres <$> connectPostgreSQL  "host=localhost dbname=postgres user=postgres password=admin port=5431" 
+  con <- connect AutoCommit <$> connectPostgreSQL  "host=localhost dbname=postgres user=postgres password=admin port=5431" 
   let conn = con{implicitCommit=False}
-  setupTableFor @Person conn
-  setupTableFor @Book conn
+  setupTableFor @Person Postgres conn
+  setupTableFor @Book Postgres conn
   _ <- run conn "DROP TABLE IF EXISTS Car;" []
   _ <- run conn "CREATE TABLE Car (carID serial4 PRIMARY KEY, carType varchar);" []
   commit conn
@@ -307,11 +307,11 @@ spec = do
     it "provides a Connection Pool" $ do
       connPool <- postgreSQLPool "host=localhost dbname=postgres user=postgres password=admin port=5431" 
       withResource connPool $ \conn -> do
-        setupTableFor @Person conn
+        setupTableFor @Person SQLite conn
         insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1
         commit conn
 
 postgreSQLPool :: String -> IO ConnectionPool
-postgreSQLPool connectString = createConnPool Postgres connectString connectPostgreSQL 10 100
+postgreSQLPool connectString = createConnPool ExplicitCommit connectString connectPostgreSQL 10 100

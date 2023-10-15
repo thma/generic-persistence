@@ -14,7 +14,7 @@ module Database.GP.Entity
     GFromRow,
     maybeFieldTypeFor,
     Conn(..),
-    Database(..),
+    TxHandling(..),
   )
 where
 

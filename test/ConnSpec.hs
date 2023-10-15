@@ -7,7 +7,7 @@ module ConnSpec
   )
 where
 
-import           Database.GP.GenericPersistence
+import           Database.GP
 import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec
@@ -21,8 +21,8 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  conn <- connect SQLite <$> connectSqlite3 ":memory:"
-  setupTableFor @Article conn
+  conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+  setupTableFor @Article SQLite conn
   return conn
 
 data Article = Article
@@ -36,13 +36,11 @@ spec :: Spec
 spec = do
   describe "Connection Handling" $ do
     it "can work with embedded connection" $ do
-      Conn{db=db',implicitCommit=ic, connection=conn} <- prepareDB
-      db' `shouldBe` SQLite
-      show db' `shouldBe` "SQLite"
+      Conn{implicitCommit=ic, connection=conn} <- prepareDB
       ic `shouldBe` True
       
       runRaw conn "DROP TABLE IF EXISTS Person;"
-      let conn' = connect SQLite conn
+      let conn' = connect AutoCommit conn
 
       allArticles <- select conn' allEntries :: IO [Article]
       allArticles `shouldBe` []
@@ -85,7 +83,7 @@ spec = do
       txSupport `shouldBe` True
 
       clonedConn <- clone conn
-      db clonedConn `shouldBe` db conn
+      implicitCommit clonedConn `shouldBe` implicitCommit conn
 
 
 
