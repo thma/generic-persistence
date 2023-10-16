@@ -33,7 +33,10 @@ data Article = Article
     authorId  :: Int,
     year      :: Int
   }
-  deriving (Generic, Entity, Show, Eq) -- automatically derives Entity
+  deriving (Generic, Show, Eq)
+
+instance Entity Article where
+  autoIncrement = False 
 
 data Author = Author
   { authorID :: Int,
@@ -65,7 +68,7 @@ instance Entity Author where
     mapM_ (persist conn) (articles a)                     -- persist all articles of this author (update or insert)
     return [toSql (authorID a),                           -- return the author as a list of SqlValues
             toSql (name a), toSql (address a)]
-
+  autoIncrement = False
 
 article1 :: Article
 article1 =
@@ -109,8 +112,7 @@ spec = do
     it "works like a charm" $ do
       conn <- prepareDB
 
-      eitherPeUnit <- insert conn arthur
-      print eitherPeUnit
+      _ <- insert conn arthur
       _ <- insert conn article1
 
       authors <- fromRight [] <$> select @Author conn allEntries

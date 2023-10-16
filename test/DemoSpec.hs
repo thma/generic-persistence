@@ -1,5 +1,4 @@
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
+{-# OPTIONS_GHC -Wno-missing-fields #-}
 
 module DemoSpec
   ( test,
@@ -28,8 +27,8 @@ data Person = Person
   }
   deriving (Generic, Entity, Show) -- deriving Entity allows us to use the GenericPersistence API
 
---print :: Show a => a -> IO ()
---print = putStrLn . show
+-- print :: Show a => a -> IO ()
+-- print = putStrLn . show
 
 print :: a -> IO ()
 print _ = pure ()
@@ -44,19 +43,16 @@ spec = do
       -- initialize Person table
       setupTableFor @Person SQLite conn
 
-      -- create a Person entity
-      let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
-
-      -- insert a Person into a database
-      insert conn alice
+      alice <- insertReturning conn Person {name = "Alice", age = 25, address = "Elmstreet 1"}
+      print alice
 
       -- update a Person
       update conn alice {address = "Main Street 200"}
 
-      -- select a Person from a database
+      -- select a Person by id
       -- The result type must be provided by the call site,
       -- as `selectById` has a polymorphic return type `IO (Maybe a)`.
-      alice' <- selectById @Person conn "123456"
+      alice' <- selectById @Person conn (personID alice)
       print alice'
 
       -- select all Persons from a database. again, the result type must be provided.
@@ -64,7 +60,7 @@ spec = do
       print allPersons
 
       -- select all Persons from a database, where age is smaller 30.
-      allPersonsUnder30 <- select @Person conn ((field "age") <. (30 :: Int))
+      allPersonsUnder30 <- select @Person conn (field "age" <. (30 :: Int))
       print allPersonsUnder30
 
       -- delete a Person from a database

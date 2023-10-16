@@ -173,7 +173,7 @@ insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException (
 insert conn entity = do
   eitherExUnit <- try $ do
     row <- toRow conn entity
-    _rowcount <- run conn (insertStmtFor @a) row
+    _ <- quickQuery' conn (insertReturningStmtFor @a) (removeIdField @a row)
     commitIfAutoCommit conn
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
@@ -181,16 +181,22 @@ insert conn entity = do
 
 insertReturning :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a)
 insertReturning conn entity = do
-  eitherExUnit <- try $ do
+  eitherExOrA <- try $ do
     row <- toRow conn entity
-    rowInserted <- quickQuery conn (insertReturningStmtFor @a) (tail row)
-    --commitIfAutoCommit conn
-    case rowInserted of
-      [singleRow] -> fromRow conn singleRow
-      _     -> error "insertReturning: more than one row inserted"
-  case eitherExUnit of
+    [singleRow] <- quickQuery' conn (insertReturningStmtFor @a) (removeIdField @a row)
+    commitIfAutoCommit conn
+    fromRow @a conn singleRow
+  case eitherExOrA of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right a -> return $ Right a    
+
+removeIdField :: forall a. (Entity a) => [SqlValue] -> [SqlValue]
+removeIdField row =
+  if autoIncrement @a
+    then case maybeIdFieldIndex @a of
+      Nothing      -> row
+      Just idIndex -> take idIndex row ++ drop (idIndex + 1) row
+    else row
 
 handleDuplicateInsert :: SomeException -> PersistenceException
 handleDuplicateInsert ex = 

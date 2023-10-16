@@ -31,7 +31,10 @@ data Article = Article
     title     :: String,
     year      :: Int
   }
-  deriving (Generic, Entity, Show, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity Article where
+  autoIncrement = False
 
 data Bogus = Bogus
   { bogusID :: Int,
@@ -42,6 +45,7 @@ data Bogus = Bogus
 
 instance Entity Bogus where
   tableName = "Article"
+
 
   fieldsToColumns :: [(String, String)]                  -- ommitting the articles field, 
   fieldsToColumns =                                      -- as this can not be mapped to a single column

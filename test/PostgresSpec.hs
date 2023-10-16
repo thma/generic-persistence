@@ -37,7 +37,10 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Generic, Entity, Show, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity Person where
+  autoIncrement = False   
 
 data Car = Car
   { carID :: Int,

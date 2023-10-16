@@ -40,9 +40,15 @@ data Author = Author
     name     :: String,
     address  :: String
   }
-  deriving (Generic, Entity, Show, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity Author where
+  autoIncrement = False 
 
 instance Entity Article where
+  autoIncrement :: Bool
+  autoIncrement = False
+  
   fieldsToColumns :: [(String, String)]                      -- ommitting the author field,
   fieldsToColumns =                                          -- as this can not be mapped to a single column
     [ ("articleID", "articleID"),                            -- instead we invent a new column authorID         

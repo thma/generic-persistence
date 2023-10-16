@@ -33,7 +33,10 @@ data Article = Article
     authorId  :: Int,
     year      :: Int
   }
-  deriving (Generic, Entity, Show, Eq) -- automatically derives Entity
+  deriving (Generic, Show, Eq)
+
+instance Entity Article where
+  autoIncrement = False   
 
 data Author = Author
   { authorID :: Int,
@@ -50,6 +53,7 @@ instance Entity Author where
       ("name", "name"),
       ("address", "address")
     ]
+  autoIncrement = False
 
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do

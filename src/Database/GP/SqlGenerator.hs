@@ -77,7 +77,9 @@ insertReturningStmtFor =
     ++ ";"
   where
     columns = columnNamesFor @a  
-    insertColumns = filter (/= idColumn @a) columns 
+    insertColumns = if autoIncrement @a 
+                      then filter (/= idColumn @a) columns 
+                      else columns
     returnColumns = intercalate ", " columns
 
 
@@ -148,7 +150,7 @@ columnTypeFor dbDialect fieldName =
   case dbDialect of
     SQLite   -> columnTypeForSQLite fType
     Postgres -> if isIdField @a fieldName 
-                  then "SERIAL"
+                  then "serial"
                   else columnTypeForPostgres fType
   where
     maybeFType = maybeFieldTypeFor @a fieldName
