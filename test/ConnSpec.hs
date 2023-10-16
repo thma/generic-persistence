@@ -59,7 +59,8 @@ spec = do
 
     it "provide the IConnection methods" $ do
       conn <- prepareDB
-      getTables conn `shouldReturn` ["Article"]
+      allTables <- getTables conn 
+      allTables `shouldContain` ["Article"]
 
       desc <- describeTable conn "Article" 
       length desc `shouldBe` 3

@@ -15,6 +15,8 @@ module Database.GP.Entity
     maybeFieldTypeFor,
     Conn(..),
     TxHandling(..),
+    maybeIdFieldIndex,
+    fieldIndex,
   )
 where
 
@@ -27,6 +29,7 @@ import           Database.HDBC        (SqlValue)
 import           GHC.Generics
 import           GHC.TypeNats
 import           Database.GP.Conn
+import Data.List (elemIndex)
 
 {- | This is the Entity class. It is a type class that is used to define the mapping
 between a Haskell product type in record notation and a database table.
@@ -66,6 +69,9 @@ class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a wher
   -- | Returns the name of the table for a type 'a'.
   tableName :: String
 
+  -- | Returns True if the primary key field for a type 'a' is autoincremented by the database.
+  autoIncrement :: Bool
+
   -- | fromRow generic default implementation
   default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
   fromRow _conn = pure . to <$> gfromRow
@@ -77,11 +83,7 @@ class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a wher
   -- | idField default implementation: the ID field is the field with the same name
   --   as the type name in lower case and appended with "ID", e.g. "bookID"
   default idField :: String
-  idField = idFieldName
-    where
-      idFieldName :: String
-      idFieldName = map toLower (constructorName ti) ++ "ID"
-      ti = typeInfo @a
+  idField = map toLower (constructorName (typeInfo @a)) ++ "ID"
 
   -- | fieldsToColumns default implementation: the field names are used as column names
   default fieldsToColumns :: [(String, String)]
@@ -89,9 +91,34 @@ class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a wher
 
   -- | tableName default implementation: the type name is used as table name
   default tableName :: String
-  tableName = constructorName ti
-    where
-      ti = typeInfo @a
+  tableName = constructorName (typeInfo @a)
+
+  -- | autoIncrement default implementation: the ID field is autoincremented
+  default autoIncrement :: Bool
+  autoIncrement = True
+
+-- | Returns Just index of the primary key field for a type 'a'.
+--   if the type has no primary key field, Nothing is returned.
+maybeIdFieldIndex :: forall a. (Entity a) => Maybe Int
+maybeIdFieldIndex = elemIndex (idField @a) (fieldNames (typeInfo @a))
+
+-- | returns the index of a field of an entity.
+--   The index is the position of the field in the list of fields of the entity.
+--   If no such field exists, an error is thrown.
+--   The function takes an field name as parameters,
+--   the type of the entity is determined by the context.
+fieldIndex :: forall a. (Entity a) => String -> Int
+fieldIndex fieldName =
+  expectJust
+    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
+    (elemIndex fieldName fieldList)
+  where
+    ti = typeInfo @a
+    fieldList = fieldNames ti
+
+expectJust :: String -> Maybe a -> a
+expectJust _ (Just x)  = x
+expectJust err Nothing = error ("expectJust " ++ err)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: forall a. (Entity a) => String -> String

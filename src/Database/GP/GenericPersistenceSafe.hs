@@ -64,7 +64,7 @@ import           Control.Exception        (Exception, SomeException, try)
 import           Control.Monad            (when)
 import           Data.Convertible         (ConvertResult, Convertible)
 import           Data.Convertible.Base    (Convertible (safeConvert))
-import           Data.List                (elemIndex, isInfixOf)
+import           Data.List                (isInfixOf)
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
@@ -294,24 +294,6 @@ idValue conn x = do
   return (sqlValues !! idFieldIndex)
   where
     idFieldIndex = fieldIndex @a (idField @a)
-
--- | returns the index of a field of an entity.
---   The index is the position of the field in the list of fields of the entity.
---   If no such field exists, an error is thrown.
---   The function takes an field name as parameters,
---   the type of the entity is determined by the context.
-fieldIndex :: forall a. (Entity a) => String -> Int
-fieldIndex fieldName =
-  expectJust
-    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
-    (elemIndex fieldName fieldList)
-  where
-    ti = typeInfo @a
-    fieldList = fieldNames ti
-
-expectJust :: String -> Maybe a -> a
-expectJust _ (Just x)  = x
-expectJust err Nothing = error ("expectJust " ++ err)
 
 -- an alias for a simple quasiqouter
 sql :: QuasiQuoter

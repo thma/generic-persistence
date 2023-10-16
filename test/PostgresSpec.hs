@@ -258,7 +258,6 @@ spec = do
       allPersons'' <- select conn allEntries :: IO [Person]
       length allPersons'' `shouldBe` 0
       commit conn
-
     it "inserts Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
@@ -307,7 +306,7 @@ spec = do
     it "provides a Connection Pool" $ do
       connPool <- postgreSQLPool "host=localhost dbname=postgres user=postgres password=admin port=5431" 
       withResource connPool $ \conn -> do
-        setupTableFor @Person SQLite conn
+        setupTableFor @Person Postgres conn
         insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1
