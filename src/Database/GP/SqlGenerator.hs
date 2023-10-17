@@ -57,12 +57,15 @@ insertStmtFor =
   "INSERT INTO "
     ++ tableName @a
     ++ " ("
-    ++ intercalate ", " columns
+    ++ intercalate ", " insertColumns
     ++ ") VALUES ("
-    ++ intercalate ", " (params (length columns))
+    ++ intercalate ", " (params (length insertColumns))
     ++ ");"
   where
     columns = columnNamesFor @a
+    insertColumns = if autoIncrement @a 
+                  then filter (/= idColumn @a) columns 
+                  else columns
 
 insertReturningStmtFor :: forall a. Entity a => String
 insertReturningStmtFor =

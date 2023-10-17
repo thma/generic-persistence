@@ -32,7 +32,10 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Generic, Entity, Show, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity Person where
+  autoIncrement = False
 
 alice, bob, charlie, dave :: Person
 bob = Person 1 "Bob" 36 "West Street 79"

@@ -220,7 +220,7 @@ insertMany conn entities = do
   eitherExUnit <- try $ do
     rows <- mapM (toRow conn) entities
     stmt <- prepare conn (insertStmtFor @a)
-    executeMany stmt rows
+    executeMany stmt (map (removeIdField @a) rows)
     commitIfAutoCommit conn
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
