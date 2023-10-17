@@ -55,6 +55,10 @@ and persist it to any RDBMS without any additional effort.
 As of now there is full support for SQLite and PostgreSQL. 
 Support for other databases will be implemented on demand.
 
+### new features in v0.6
+- Autoincrement flag for primary keys can now defined per Entity
+- insert now always returns the inserted entity (thus insertReturning was removed)
+
 ### new features in v0.5
 
 - support for PostgreSQL
@@ -119,27 +123,24 @@ main = do
   -- initialize Person table
   setupTableFor @Person SQLite conn
 
-  -- create a Person entity
-  let alice = Person {personID = 123456, name = "Alice", age = 25, address = "Elmstreet 1"}
-
-  -- insert a Person into a database
-  insert conn alice
+  alice <- insert conn Person {name = "Alice", age = 25, address = "Elmstreet 1"}
+  print alice
 
   -- update a Person
   update conn alice {address = "Main Street 200"}
 
-  -- select a Person from a database
+  -- select a Person by id
   -- The result type must be provided by the call site,
   -- as `selectById` has a polymorphic return type `IO (Maybe a)`.
-  alice' <- selectById @Person conn "123456"
+  alice' <- selectById @Person conn (personID alice)
   print alice'
 
   -- select all Persons from a database. again, the result type must be provided.
   allPersons <- select @Person conn allEntries
   print allPersons
 
-  -- select all Persons from a database, where age is under 30.
-  allPersonsUnder30 <- select @Person conn ((field "age") <. (30 :: Int))
+  -- select all Persons from a database, where age is smaller 30.
+  allPersonsUnder30 <- select @Person conn (field "age" <. (30 :: Int))
   print allPersonsUnder30
 
   -- delete a Person from a database

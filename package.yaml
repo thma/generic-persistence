@@ -20,7 +20,6 @@ default-extensions:
 - DuplicateRecordFields
 - DeriveAnyClass
 - DerivingStrategies
-#- OverloadedStrings
 - OverloadedRecordDot
 - TemplateHaskell
 - QuasiQuotes
