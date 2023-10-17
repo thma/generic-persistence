@@ -58,6 +58,7 @@ Support for other databases will be implemented on demand.
 ### new features in v0.6
 - Autoincrement flag for primary keys can now defined per Entity
 - insert now always returns the inserted entity (thus insertReturning was removed)
+- insertMany now also respects handling of primary keys
 
 ### new features in v0.5
 
@@ -237,6 +238,9 @@ class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a)) => Entity a wher
 
   -- | Returns the name of the table for a type 'a'.
   tableName :: String
+
+  -- | Returns True if the primary key field for a type 'a' is autoincremented by the database.
+  autoIncrement :: Bool
 ```
 
 ### Default Behaviour
@@ -250,6 +254,8 @@ E.g. `idField @Book` will return `"bookID"`.
 - `tableName` returns the name of the database table used for type `a`. The default implementation simply returns the constructor name of `a`. E.g. `tableName @Book` will return `"Book"`.
 
 - `fieldsToColumns` returns a list of tuples that map field names of type `a` to database column names for a type. The default implementation simply returns a list of tuples that map the field names of `a` to the field names of `a`. E.g. `fieldsToColumns @Person` will return `[("personID","personID"),("name","name"),("age","age"),("address","address")]`.
+
+- `autoIncrement` returns `True` by default. This means that the primary key field of a type `a` is assumed to be autoincremented by the database. If this is not the case, you can override the default implementation to return `False`.
 
 `fromRow` and `toRow` are used to convert between Haskell types and database rows. 
 
