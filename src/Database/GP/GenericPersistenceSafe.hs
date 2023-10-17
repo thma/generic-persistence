@@ -10,7 +10,6 @@ module Database.GP.GenericPersistenceSafe
     sql,
     persist,
     insert,
-    insertReturning,
     insertMany,
     update,
     updateMany,
@@ -156,7 +155,7 @@ persist conn entity = do
     let stmt = selectFromStmt @a byIdColumn
     quickQuery conn stmt [eid] >>=
       \case
-        []           -> insert conn entity
+        []           -> insert conn entity >> return (Right ())
         [_singleRow] -> update conn entity
         _            -> return $ Left $ NoUniqueKey $ "More than one entity found for id " ++ show eid
   case eitherExRes of
@@ -169,18 +168,8 @@ commitIfAutoCommit :: Conn -> IO ()
 commitIfAutoCommit conn = when (implicitCommit conn) $ commit conn
 
 -- | A function that explicitely inserts an entity into a database.
-insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
+insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a)
 insert conn entity = do
-  eitherExUnit <- try $ do
-    row <- toRow conn entity
-    _ <- quickQuery' conn (insertReturningStmtFor @a) (removeIdField @a row)
-    commitIfAutoCommit conn
-  case eitherExUnit of
-    Left ex -> return $ Left $ handleDuplicateInsert ex
-    Right _ -> return $ Right ()
-
-insertReturning :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a)
-insertReturning conn entity = do
   eitherExOrA <- try $ do
     row <- toRow conn entity
     [singleRow] <- quickQuery' conn (insertReturningStmtFor @a) (removeIdField @a row)

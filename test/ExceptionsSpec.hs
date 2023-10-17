@@ -73,7 +73,7 @@ spec = do
     it "detects duplicate inserts" $ do
       conn <- prepareDB
       _ <- insert conn article
-      eitherExRes <- insert conn article :: IO (Either PersistenceException ())
+      eitherExRes <- insert conn article :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left di@(DuplicateInsert _msg) -> show di `shouldContain` "Entity already exists"
         _                          -> expectationFailure "Expected DuplicateInsert exception"
@@ -140,7 +140,7 @@ spec = do
     it "has no leaking backend exceptions" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       _ <- update conn article :: IO (Either PersistenceException ())
-      _ <- insert conn article :: IO (Either PersistenceException ())
+      _ <- insert conn article :: IO (Either PersistenceException Article)
       _ <- persist conn article :: IO (Either PersistenceException ())
       _ <- delete conn article :: IO (Either PersistenceException ())
       _ <- selectById conn "1" :: IO (Either PersistenceException Article)

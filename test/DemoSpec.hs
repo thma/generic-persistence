@@ -43,7 +43,7 @@ spec = do
       -- initialize Person table
       setupTableFor @Person SQLite conn
 
-      alice <- insertReturning conn Person {name = "Alice", age = 25, address = "Elmstreet 1"}
+      alice <- insert conn Person {name = "Alice", age = 25, address = "Elmstreet 1"}
       print alice
 
       -- update a Person

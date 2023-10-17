@@ -49,6 +49,6 @@ spec = do
     it "works like a charm" $ do
       conn <- prepareDB
       let book = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
-      insert conn book
+      _ <- insert conn book
       allBooks <- select conn allEntries :: IO [Book]
       allBooks `shouldBe` [book]

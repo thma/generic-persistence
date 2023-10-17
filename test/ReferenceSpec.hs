@@ -95,7 +95,7 @@ spec = do
   describe "Handling of 1:1 References" $ do
     it "works like a charm" $ do
       conn <- prepareDB
-      insert conn article
+      _ <- insert conn article
 
       author' <- selectById conn "2" :: IO (Maybe Author)
       author' `shouldBe` Just arthur

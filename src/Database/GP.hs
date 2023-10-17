@@ -5,7 +5,6 @@ module Database.GP
     sql,
     persist,
     insert,
-    insertReturning,
     insertMany,
     update,
     updateMany,

@@ -6,7 +6,6 @@ module Database.GP.GenericPersistence
     sql,
     persist,
     insert,
-    insertReturning,
     insertMany,
     update,
     updateMany,
@@ -132,11 +131,8 @@ persist :: forall a. (Entity a) => Conn -> a -> IO ()
 persist = (fromEitherExOrA .) . GpSafe.persist
 
 -- | A function that explicitely inserts an entity into a database.
-insert :: forall a. (Entity a) => Conn -> a -> IO ()
+insert :: forall a. (Entity a) => Conn -> a -> IO a
 insert = (fromEitherExOrA .) . GpSafe.insert
-
-insertReturning :: forall a. (Entity a) => Conn -> a -> IO a
-insertReturning = (fromEitherExOrA .) . GpSafe.insertReturning
 
 -- | A function that inserts a list of entities into a database.
 --   The function takes an HDBC connection and a list of entities as parameters.

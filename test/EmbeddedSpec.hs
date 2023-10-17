@@ -83,7 +83,7 @@ spec = do
   describe "Handling of Embedded Objects" $ do
     it "works like a charm" $ do
       conn <- prepareDB
-      insert conn article
+      _ <- insert conn article
       article' <- selectById conn "1" :: IO (Maybe Article)
       article' `shouldBe` Just article
       allArticles <- select conn allEntries :: IO [Article]

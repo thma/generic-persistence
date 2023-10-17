@@ -113,8 +113,8 @@ spec = do
     it "works like a charm" $ do
       conn <- prepareDB
 
-      insert conn arthur
-      insert conn article1
+      _ <- insert conn arthur
+      _ <- insert conn article1
 
       authors <- select conn allEntries :: IO [Author]
       length authors `shouldBe` 1

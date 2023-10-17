@@ -50,7 +50,7 @@ spec = do
       let conn' = conn{implicitCommit=False}
       let article = Article 1 "Hello" 2023
       
-      insert conn' article
+      _ <- insert conn' article
       allArticles <- select conn' allEntries :: IO [Article]
       allArticles `shouldBe` [article]
       rollback conn'

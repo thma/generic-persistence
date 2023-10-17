@@ -196,7 +196,7 @@ spec = do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
-      insert conn person
+      _ <-  insert conn person
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
@@ -204,7 +204,7 @@ spec = do
     it "inserts Entities with autoincrement handling" $ do
       conn <- prepareDB
       _ <- run conn "CREATE TABLE Car (carID INTEGER PRIMARY KEY AUTOINCREMENT, carType TEXT);" []
-      myCar@(Car carId _) <- insertReturning conn (Car 0 "Honda Jazz")
+      myCar@(Car carId _) <- insert conn (Car 0 "Honda Jazz")
       myCar' <- selectById conn carId :: IO (Maybe Car)
       myCar' `shouldBe` Just myCar
     it "inserts many Entities re-using a single prepared stmt" $ do
@@ -240,26 +240,26 @@ spec = do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
-      insert conn book
+      _ <- insert conn book
       allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
     it "updates Entities using Generics" $ do
       conn <- prepareDB
-      insert conn person
+      _ <- insert conn person
       update conn person {name = "Bob"}
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person {name = "Bob"}
     it "updates Entities using user implementation" $ do
       conn <- prepareDB
-      insert conn book
+      _ <- insert conn book
       update conn book {title = "The Lord of the Rings"}
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book {title = "The Lord of the Rings"}
     it "deletes Entities using Generics" $ do
       conn <- prepareDB
-      insert conn person
+      _ <- insert conn person
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 1
       delete conn person
@@ -267,7 +267,7 @@ spec = do
       length allPersons' `shouldBe` 0
     it "deletes Entities using user implementation" $ do
       conn <- prepareDB
-      insert conn book
+      _ <- insert conn book
       allBooks <- select conn allEntries :: IO [Book]
       length allBooks `shouldBe` 1
       delete conn book
@@ -277,7 +277,7 @@ spec = do
       connPool <- sqlLitePool ":memory:" 
       withResource connPool $ \conn -> do
         setupTableFor @Person SQLite conn
-        insert conn person
+        _ <- insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1
 

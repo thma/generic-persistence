@@ -212,7 +212,7 @@ spec = do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
-      insert conn person
+      _ <- insert conn person
       commit conn
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
@@ -221,7 +221,7 @@ spec = do
       commit conn
     it "inserts Entities with autoincrement handling" $ do
       conn <- prepareDB
-      myCar@(Car carId _) <- insertReturning conn (Car 0 "Honda Jazz")
+      myCar@(Car carId _) <- insert conn (Car 0 "Honda Jazz")
       myCar' <- selectById conn carId :: IO (Maybe Car)
       myCar' `shouldBe` Just myCar
       commit conn
@@ -265,7 +265,7 @@ spec = do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
-      insert conn book
+      _ <- insert conn book
       commit conn
       allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
@@ -274,7 +274,7 @@ spec = do
       commit conn 
     it "updates Entities using Generics" $ do
       conn <- prepareDB
-      insert conn person
+      _ <- insert conn person
       update conn person {name = "Bob"}
       commit conn
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
@@ -282,7 +282,7 @@ spec = do
       commit conn
     it "updates Entities using user implementation" $ do
       conn <- prepareDB
-      insert conn book
+      _ <- insert conn book
       update conn book {title = "The Lord of the Rings"}
       commit conn
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
@@ -290,7 +290,7 @@ spec = do
       commit conn
     it "deletes Entities using Generics" $ do
       conn <- prepareDB
-      insert conn person
+      _ <- insert conn person
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 1
       delete conn person
@@ -299,7 +299,7 @@ spec = do
       commit conn
     it "deletes Entities using user implementation" $ do
       conn <- prepareDB
-      insert conn book
+      _ <- insert conn book
       allBooks <- select conn allEntries :: IO [Book]
       length allBooks `shouldBe` 1
       delete conn book
@@ -310,7 +310,7 @@ spec = do
       connPool <- postgreSQLPool "host=localhost dbname=postgres user=postgres password=admin port=5431" 
       withResource connPool $ \conn -> do
         setupTableFor @Person Postgres conn
-        insert conn person
+        _ <- insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1
         commit conn
