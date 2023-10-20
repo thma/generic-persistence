@@ -37,6 +37,9 @@ module Database.GP.SqlGenerator
     limitOffset,
     NonEmpty (..),
     Database (..),
+    defaultColumnTypeMappingSqlite,
+    defaultColumnTypeMappingPostgres,
+    ColumnTypeMapping,
   )
 where
 
@@ -131,55 +134,51 @@ data Database = Postgres | SQLite
   deriving (-- | Oracle | MSSQL | MySQL
             Show, Eq)
 
-createTableStmtFor :: forall a. (Entity a) => Database -> String
-createTableStmtFor dbServer =
+createTableStmtFor :: forall a. (Entity a) => ColumnTypeMapping -> String
+createTableStmtFor columnTypeMapping =
   "CREATE TABLE "
     ++ tableName @a
     ++ " ("
-    ++ intercalate ", " (map (\(f, c) -> c ++ " " ++ columnTypeFor @a dbServer f ++ optionalPK f) (fieldsToColumns @a))
+    ++ intercalate ", " (map (\(f, c) -> c ++ " " ++ columnTypeFor @a columnTypeMapping f ++ optionalPK f) (fieldsToColumns @a))
     ++ ");"
   where
-    optionalPK f =
-      if isIdField @a f
-        then case dbServer of
-          SQLite   -> " PRIMARY KEY AUTOINCREMENT"
-          Postgres -> " PRIMARY KEY"
-        else ""
+    optionalPK f = if isIdField @a f then " PRIMARY KEY" else ""
 
 isIdField :: forall a. (Entity a) => String -> Bool
 isIdField f = f == idField @a
 
 -- | A function that returns the column type for a field of an entity.
 -- TODO: Support other databases than just SQLite and Postgres.
-columnTypeFor :: forall a. (Entity a) => Database -> String -> String
-columnTypeFor dbDialect fieldName =
-  case dbDialect of
-    SQLite -> columnTypeForSQLite fType
-    Postgres ->
-      if isIdField @a fieldName
-        then "serial"
-        else columnTypeForPostgres fType
+columnTypeFor :: forall a. (Entity a) => ColumnTypeMapping -> String -> String
+columnTypeFor columnTypeMapping fieldName = columnTypeMapping fType
   where
-    maybeFType = maybeFieldTypeFor @a fieldName
-    fType = maybe "OTHER" show maybeFType
+    fType = 
+      if isIdField @a fieldName 
+        then "primaryKey"
+        else maybe "OTHER" show $ maybeFieldTypeFor @a fieldName
 
-    columnTypeForSQLite :: String -> String
-    columnTypeForSQLite = \case
-      "Int"    -> "INTEGER"
-      "[Char]" -> "TEXT"
-      "Double" -> "REAL"
-      "Float"  -> "REAL"
-      "Bool"   -> "INT"
-      _        -> "TEXT"
 
-    columnTypeForPostgres :: String -> String
-    columnTypeForPostgres = \case
-      "Int"    -> "numeric"
-      "[Char]" -> "varchar"
-      "Double" -> "numeric"
-      "Float"  -> "numeric"
-      "Bool"   -> "boolean"
-      _        -> "varchar"
+type ColumnTypeMapping = String -> String
+
+defaultColumnTypeMappingSqlite :: ColumnTypeMapping
+defaultColumnTypeMappingSqlite = \case
+  "primaryKey" -> "INTEGER"
+  "Int"    -> "INTEGER"
+  "[Char]" -> "TEXT"
+  "Double" -> "REAL"
+  "Float"  -> "REAL"
+  "Bool"   -> "INT"
+  _        -> "TEXT"
+
+defaultColumnTypeMappingPostgres :: ColumnTypeMapping
+defaultColumnTypeMappingPostgres = \case
+  "primaryKey" -> "serial"
+  "Int"    -> "numeric"
+  "[Char]" -> "varchar"
+  "Double" -> "numeric"
+  "Float"  -> "numeric"
+  "Bool"   -> "boolean"
+  _        -> "varchar"
 
 dropTableStmtFor :: forall a. (Entity a) => String
 dropTableStmtFor =

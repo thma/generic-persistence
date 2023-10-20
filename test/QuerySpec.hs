@@ -139,19 +139,19 @@ spec = do
       length limitedPersons `shouldBe` 1
       head limitedPersons `shouldBe` charlie
     it "can create column types for a SqlLite" $ do
-      columnTypeFor @SomeRecord SQLite "someRecordID" `shouldBe` "INTEGER"
-      columnTypeFor @SomeRecord SQLite "someRecordName" `shouldBe` "TEXT"
-      columnTypeFor @SomeRecord SQLite "someRecordAge" `shouldBe` "REAL"
-      columnTypeFor @SomeRecord SQLite "someRecordTax" `shouldBe` "REAL"
-      columnTypeFor @SomeRecord SQLite "someRecordFlag" `shouldBe` "INT"
-      columnTypeFor @SomeRecord SQLite "someRecordDate" `shouldBe` "TEXT"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordID" `shouldBe` "INTEGER"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordName" `shouldBe` "TEXT"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordAge" `shouldBe` "REAL"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordTax" `shouldBe` "REAL"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordFlag" `shouldBe` "INT"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordDate" `shouldBe` "TEXT"
     it "can create column types for a Postgres" $ do
-      columnTypeFor @SomeRecord Postgres "someRecordID" `shouldBe` "numeric"
-      columnTypeFor @SomeRecord Postgres "someRecordName" `shouldBe` "varchar"
-      columnTypeFor @SomeRecord Postgres "someRecordAge" `shouldBe` "numeric"
-      columnTypeFor @SomeRecord Postgres "someRecordTax" `shouldBe` "numeric"
-      columnTypeFor @SomeRecord Postgres "someRecordFlag" `shouldBe` "boolean"
-      columnTypeFor @SomeRecord Postgres "someRecordDate" `shouldBe` "varchar"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordID" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordName" `shouldBe` "varchar"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordAge" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordTax" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordFlag" `shouldBe` "boolean"
+      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordDate" `shouldBe` "varchar"
     it "can create whereclauses" $ do
       whereClauseValues byIdColumn `shouldBe` []
 

@@ -11,6 +11,7 @@ module Database.GP
     delete,
     deleteMany,
     setupTableFor,
+    setupTableWithMapping,
     Conn (..),
     connect,
     Database (..),

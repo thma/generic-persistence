@@ -16,6 +16,7 @@ module Database.GP.GenericPersistenceSafe
     delete,
     deleteMany,
     setupTableFor,
+    setupTableWithMapping,
     Conn (..),
     connect,
     Database (..),
@@ -270,15 +271,21 @@ deleteMany conn entities = tryPE $ do
   commitIfAutoCommit conn
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
---   The function takes an HDBC connection as parameter.
+--   The function takes an HDBC connection and a database type as parameter.
 setupTableFor :: forall a. (Entity a) => Database -> Conn -> IO ()
-setupTableFor db conn = do
-  -- print stmt
-  runRaw conn $ dropTableStmtFor @a
-  runRaw conn stmt
-  commitIfAutoCommit conn
+setupTableFor db conn = setupTableWithMapping @a conn mapping 
   where
-    stmt = createTableStmtFor @a db
+    mapping = case db of
+      Postgres -> defaultColumnTypeMappingPostgres
+      SQLite   -> defaultColumnTypeMappingSqlite
+
+-- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
+--   The function takes an HDBC connection and a column type mapping as parameters.
+setupTableWithMapping :: forall a. (Entity a) => Conn -> ColumnTypeMapping -> IO ()
+setupTableWithMapping conn mapping = do
+  runRaw conn $ dropTableStmtFor @a
+  runRaw conn $ createTableStmtFor @a mapping
+  commitIfAutoCommit conn
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.

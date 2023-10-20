@@ -13,6 +13,7 @@ module Database.GP.GenericPersistence
     delete,
     deleteMany,
     setupTableFor,
+    setupTableWithMapping,
     Conn (..),
     connect,
     Database (..),
@@ -57,12 +58,11 @@ module Database.GP.GenericPersistence
 where
 
 import           Control.Exception
--- import           Control.Monad                      (when)
 import           Data.Convertible                   (Convertible)
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.GenericPersistenceSafe (PersistenceException,
-                                                     setupTableFor, sql)
+                                                     setupTableFor, setupTableWithMapping, sql)
 import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
@@ -163,10 +163,4 @@ delete = (fromEitherExOrA .) . GpSafe.delete
 deleteMany :: forall a. (Entity a) => Conn -> [a] -> IO ()
 deleteMany = (fromEitherExOrA .) . GpSafe.deleteMany
 
--- -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
--- --   The function takes an HDBC connection as parameter.
--- setupTableFor :: forall a. (Entity a) => Conn -> IO ()
--- setupTableFor conn = do
---   runRaw conn $ dropTableStmtFor @a
---   runRaw conn $ createTableStmtFor @a (db conn)
---   when (implicitCommit conn) $ commit conn
+
