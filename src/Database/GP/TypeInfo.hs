@@ -34,7 +34,7 @@ typeInfo =
     { constructorName = gConstrName (undefined :: a),
       fieldNames = map fst (gSelectors (undefined :: a)),
       fieldTypes = map snd (gSelectors (undefined :: a))
-    } 
+    }
 
 -- Generic implementations
 gConstrName :: (HasConstructor (Rep a), Generic a) => a -> String

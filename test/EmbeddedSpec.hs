@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-
 module EmbeddedSpec
   ( test,
     spec,
@@ -13,7 +11,7 @@ import           GHC.Generics
 import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec

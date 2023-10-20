@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase                #-}
+{-# LANGUAGE LambdaCase #-}
+
 module Database.GP.Conn
   ( Conn (..),
     connect,
@@ -30,21 +31,19 @@ import           Database.HDBC (IConnection (..))
 data Conn = forall conn.
   IConnection conn =>
   Conn
-  { 
-    -- | If True, the GenericPersistence functions will commit the transaction after each operation.
+  { -- | If True, the GenericPersistence functions will commit the transaction after each operation.
     implicitCommit :: Bool,
     -- | The wrapped connection
     connection     :: conn
   }
 
-data TxHandling = AutoCommit | ExplicitCommit  
+data TxHandling = AutoCommit | ExplicitCommit
 
 -- | a smart constructor for the Conn type.
-connect :: forall conn. IConnection conn => TxHandling -> conn ->  Conn
+connect :: forall conn. IConnection conn => TxHandling -> conn -> Conn
 connect = \case
   AutoCommit     -> Conn True
   ExplicitCommit -> Conn False
-  
 
 -- | allows to execute a function that requires an `IConnection` argument on a `Conn`.
 withWConn :: forall b. Conn -> (forall conn. IConnection conn => conn -> b) -> b
@@ -72,8 +71,9 @@ instance IConnection Conn where
 type ConnectionPool = Pool Conn
 
 -- | Creates a connection pool.
-createConnPool :: IConnection conn =>
-  -- | the transaction mode 
+createConnPool ::
+  IConnection conn =>
+  -- | the transaction mode
   TxHandling ->
   -- | the connection string
   String ->

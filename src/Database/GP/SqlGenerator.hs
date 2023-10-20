@@ -35,14 +35,14 @@ module Database.GP.SqlGenerator
     SortOrder (..),
     limit,
     limitOffset,
-    NonEmpty(..),
+    NonEmpty (..),
     Database (..),
   )
 where
 
 import           Data.List          (intercalate)
-import Database.GP.Entity
-import Database.GP.Query
+import           Database.GP.Entity
+import           Database.GP.Query
 
 -- |
 --  This module defines some basic SQL statements for Record Data Types that are instances of 'Entity'.
@@ -63,9 +63,10 @@ insertStmtFor =
     ++ ");"
   where
     columns = columnNamesFor @a
-    insertColumns = if autoIncrement @a 
-                  then filter (/= idColumn @a) columns 
-                  else columns
+    insertColumns =
+      if autoIncrement @a
+        then filter (/= idColumn @a) columns
+        else columns
 
 insertReturningStmtFor :: forall a. Entity a => String
 insertReturningStmtFor =
@@ -79,12 +80,12 @@ insertReturningStmtFor =
     ++ returnColumns
     ++ ";"
   where
-    columns = columnNamesFor @a  
-    insertColumns = if autoIncrement @a 
-                      then filter (/= idColumn @a) columns 
-                      else columns
+    columns = columnNamesFor @a
+    insertColumns =
+      if autoIncrement @a
+        then filter (/= idColumn @a) columns
+        else columns
     returnColumns = intercalate ", " columns
-
 
 columnNamesFor :: forall a. Entity a => [String]
 columnNamesFor = map snd fieldColumnPairs
@@ -126,8 +127,9 @@ deleteStmtFor =
     ++ " = ?;"
 
 -- | An enumeration of the supported database types.
-data Database = Postgres | SQLite -- | Oracle | MSSQL | MySQL
-  deriving (Show, Eq)
+data Database = Postgres | SQLite
+  deriving (-- | Oracle | MSSQL | MySQL
+            Show, Eq)
 
 createTableStmtFor :: forall a. (Entity a) => Database -> String
 createTableStmtFor dbServer =
@@ -137,11 +139,12 @@ createTableStmtFor dbServer =
     ++ intercalate ", " (map (\(f, c) -> c ++ " " ++ columnTypeFor @a dbServer f ++ optionalPK f) (fieldsToColumns @a))
     ++ ");"
   where
-    optionalPK f = if isIdField @a f 
-                    then case dbServer of
-                      SQLite   -> " PRIMARY KEY AUTOINCREMENT"
-                      Postgres -> " PRIMARY KEY"
-                    else ""
+    optionalPK f =
+      if isIdField @a f
+        then case dbServer of
+          SQLite   -> " PRIMARY KEY AUTOINCREMENT"
+          Postgres -> " PRIMARY KEY"
+        else ""
 
 isIdField :: forall a. (Entity a) => String -> Bool
 isIdField f = f == idField @a
@@ -151,31 +154,32 @@ isIdField f = f == idField @a
 columnTypeFor :: forall a. (Entity a) => Database -> String -> String
 columnTypeFor dbDialect fieldName =
   case dbDialect of
-    SQLite   -> columnTypeForSQLite fType
-    Postgres -> if isIdField @a fieldName 
-                  then "serial"
-                  else columnTypeForPostgres fType
+    SQLite -> columnTypeForSQLite fType
+    Postgres ->
+      if isIdField @a fieldName
+        then "serial"
+        else columnTypeForPostgres fType
   where
     maybeFType = maybeFieldTypeFor @a fieldName
     fType = maybe "OTHER" show maybeFType
-  
+
     columnTypeForSQLite :: String -> String
-    columnTypeForSQLite = \case  
-        "Int"    -> "INTEGER"
-        "[Char]" -> "TEXT"
-        "Double" -> "REAL"
-        "Float"  -> "REAL"
-        "Bool"   -> "INT"
-        _        -> "TEXT"
+    columnTypeForSQLite = \case
+      "Int"    -> "INTEGER"
+      "[Char]" -> "TEXT"
+      "Double" -> "REAL"
+      "Float"  -> "REAL"
+      "Bool"   -> "INT"
+      _        -> "TEXT"
 
     columnTypeForPostgres :: String -> String
-    columnTypeForPostgres = \case  
-        "Int"    -> "numeric"
-        "[Char]" -> "varchar"
-        "Double" -> "numeric"
-        "Float"  -> "numeric"
-        "Bool"   -> "boolean"
-        _        -> "varchar"
+    columnTypeForPostgres = \case
+      "Int"    -> "numeric"
+      "[Char]" -> "varchar"
+      "Double" -> "numeric"
+      "Float"  -> "numeric"
+      "Bool"   -> "boolean"
+      _        -> "varchar"
 
 dropTableStmtFor :: forall a. (Entity a) => String
 dropTableStmtFor =

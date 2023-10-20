@@ -1,7 +1,7 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DeriveAnyClass      #-}
-{-# OPTIONS_GHC -Wno-orphans     #-}
 {-# LANGUAGE LambdaCase          #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Database.GP.GenericPersistenceSafe
   ( selectById,
@@ -16,9 +16,9 @@ module Database.GP.GenericPersistenceSafe
     delete,
     deleteMany,
     setupTableFor,
-    Conn(..),
+    Conn (..),
     connect,
-    Database(..),
+    Database (..),
     TxHandling (..),
     ConnectionPool,
     createConnPool,
@@ -30,7 +30,7 @@ module Database.GP.GenericPersistenceSafe
     maybeFieldTypeFor,
     TypeInfo (..),
     typeInfo,
-    PersistenceException(..),
+    PersistenceException (..),
     WhereClauseExpr,
     Field,
     field,
@@ -55,36 +55,35 @@ module Database.GP.GenericPersistenceSafe
     limit,
     limitOffset,
     fieldIndex,
-    handleDuplicateInsert
+    handleDuplicateInsert,
   )
 where
 
-import           Control.Exception        (Exception, SomeException, try)
-import           Control.Monad            (when)
-import           Data.Convertible         (ConvertResult, Convertible)
-import           Data.Convertible.Base    (Convertible (safeConvert))
-import           Data.List                (isInfixOf)
+import           Control.Exception         (Exception, SomeException, try)
+import           Control.Monad             (when)
+import           Data.Convertible          (ConvertResult, Convertible)
+import           Data.Convertible.Base     (Convertible (safeConvert))
+import           Data.List                 (isInfixOf)
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
-import           Text.RawString.QQ
 import           Language.Haskell.TH.Quote (QuasiQuoter)
+import           Text.RawString.QQ
 
-{- |
- This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
-
- This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
- I call instances of such a data type Entities.
-
- The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
- HDBC is used to access the RDBMS.
--}
+-- |
+-- This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
+--
+-- This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
+-- I call instances of such a data type Entities.
+--
+-- The Persistence operations are using Haskell generics to provide compile time reflection capabilities.
+-- HDBC is used to access the RDBMS.
 
 -- | exceptions that may occur during persistence operations
-data PersistenceException =
-    EntityNotFound String
+data PersistenceException
+  = EntityNotFound String
   | DuplicateInsert String
   | DatabaseError String
   | NoUniqueKey String
@@ -97,7 +96,7 @@ data PersistenceException =
 -- An error is thrown if there are more than one entity with the given id.
 selectById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException a)
 selectById conn idx = do
-  --print stmt
+  -- print stmt
   eitherExResultRows <- try $ quickQuery conn stmt [eid]
   case eitherExResultRows of
     Left ex -> return $ Left $ fromException ex
@@ -118,7 +117,6 @@ selectById conn idx = do
 fromException :: SomeException -> PersistenceException
 fromException ex = DatabaseError $ show ex
 
-
 -- | This function retrieves all entities of type `a` that match some query criteria.
 --   The function takes an HDBC connection and a `WhereClauseExpr` as parameters.
 --   The type `a` is determined by the context of the function call.
@@ -126,7 +124,7 @@ fromException ex = DatabaseError $ show ex
 --   The `WhereClauseExpr` is typically constructed using any tiny query dsl based on infix operators.
 select :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
 select conn whereClause = do
-  --print stmt
+  -- print stmt
   eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
     Left ex          -> return $ Left ex
@@ -153,11 +151,11 @@ persist conn entity = do
   eitherExRes <- try $ do
     eid <- idValue conn entity
     let stmt = selectFromStmt @a byIdColumn
-    quickQuery conn stmt [eid] >>=
-      \case
-        []           -> insert conn entity >> return (Right ())
+    quickQuery conn stmt [eid]
+      >>= \case
+        [] -> insert conn entity >> return (Right ())
         [_singleRow] -> update conn entity
-        _            -> return $ Left $ NoUniqueKey $ "More than one entity found for id " ++ show eid
+        _ -> return $ Left $ NoUniqueKey $ "More than one entity found for id " ++ show eid
   case eitherExRes of
     Left ex   -> return $ Left $ fromException ex
     Right res -> return res
@@ -177,7 +175,7 @@ insert conn entity = do
     fromRow @a conn singleRow
   case eitherExOrA of
     Left ex -> return $ Left $ handleDuplicateInsert ex
-    Right a -> return $ Right a    
+    Right a -> return $ Right a
 
 removeIdField :: forall a. (Entity a) => [SqlValue] -> [SqlValue]
 removeIdField row =
@@ -188,9 +186,11 @@ removeIdField row =
     else row
 
 handleDuplicateInsert :: SomeException -> PersistenceException
-handleDuplicateInsert ex = 
-  if "UNIQUE constraint failed" `isInfixOf` show ex ||
-     "duplicate key value violates unique constraint" `isInfixOf` show ex
+handleDuplicateInsert ex =
+  if "UNIQUE constraint failed"
+    `isInfixOf` show ex
+    || "duplicate key value violates unique constraint"
+    `isInfixOf` show ex
     then DuplicateInsert "Entity already exists in DB, use update instead"
     else fromException ex
 
@@ -214,7 +214,6 @@ insertMany conn entities = do
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right _ -> return $ Right ()
-
 
 -- | A function that explicitely updates an entity in a database.
 update :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
@@ -274,12 +273,12 @@ deleteMany conn entities = tryPE $ do
 --   The function takes an HDBC connection as parameter.
 setupTableFor :: forall a. (Entity a) => Database -> Conn -> IO ()
 setupTableFor db conn = do
-  --print stmt
+  -- print stmt
   runRaw conn $ dropTableStmtFor @a
-  runRaw conn $ stmt -- createTableStmtFor @a (db conn)
+  runRaw conn stmt
   commitIfAutoCommit conn
   where
-    stmt = createTableStmtFor @a db 
+    stmt = createTableStmtFor @a db
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.

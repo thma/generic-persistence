@@ -1,21 +1,18 @@
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
-
 module OneToManySafeSpec
   ( test,
     spec,
   )
 where
 
+import           Data.Either                        (fromRight)
 import           Database.GP.GenericPersistenceSafe
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec
-import           Data.Either                    (fromRight)
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl -- test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
@@ -36,7 +33,7 @@ data Article = Article
   deriving (Generic, Show, Eq)
 
 instance Entity Article where
-  autoIncrement = False 
+  autoIncrement = False
 
 data Author = Author
   { authorID :: Int,
@@ -47,8 +44,9 @@ data Author = Author
   deriving (Generic, Show, Eq)
 
 instance Entity Author where
-  fieldsToColumns :: [(String, String)]                  -- ommitting the articles field, 
-  fieldsToColumns =                                      -- as this can not be mapped to a single column
+  fieldsToColumns :: [(String, String)] -- ommitting the articles field,
+  fieldsToColumns =
+    -- as this can not be mapped to a single column
     [ ("authorID", "authorID"),
       ("name", "name"),
       ("address", "address")
@@ -56,18 +54,21 @@ instance Entity Author where
 
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
-    let authID = head row                                 -- authorID is the first column
-    articlesBy <- (fromRight []) <$> select @Article conn (field "authorId" =. authID) -- retrieve all articles by this author
-    return rawAuthor {articles = articlesBy}              -- add the articles to the author
+    let authID = head row -- authorID is the first column
+    articlesBy <- fromRight [] <$> select @Article conn (field "authorId" =. authID) -- retrieve all articles by this author
+    return rawAuthor {articles = articlesBy} -- add the articles to the author
     where
-      rawAuthor = Author (col 0) (col 1) (col 2) []       -- create the author from row (w/o articles)
-      col i = fromSql (row !! i)                          -- helper function to convert SqlValue to Haskell type
+      rawAuthor = Author (col 0) (col 1) (col 2) [] -- create the author from row (w/o articles)
+      col i = fromSql (row !! i) -- helper function to convert SqlValue to Haskell type
 
   toRow :: Conn -> Author -> IO [SqlValue]
   toRow conn a = do
-    mapM_ (persist conn) (articles a)                     -- persist all articles of this author (update or insert)
-    return [toSql (authorID a),                           -- return the author as a list of SqlValues
-            toSql (name a), toSql (address a)]
+    mapM_ (persist conn) (articles a) -- persist all articles of this author (update or insert)
+    return
+      [ toSql (authorID a), -- return the author as a list of SqlValues
+        toSql (name a),
+        toSql (address a)
+      ]
   autoIncrement = False
 
 article1 :: Article
@@ -127,7 +128,7 @@ spec = do
         Left _ -> fail "should not happen"
         Right author -> do
           length (articles author) `shouldBe` 2
-      
+
       _ <- persist conn arthur {address = "New York"}
       eitherPeAuthor' <- selectById @Author conn "2"
       eitherPeAuthor' `shouldBe` Right arthur {address = "New York"}
@@ -141,10 +142,10 @@ spec = do
       eitherPeUnit <- delete conn arthur
       case eitherPeUnit of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Author"
-        _ -> fail "should not happen"
+        _                        -> fail "should not happen"
     it "insertMany works with references" $ do
       conn <- prepareDB
-      let authors = [arthur, arthur{name="Bob", authorID=3, articles=[]}]
+      let authors = [arthur, arthur {name = "Bob", authorID = 3, articles = []}]
       eitherPeUnit <- insertMany conn authors
       eitherPeUnit `shouldBe` Right ()
       eitherPeAuthors <- select @Author conn allEntries
@@ -158,7 +159,7 @@ spec = do
       eitherPeAuthor `shouldBe` Right arthur {address = "New York"}
     it "updateMany works with references" $ do
       conn <- prepareDB
-      let authors = [arthur, arthur{name="Bob", authorID=3, articles=[]}]
+      let authors = [arthur, arthur {name = "Bob", authorID = 3, articles = []}]
       _ <- insertMany conn authors
       eitherPeUnit <- updateMany conn (map (\a -> a {address = "New York"}) authors)
       eitherPeUnit `shouldBe` Right ()
@@ -166,11 +167,9 @@ spec = do
       eitherPeAuthors `shouldBe` Right (map (\a -> a {address = "New York"}) authors)
     it "deleteMany works with references" $ do
       conn <- prepareDB
-      let authors = [arthur, arthur{name="Bob", authorID=3, articles=[]}]
+      let authors = [arthur, arthur {name = "Bob", authorID = 3, articles = []}]
       _ <- insertMany conn authors
       eitherPeUnit <- deleteMany conn authors
       eitherPeUnit `shouldBe` Right ()
       eitherPeAuthors <- select @Author conn allEntries
       eitherPeAuthors `shouldBe` Right []
-
-

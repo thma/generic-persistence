@@ -1,6 +1,6 @@
 -- allows automatic derivation from Entity type class
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE QuasiQuotes    #-}
 
 module GenericPersistenceSpec
   ( test,
@@ -8,15 +8,15 @@ module GenericPersistenceSpec
   )
 where
 
+import           Control.Exception
 import           Database.GP.GenericPersistence
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
-import           GHC.Generics hiding (Selector)
+import           GHC.Generics                   hiding (Selector)
 import           Test.Hspec
-import           Control.Exception
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
@@ -38,11 +38,11 @@ data Person = Person
   deriving (Generic, Show, Eq)
 
 instance Entity Person where
-  autoIncrement = False 
+  autoIncrement = False
 
 data Car = Car
-  { carID :: Int,
-    carType  :: String
+  { carID   :: Int,
+    carType :: String
   }
   deriving (Generic, Entity, Show, Eq)
 
@@ -60,8 +60,13 @@ data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Ot
 
 instance Entity Book where
   idField = "book_id"
-  fieldsToColumns = [("book_id", "bookId"), ("title", "bookTitle"), ("author", "bookAuthor"), 
-                     ("year", "bookYear"), ("category", "bookCategory")]
+  fieldsToColumns =
+    [ ("book_id", "bookId"),
+      ("title", "bookTitle"),
+      ("author", "bookAuthor"),
+      ("year", "bookYear"),
+      ("category", "bookCategory")
+    ]
   tableName = "BOOK_TBL"
   fromRow _c row = pure $ Book (col 0) (col 1) (col 2) (col 3) (col 4)
     where
@@ -103,13 +108,13 @@ spec = do
       conn <- prepareDB
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Nothing
-    it "selectById throws a DatabaseError if things go wrong in the DB" $ do 
+    it "selectById throws a DatabaseError if things go wrong in the DB" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherEA <- try (selectById conn (1 :: Int) :: IO (Maybe Person))
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
-        Left  _ -> expectationFailure "Expected DatabaseError"
-        Right _ -> expectationFailure "Expected DatabaseError"  
+        Left _                   -> expectationFailure "Expected DatabaseError"
+        Right _                  -> expectationFailure "Expected DatabaseError"
     it "retrieves Entities using user implementation" $ do
       conn <- prepareDB
       let hobbit = Book 1 "The Hobbit" "J.R.R. Tolkien" 1937 Fiction
@@ -120,24 +125,25 @@ spec = do
       length allBooks `shouldBe` 3
       head allBooks `shouldBe` hobbit
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
-      book' `shouldBe` Just hobbit     
+      book' `shouldBe` Just hobbit
     it "select returns Nothing if no Entity was found" $ do
       conn <- prepareDB
       allPersons' <- select @Person conn allEntries
       allPersons' `shouldBe` []
-    it "select throws a DatabaseError if things go wrong" $ do 
+    it "select throws a DatabaseError if things go wrong" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherEA <- try (select @Person conn allEntries)
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
-        Left  _ -> expectationFailure "Expected DatabaseError"
-        Right _ -> expectationFailure "Expected DatabaseError"  
-    it "can materialize Entities from user defined SQL queries" $ do 
+        Left _                   -> expectationFailure "Expected DatabaseError"
+        Right _                  -> expectationFailure "Expected DatabaseError"
+    it "can materialize Entities from user defined SQL queries" $ do
       conn <- prepareDB
       insertMany conn manyPersons
-      let stmt = [sql|
-                    SELECT * 
-                    FROM Person 
+      let stmt =
+            [sql|
+                    SELECT *
+                    FROM Person
                     WHERE age >= ?
                     ORDER BY age ASC
                     |]
@@ -162,13 +168,13 @@ spec = do
       length allbooks' `shouldBe` 1
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
-    it "persist throws an exception if things go wrong" $ do 
+    it "persist throws an exception if things go wrong" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherEA <- try (persist conn book)
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: BOOK_TBL"
-        Left  _ -> expectationFailure "Expected DatabaseError"
-        Right _ -> expectationFailure "Expected DatabaseError" 
+        Left _ -> expectationFailure "Expected DatabaseError"
+        Right _ -> expectationFailure "Expected DatabaseError"
     it "persists existing Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
@@ -188,7 +194,7 @@ spec = do
       length allbooks' `shouldBe` 1
       eitherEA <- try $ persist conn book {year = 1938} :: IO (Either PersistenceException ())
       case eitherEA of
-        Left  _ -> expectationFailure "should not throw an exception"
+        Left _  -> expectationFailure "should not throw an exception"
         Right x -> x `shouldBe` ()
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book {year = 1938}
@@ -196,7 +202,7 @@ spec = do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
-      _ <-  insert conn person
+      _ <- insert conn person
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
@@ -231,7 +237,7 @@ spec = do
       length allPersons `shouldBe` 0
       insertMany conn manyPersons
       allPersons' <- select conn allEntries :: IO [Person]
-      length allPersons' `shouldBe` 6   
+      length allPersons' `shouldBe` 6
       deleteMany conn allPersons'
       allPersons'' <- select conn allEntries :: IO [Person]
       length allPersons'' `shouldBe` 0
@@ -274,7 +280,7 @@ spec = do
       allBooks' <- select conn allEntries :: IO [Book]
       length allBooks' `shouldBe` 0
     it "provides a Connection Pool" $ do
-      connPool <- sqlLitePool ":memory:" 
+      connPool <- sqlLitePool ":memory:"
       withResource connPool $ \conn -> do
         setupTableFor @Person SQLite conn
         _ <- insert conn person

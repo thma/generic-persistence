@@ -11,9 +11,9 @@ module Database.GP
     delete,
     deleteMany,
     setupTableFor,
-    Conn(..),
+    Conn (..),
     connect,
-    Database(..),
+    Database (..),
     TxHandling (..),
     ConnectionPool,
     createConnPool,
@@ -25,7 +25,7 @@ module Database.GP
     maybeFieldTypeFor,
     TypeInfo (..),
     typeInfo,
-    PersistenceException(..),
+    PersistenceException (..),
     WhereClauseExpr,
     Field,
     field,
@@ -49,7 +49,7 @@ module Database.GP
     SortOrder (..),
     limit,
     limitOffset,
-    NonEmpty(..),
+    NonEmpty (..),
     SqlValue,
     fromSql,
     toSql,
@@ -59,12 +59,13 @@ module Database.GP
     rollback,
     withTransaction,
     runRaw,
-    disconnect
+    disconnect,
   )
 where
 
 -- We are just re-exporting from the GenericPersistence module.
 import           Database.GP.GenericPersistence
-import           Database.HDBC (SqlValue, fromSql, toSql, quickQuery, run, 
-                                commit, rollback, withTransaction,
-                                IConnection(runRaw, disconnect))
+import           Database.HDBC                  (IConnection (disconnect, runRaw),
+                                                 SqlValue, commit, fromSql,
+                                                 quickQuery, rollback, run,
+                                                 toSql, withTransaction)

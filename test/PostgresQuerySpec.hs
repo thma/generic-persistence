@@ -1,9 +1,10 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module PostgresQuerySpec 
-( test
-, spec
-)
-where 
+
+module PostgresQuerySpec
+  ( test,
+    spec,
+  )
+where
 
 import           Database.GP
 import           Database.GP.SqlGenerator
@@ -12,14 +13,14 @@ import           GHC.Generics
 import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  conn <- connect ExplicitCommit <$> connectPostgreSQL  "host=localhost dbname=postgres user=postgres password=admin port=5431" 
+  conn <- connect ExplicitCommit <$> connectPostgreSQL "host=localhost dbname=postgres user=postgres password=admin port=5431"
   setupTableFor @Person Postgres conn
 
   insertMany conn [alice, bob, charlie]
@@ -36,7 +37,7 @@ data Person = Person
   deriving (Generic, Show, Eq)
 
 instance Entity Person where
-  autoIncrement = False 
+  autoIncrement = False
 
 alice, bob, charlie, dave :: Person
 bob = Person 1 "Bob" 36 "West Street 79"
@@ -50,10 +51,10 @@ ageField = field "age"
 addressField = field "address"
 
 lower :: Field -> Field
-lower = sqlFun "LOWER";
+lower = sqlFun "LOWER"
 
 upper :: Field -> Field
-upper = sqlFun "UPPER";
+upper = sqlFun "UPPER"
 
 spec :: Spec
 spec = do
@@ -64,12 +65,12 @@ spec = do
       length one `shouldBe` 1
       head one `shouldBe` bob
       commit conn
-    -- TODO: FIXME  
+    -- TODO: FIXME
     it "supports disjunction with ||." $ do
       conn <- prepareDB
       two <- select @Person conn (nameField =. "Bob" ||. ageField =. (25 :: Int))
       length two `shouldBe` 2
-      two `shouldContain` [alice,bob]
+      two `shouldContain` [alice, bob]
       commit conn
     it "supports LIKE" $ do
       conn <- prepareDB
@@ -77,7 +78,7 @@ spec = do
       length three `shouldBe` 3
       commit conn
     it "supports NOT" $ do
-      conn <- prepareDB  
+      conn <- prepareDB
       empty <- select conn (not' $ addressField `like` "West Street %") :: IO [Person]
       length empty `shouldBe` 0
       commit conn
@@ -119,7 +120,7 @@ spec = do
       commit conn
     it "supports SQL functions on columns" $ do
       conn <- prepareDB
-      peopleFromWestStreet <- select conn (lower(upper addressField) `like` "west street %") :: IO [Person]
+      peopleFromWestStreet <- select conn (lower (upper addressField) `like` "west street %") :: IO [Person]
       length peopleFromWestStreet `shouldBe` 3
       commit conn
     it "supports selection by id" $ do
@@ -130,14 +131,14 @@ spec = do
       commit conn
     it "supports ORDER BY" $ do
       conn <- prepareDB
-      sortedPersons <- select @Person conn (allEntries `orderBy` (ageField,ASC) :| [])
+      sortedPersons <- select @Person conn (allEntries `orderBy` (ageField, ASC) :| [])
       length sortedPersons `shouldBe` 3
       sortedPersons `shouldBe` [alice, charlie, bob]
       commit conn
     it "supports multiple columns in ORDER BY" $ do
       conn <- prepareDB
       _ <- insert conn dave -- dave and charlie have the same age
-      sortedPersons <- select @Person conn (allEntries `orderBy` (ageField,ASC) :| [(nameField,DESC)])
+      sortedPersons <- select @Person conn (allEntries `orderBy` (ageField, ASC) :| [(nameField, DESC)])
       length sortedPersons `shouldBe` 4
       sortedPersons `shouldBe` [alice, dave, charlie, bob]
       commit conn
@@ -150,7 +151,7 @@ spec = do
     it "supports LIMIT OFFSET" $ do
       conn <- prepareDB
       _ <- insert conn dave
-      limitedPersons <- select @Person conn (allEntries `limitOffset` (2,1))
+      limitedPersons <- select @Person conn (allEntries `limitOffset` (2, 1))
       length limitedPersons `shouldBe` 1
       head limitedPersons `shouldBe` charlie
       commit conn
@@ -170,14 +171,13 @@ spec = do
       columnTypeFor @SomeRecord Postgres "someRecordDate" `shouldBe` "varchar"
     it "can create whereclauses" $ do
       whereClauseValues byIdColumn `shouldBe` []
-      
+
 data SomeRecord = SomeRecord
-  { someRecordID :: Int,
+  { someRecordID   :: Int,
     someRecordName :: String,
-    someRecordAge :: Double,
-    someRecordTax :: Float,
+    someRecordAge  :: Double,
+    someRecordTax  :: Float,
     someRecordFlag :: Bool,
     someRecordDate :: Integer
   }
   deriving (Generic, Entity, Show, Eq)
-

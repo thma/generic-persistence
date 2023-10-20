@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+
 module Database.GP.GenericPersistence
   ( selectById,
     select,
@@ -12,9 +13,9 @@ module Database.GP.GenericPersistence
     delete,
     deleteMany,
     setupTableFor,
-    Conn(..),
+    Conn (..),
     connect,
-    Database(..),
+    Database (..),
     TxHandling (..),
     ConnectionPool,
     createConnPool,
@@ -26,7 +27,7 @@ module Database.GP.GenericPersistence
     maybeFieldTypeFor,
     TypeInfo (..),
     typeInfo,
-    PersistenceException(..),
+    PersistenceException (..),
     WhereClauseExpr,
     Field,
     field,
@@ -39,9 +40,9 @@ module Database.GP.GenericPersistence
     (<=.),
     (<>.),
     like,
-    --contains,
+    -- contains,
     between,
-    in',  
+    in',
     isNull,
     not',
     sqlFun,
@@ -51,16 +52,17 @@ module Database.GP.GenericPersistence
     SortOrder (..),
     limit,
     limitOffset,
-    NonEmpty(..)
+    NonEmpty (..),
   )
 where
 
 import           Control.Exception
---import           Control.Monad                      (when)
+-- import           Control.Monad                      (when)
 import           Data.Convertible                   (Convertible)
 import           Database.GP.Conn
 import           Database.GP.Entity
-import           Database.GP.GenericPersistenceSafe (PersistenceException, sql, setupTableFor)
+import           Database.GP.GenericPersistenceSafe (PersistenceException,
+                                                     setupTableFor, sql)
 import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo

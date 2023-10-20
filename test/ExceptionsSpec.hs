@@ -1,21 +1,18 @@
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
-
 module ExceptionsSpec
   ( test,
     spec,
   )
 where
 
+import           Control.Exception
 import           Database.GP.GenericPersistenceSafe
+import           Database.HDBC
 import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec
-import           Database.HDBC
-import           Control.Exception
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
@@ -37,18 +34,18 @@ instance Entity Article where
   autoIncrement = False
 
 data Bogus = Bogus
-  { bogusID :: Int,
+  { bogusID    :: Int,
     bogusTitle :: String,
-    bogusYear :: Int
+    bogusYear  :: Int
   }
   deriving (Generic, Show, Eq)
 
 instance Entity Bogus where
   tableName = "Article"
 
-
-  fieldsToColumns :: [(String, String)]                  -- ommitting the articles field, 
-  fieldsToColumns =                                      -- as this can not be mapped to a single column
+  fieldsToColumns :: [(String, String)] -- ommitting the articles field,
+  fieldsToColumns =
+    -- as this can not be mapped to a single column
     [ ("bogusID", "articleID"),
       ("bogusTitle", "title"),
       ("bogusYear", "year")
@@ -56,7 +53,6 @@ instance Entity Bogus where
 
   fromRow :: Conn -> [SqlValue] -> IO Bogus
   fromRow _conn _row = throw $ DatabaseError "can't create bogus"
-
 
 yearField :: Field
 yearField = field "year"
@@ -76,39 +72,39 @@ spec = do
       eitherExRes <- insert conn article :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left di@(DuplicateInsert _msg) -> show di `shouldContain` "Entity already exists"
-        _                          -> expectationFailure "Expected DuplicateInsert exception"
+        _ -> expectationFailure "Expected DuplicateInsert exception"
     it "detects duplicate inserts in insertMany" $ do
       conn <- prepareDB
       _ <- insert conn article
-      eitherExRes <- insertMany conn [article,article] :: IO (Either PersistenceException ())
+      eitherExRes <- insertMany conn [article, article] :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (DuplicateInsert msg) -> msg `shouldContain` "Entity already exists"
-        _                          -> expectationFailure "Expected DuplicateInsert exception"
+        _ -> expectationFailure "Expected DuplicateInsert exception"
     it "detects duplicate inserts in persist" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
       _ <- insert conn article
-      _ <- insert conn article{title="another title"}
+      _ <- insert conn article {title = "another title"}
       eitherExRes <- persist conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (NoUniqueKey msg) -> msg `shouldContain` "More than one entity found for id SqlInt64 1"
-        Left pe                -> expectationFailure $ "Expected NoUniqueKey exception, got " ++ show pe
-        _                      -> expectationFailure "Expected NoUniqueKey exception"
+        Left pe -> expectationFailure $ "Expected NoUniqueKey exception, got " ++ show pe
+        _ -> expectationFailure "Expected NoUniqueKey exception"
     it "detects missing entities in selectById" $ do
       conn <- prepareDB
       eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "not found"
-        _                         -> expectationFailure "Expected EntityNotFound exception"
+        _ -> expectationFailure "Expected EntityNotFound exception"
     it "detects non unique entities in selectById" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
       _ <- insert conn article
-      _ <- insert conn article{title="another title"}
+      _ <- insert conn article {title = "another title"}
       eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left (NoUniqueKey msg) -> msg `shouldContain` "More than one Article found for id SqlString \"1\""
-        _                      -> expectationFailure "Expected DuplicateEntity exception"
+        _ -> expectationFailure "Expected DuplicateEntity exception"
 
     it "detects bogus data in selectById" $ do
       conn <- prepareDB
@@ -116,27 +112,27 @@ spec = do
       eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Bogus)
       case eitherExRes of
         Left (DatabaseError msg) -> msg `shouldContain` "can't create bogus"
-        Left pe                  -> expectationFailure $ "Expected DatabaseError exception, got " ++ show pe
-        _                        -> expectationFailure "Expected DatabaseError exception"
+        Left pe -> expectationFailure $ "Expected DatabaseError exception, got " ++ show pe
+        _ -> expectationFailure "Expected DatabaseError exception"
 
     it "detects missing entities in update" $ do
       conn <- prepareDB
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
-        _                         -> expectationFailure "Expected EntityNotFound exception"
+        _ -> expectationFailure "Expected EntityNotFound exception"
     it "detects missing entities in delete" $ do
       conn <- prepareDB
       eitherExRes <- delete conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
-        _                         -> expectationFailure "Right: Expected EntityNotFound exception"
+        _ -> expectationFailure "Right: Expected EntityNotFound exception"
     it "detects general backend issues" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (DatabaseError msg) -> msg `shouldContain` "SqlError"
-        _                        -> expectationFailure "Expected DatabaseError exception"
+        _ -> expectationFailure "Expected DatabaseError exception"
     it "has no leaking backend exceptions" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       _ <- update conn article :: IO (Either PersistenceException ())
@@ -145,7 +141,7 @@ spec = do
       _ <- delete conn article :: IO (Either PersistenceException ())
       _ <- selectById conn "1" :: IO (Either PersistenceException Article)
       _ <- select conn allEntries :: IO (Either PersistenceException [Article])
-      _ <- select conn (yearField =. "2023")  :: IO (Either PersistenceException [Article])
+      _ <- select conn (yearField =. "2023") :: IO (Either PersistenceException [Article])
       _ <- insertMany conn [article] :: IO (Either PersistenceException ())
       _ <- updateMany conn [article] :: IO (Either PersistenceException ())
       _ <- deleteMany conn [article] :: IO (Either PersistenceException ())
@@ -164,5 +160,4 @@ spec = do
       print index `shouldThrow` errorCall "expectJust Field unknown is not present in type Article"
 
     it "handles duplicate insert exceptions" $ do
-      handleDuplicateInsert (toException $ EntityNotFound "24" ) `shouldBe` DatabaseError "EntityNotFound \"24\""
-    
+      handleDuplicateInsert (toException $ EntityNotFound "24") `shouldBe` DatabaseError "EntityNotFound \"24\""

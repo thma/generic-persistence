@@ -8,13 +8,13 @@ module ConnSpec
 where
 
 import           Database.GP
+import           Database.HDBC
 import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec
-import Database.HDBC
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
@@ -36,9 +36,9 @@ spec :: Spec
 spec = do
   describe "Connection Handling" $ do
     it "can work with embedded connection" $ do
-      Conn{implicitCommit=ic, connection=conn} <- prepareDB
+      Conn {implicitCommit = ic, connection = conn} <- prepareDB
       ic `shouldBe` True
-      
+
       runRaw conn "DROP TABLE IF EXISTS Person;"
       let conn' = connect AutoCommit conn
 
@@ -47,9 +47,9 @@ spec = do
 
     it "can handle rollback" $ do
       conn <- prepareDB
-      let conn' = conn{implicitCommit=False}
+      let conn' = conn {implicitCommit = False}
       let article = Article 1 "Hello" 2023
-      
+
       _ <- insert conn' article
       allArticles <- select conn' allEntries :: IO [Article]
       allArticles `shouldBe` [article]
@@ -59,10 +59,10 @@ spec = do
 
     it "provide the IConnection methods" $ do
       conn <- prepareDB
-      allTables <- getTables conn 
+      allTables <- getTables conn
       allTables `shouldContain` ["Article"]
 
-      desc <- describeTable conn "Article" 
+      desc <- describeTable conn "Article"
       length desc `shouldBe` 3
 
       let driverName = hdbcDriverName conn
@@ -85,12 +85,3 @@ spec = do
 
       clonedConn <- clone conn
       implicitCommit clonedConn `shouldBe` implicitCommit conn
-
-
-
-
-      
-      
-      
-
-

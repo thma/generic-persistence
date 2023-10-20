@@ -9,8 +9,8 @@ where
 import           Database.GP
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
-import           Test.Hspec
 import           Prelude               hiding (print)
+import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery.

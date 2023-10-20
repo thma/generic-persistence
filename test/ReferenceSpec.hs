@@ -1,6 +1,3 @@
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
-
 module ReferenceSpec
   ( test,
     spec,
@@ -15,7 +12,7 @@ import           GHC.Generics
 import           Test.Hspec
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
--- not needed for automatic spec discovery. 
+-- not needed for automatic spec discovery.
 -- (start up stack repl --test to bring up ghci and have access to all the test functions)
 test :: IO ()
 test = hspec spec
@@ -43,35 +40,44 @@ data Author = Author
   deriving (Generic, Show, Eq)
 
 instance Entity Author where
-  autoIncrement = False 
+  autoIncrement = False
 
 instance Entity Article where
   autoIncrement :: Bool
   autoIncrement = False
-  
-  fieldsToColumns :: [(String, String)]                      -- ommitting the author field,
-  fieldsToColumns =                                          -- as this can not be mapped to a single column
-    [ ("articleID", "articleID"),                            -- instead we invent a new column authorID         
+
+  fieldsToColumns :: [(String, String)] -- ommitting the author field,
+  fieldsToColumns =
+    -- as this can not be mapped to a single column
+    [ ("articleID", "articleID"), -- instead we invent a new column authorID
       ("title", "title"),
       ("authorID", "authorID"),
       ("year", "year")
     ]
 
   fromRow :: Conn -> [SqlValue] -> IO Article
-  fromRow conn row = do    
-    authorById <- fromJust <$> selectById conn (row !! 2)  -- load author by foreign key
-    return $ rawArticle {author = authorById}                -- add author to article
+  fromRow conn row = do
+    authorById <- fromJust <$> selectById conn (row !! 2) -- load author by foreign key
+    return $ rawArticle {author = authorById} -- add author to article
     where
-      rawArticle = Article (col 0) (col 1)                   -- create article from row, 
-                           (Author (col 2) "" "") (col 3)    -- using a dummy author
+      rawArticle =
+        Article
+          (col 0)
+          (col 1) -- create article from row,
+          (Author (col 2) "" "")
+          (col 3) -- using a dummy author
         where
           col i = fromSql (row !! i)
 
   toRow :: Conn -> Article -> IO [SqlValue]
   toRow conn a = do
-    persist conn (author a)                                  -- persist author first
-    return [toSql (articleID a), toSql (title a),            -- return row for article table where 
-            toSql $ authorID (author a), toSql (year a)]     -- authorID is foreign key to author table 
+    persist conn (author a) -- persist author first
+    return
+      [ toSql (articleID a),
+        toSql (title a), -- return row for article table where
+        toSql $ authorID (author a),
+        toSql (year a) -- authorID is foreign key to author table
+      ]
 
 article :: Article
 article =

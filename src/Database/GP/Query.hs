@@ -29,7 +29,7 @@ module Database.GP.Query
     SortOrder (..),
     limit,
     limitOffset,
-    NonEmpty(..)
+    NonEmpty (..),
   )
 where
 
@@ -45,12 +45,12 @@ where
 
 import           Data.Convertible   (Convertible)
 import           Data.List          (intercalate)
+import           Data.List.NonEmpty (NonEmpty (..))
+import qualified Data.List.NonEmpty as NE
 import           Database.GP.Entity (Entity, columnNameFor, idField)
 import           Database.HDBC      (SqlValue, toSql)
-import qualified Data.List.NonEmpty as NE
-import           Data.List.NonEmpty (NonEmpty(..))
 
-data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like 
+data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like
 
 data Field = Field [String] String
 
@@ -69,7 +69,7 @@ data WhereClauseExpr
   | Limit WhereClauseExpr Int
   | LimitOffset WhereClauseExpr Int Int
 
-data SortOrder = ASC | DESC 
+data SortOrder = ASC | DESC
   deriving (Show)
 
 field :: String -> Field
@@ -85,7 +85,7 @@ infixl 2 ||.
 (||.) :: WhereClauseExpr -> WhereClauseExpr -> WhereClauseExpr
 (||.) = Or
 
-infixl 4 =., >., <., >=., <=., <>., `like`, `between`, `in'` 
+infixl 4 =., >., <., >=., <=., <>., `like`, `between`, `in'`
 
 (=.), (>.), (<.), (>=.), (<=.), (<>.), like :: (Convertible b SqlValue) => Field -> b -> WhereClauseExpr
 a =. b = Where a Eq (toSql b)
@@ -126,11 +126,10 @@ orderBy :: WhereClauseExpr -> NonEmpty (Field, SortOrder) -> WhereClauseExpr
 orderBy = OrderBy
 
 limit :: WhereClauseExpr -> Int -> WhereClauseExpr
-limit = Limit 
+limit = Limit
 
 limitOffset :: WhereClauseExpr -> (Int, Int) -> WhereClauseExpr
 limitOffset c (offset, lim) = LimitOffset c offset lim
-
 
 whereClauseExprToSql :: forall a. (Entity a) => WhereClauseExpr -> String
 whereClauseExprToSql (Where f op _) = columnToSql @a f ++ " " ++ opToSql op ++ " ?"
@@ -145,22 +144,22 @@ whereClauseExprToSql (WhereIn f v) = columnToSql @a f ++ " IN (" ++ args ++ ")"
 whereClauseExprToSql (WhereIsNull f) = columnToSql @a f ++ " IS NULL"
 whereClauseExprToSql All = "1=1"
 whereClauseExprToSql (ById _eid) = idColumn @a ++ " = ?"
-whereClauseExprToSql ByIdColumn  = idColumn @a ++ " = ?"
+whereClauseExprToSql ByIdColumn = idColumn @a ++ " = ?"
 whereClauseExprToSql (OrderBy clause pairs) = whereClauseExprToSql @a clause ++ " ORDER BY " ++ renderedPairs pairs
   where
     renderedPairs :: NonEmpty (Field, SortOrder) -> String
-    renderedPairs ne = intercalate ", " (NE.toList (NE.map (\(f,order) -> columnToSql @a f ++ " " ++ show order) ne))
+    renderedPairs ne = intercalate ", " (NE.toList (NE.map (\(f, order) -> columnToSql @a f ++ " " ++ show order) ne))
 whereClauseExprToSql (Limit clause x) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show x
-whereClauseExprToSql (LimitOffset clause offset lim) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show lim ++ " OFFSET " ++ show offset 
-    
+whereClauseExprToSql (LimitOffset clause offset lim) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show lim ++ " OFFSET " ++ show offset
+
 opToSql :: CompareOp -> String
-opToSql Eq       = "="
-opToSql Gt       = ">"
-opToSql Lt       = "<"
-opToSql GtEq     = ">="
-opToSql LtEq     = "<="
-opToSql NotEq    = "<>"
-opToSql Like     = "LIKE"
+opToSql Eq    = "="
+opToSql Gt    = ">"
+opToSql Lt    = "<"
+opToSql GtEq  = ">="
+opToSql LtEq  = "<="
+opToSql NotEq = "<>"
+opToSql Like  = "LIKE"
 
 columnToSql :: forall a. (Entity a) => Field -> String
 columnToSql = expandFunctions @a
@@ -168,7 +167,7 @@ columnToSql = expandFunctions @a
 idColumn :: forall a. (Entity a) => String
 idColumn = columnNameFor @a (idField @a)
 
-expandFunctions :: forall a. (Entity a) => Field -> String -- -> String
+expandFunctions :: forall a. (Entity a) => Field -> String
 expandFunctions (Field [] name) = columnNameFor @a name
 expandFunctions (Field (f : fs) name) = f ++ "(" ++ expandFunctions @a (Field fs name) ++ ")"
 
