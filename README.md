@@ -1,5 +1,6 @@
 # GenericPersistence - A Haskell Persistence Layer using Generics
 
+[![License BSD3](https://img.shields.io/badge/license-BSD3-brightgreen.svg)](http://opensource.org/licenses/BSD-3-Clause)
 [![Actions Status](https://github.com/thma/generic-persistence/workflows/Haskell%20CI/badge.svg)](https://github.com/thma/generic-persistence/actions)
 [![codecov](https://codecov.io/gh/thma/generic-persistence/graph/badge.svg?token=DBCFLEA8JZ)](https://codecov.io/gh/thma/generic-persistence)
 [![Available on Hackage](https://img.shields.io/hackage/v/generic-persistence.svg?style=flat)](https://github.com/thma/generic-persistence)
