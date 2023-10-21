@@ -21,7 +21,7 @@ test = hspec spec
 prepareDB :: IO Conn
 prepareDB = do
   conn <- connect ExplicitCommit <$> connectPostgreSQL "host=localhost dbname=postgres user=postgres password=admin port=5431"
-  setupTableFor @Person Postgres conn
+  setupTable @Person conn defaultPostgresMapping
 
   insertMany conn [alice, bob, charlie]
   commit conn
@@ -156,19 +156,19 @@ spec = do
       head limitedPersons `shouldBe` charlie
       commit conn
     it "can create column types for a SqlLite" $ do
-      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordID" `shouldBe` "INTEGER"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordName" `shouldBe` "TEXT"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordAge" `shouldBe` "REAL"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordTax" `shouldBe` "REAL"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordFlag" `shouldBe` "INT"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingSqlite "someRecordDate" `shouldBe` "TEXT"
+      columnTypeFor @SomeRecord defaultSqliteMapping "someRecordID" `shouldBe` "INTEGER"
+      columnTypeFor @SomeRecord defaultSqliteMapping "someRecordName" `shouldBe` "TEXT"
+      columnTypeFor @SomeRecord defaultSqliteMapping "someRecordAge" `shouldBe` "REAL"
+      columnTypeFor @SomeRecord defaultSqliteMapping "someRecordTax" `shouldBe` "REAL"
+      columnTypeFor @SomeRecord defaultSqliteMapping "someRecordFlag" `shouldBe` "INT"
+      columnTypeFor @SomeRecord defaultSqliteMapping "someRecordDate" `shouldBe` "TEXT"
     it "can create column types for a Postgres" $ do
-      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordID" `shouldBe` "numeric"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordName" `shouldBe` "varchar"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordAge" `shouldBe` "numeric"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordTax" `shouldBe` "numeric"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordFlag" `shouldBe` "boolean"
-      columnTypeFor @SomeRecord defaultColumnTypeMappingPostgres "someRecordDate" `shouldBe` "varchar"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordID" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordName" `shouldBe` "varchar"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordAge" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordTax" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordFlag" `shouldBe` "boolean"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordDate" `shouldBe` "varchar"
     it "can create whereclauses" $ do
       whereClauseValues byIdColumn `shouldBe` []
 

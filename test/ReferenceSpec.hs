@@ -20,8 +20,8 @@ test = hspec spec
 prepareDB :: IO Conn
 prepareDB = do
   conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
-  setupTableFor @Article SQLite conn
-  setupTableFor @Author SQLite conn
+  setupTable @Article conn defaultSqliteMapping
+  setupTable @Author conn defaultSqliteMapping
   return conn
 
 data Article = Article

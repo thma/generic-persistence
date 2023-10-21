@@ -23,8 +23,8 @@ prepareDB :: IO Conn
 prepareDB = do
   con <- connect AutoCommit <$> connectPostgreSQL "host=localhost dbname=postgres user=postgres password=admin port=5431"
   let conn = con {implicitCommit = False}
-  setupTableFor @Person Postgres conn
-  setupTableFor @Book Postgres conn
+  setupTable @Person conn defaultPostgresMapping
+  setupTable @Book conn defaultPostgresMapping
   _ <- run conn "DROP TABLE IF EXISTS Car;" []
   _ <- run conn "CREATE TABLE Car (carID serial4 PRIMARY KEY, carType varchar);" []
   commit conn
@@ -314,7 +314,7 @@ spec = do
     it "provides a Connection Pool" $ do
       connPool <- postgreSQLPool "host=localhost dbname=postgres user=postgres password=admin port=5431"
       withResource connPool $ \conn -> do
-        setupTableFor @Person Postgres conn
+        setupTable @Person conn defaultPostgresMapping
         _ <- insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1

@@ -16,7 +16,9 @@ module Database.GP.GenericPersistenceSafe
     delete,
     deleteMany,
     setupTableFor,
-    setupTableWithMapping,
+    setupTable,
+    defaultSqliteMapping,
+    defaultPostgresMapping,
     Conn (..),
     connect,
     Database (..),
@@ -272,17 +274,18 @@ deleteMany conn entities = tryPE $ do
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection and a database type as parameter.
+{-# DEPRECATED setupTableFor "use setupTable instead" #-}
 setupTableFor :: forall a. (Entity a) => Database -> Conn -> IO ()
-setupTableFor db conn = setupTableWithMapping @a conn mapping 
+setupTableFor db conn = setupTable @a conn mapping 
   where
     mapping = case db of
-      Postgres -> defaultColumnTypeMappingPostgres
-      SQLite   -> defaultColumnTypeMappingSqlite
+      Postgres -> defaultPostgresMapping
+      SQLite   -> defaultSqliteMapping
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection and a column type mapping as parameters.
-setupTableWithMapping :: forall a. (Entity a) => Conn -> ColumnTypeMapping -> IO ()
-setupTableWithMapping conn mapping = do
+setupTable :: forall a. (Entity a) => Conn -> ColumnTypeMapping -> IO ()
+setupTable conn mapping = do
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ createTableStmtFor @a mapping
   commitIfAutoCommit conn

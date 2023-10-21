@@ -37,8 +37,8 @@ module Database.GP.SqlGenerator
     limitOffset,
     NonEmpty (..),
     Database (..),
-    defaultColumnTypeMappingSqlite,
-    defaultColumnTypeMappingPostgres,
+    defaultSqliteMapping,
+    defaultPostgresMapping,
     ColumnTypeMapping,
   )
 where
@@ -129,10 +129,8 @@ deleteStmtFor =
     ++ idColumn @a
     ++ " = ?;"
 
--- | An enumeration of the supported database types.
+-- | An enumeration of the supported database types. 
 data Database = Postgres | SQLite
-  deriving (-- | Oracle | MSSQL | MySQL
-            Show, Eq)
 
 createTableStmtFor :: forall a. (Entity a) => ColumnTypeMapping -> String
 createTableStmtFor columnTypeMapping =
@@ -160,8 +158,8 @@ columnTypeFor columnTypeMapping fieldName = columnTypeMapping fType
 
 type ColumnTypeMapping = String -> String
 
-defaultColumnTypeMappingSqlite :: ColumnTypeMapping
-defaultColumnTypeMappingSqlite = \case
+defaultSqliteMapping :: ColumnTypeMapping
+defaultSqliteMapping = \case
   "primaryKey" -> "INTEGER"
   "Int"    -> "INTEGER"
   "[Char]" -> "TEXT"
@@ -170,8 +168,8 @@ defaultColumnTypeMappingSqlite = \case
   "Bool"   -> "INT"
   _        -> "TEXT"
 
-defaultColumnTypeMappingPostgres :: ColumnTypeMapping
-defaultColumnTypeMappingPostgres = \case
+defaultPostgresMapping :: ColumnTypeMapping
+defaultPostgresMapping = \case
   "primaryKey" -> "serial"
   "Int"    -> "numeric"
   "[Char]" -> "varchar"

@@ -41,7 +41,7 @@ spec = do
       conn <- connect AutoCommit <$> connectSqlite3 "sqlite.db"
 
       -- initialize Person table
-      setupTableFor @Person SQLite conn
+      setupTable @Person conn defaultSqliteMapping
 
       alice <- insert conn Person {name = "Alice", age = 25, address = "Elmstreet 1"}
       print alice

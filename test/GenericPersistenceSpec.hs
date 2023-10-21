@@ -1,6 +1,5 @@
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE QuasiQuotes    #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# OPTIONS_GHC -Wno-missing-fields #-}
 
 module GenericPersistenceSpec
   ( test,
@@ -24,8 +23,9 @@ test = hspec spec
 prepareDB :: IO Conn
 prepareDB = do
   conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
-  setupTableFor @Person SQLite conn
-  setupTableFor @Book SQLite conn
+  setupTable @Person conn defaultSqliteMapping
+  setupTable @Book conn defaultSqliteMapping
+  setupTable @Car conn defaultSqliteMapping
   return conn
 
 -- | A data type with several fields, using record syntax.
@@ -44,7 +44,11 @@ data Car = Car
   { carID   :: Int,
     carType :: String
   }
-  deriving (Generic, Entity, Show, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity Car where
+  autoIncrement = True
+  idField = "carID"
 
 data Book = Book
   { book_id  :: Int,
@@ -209,8 +213,7 @@ spec = do
       person' `shouldBe` Just person
     it "inserts Entities with autoincrement handling" $ do
       conn <- prepareDB
-      _ <- run conn "CREATE TABLE Car (carID INTEGER PRIMARY KEY AUTOINCREMENT, carType TEXT);" []
-      myCar@(Car carId _) <- insert conn (Car 0 "Honda Jazz")
+      myCar@(Car carId _) <- insert conn Car {carType = "Honda Jazz"}
       myCar' <- selectById conn carId :: IO (Maybe Car)
       myCar' `shouldBe` Just myCar
     it "inserts many Entities re-using a single prepared stmt" $ do
@@ -220,6 +223,12 @@ spec = do
       insertMany conn manyPersons
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 6
+    it "inserts many alsodoes autoincrement handling" $ do
+      conn <- prepareDB
+      insertMany conn [Car {carType = "Honda Jazz"}]
+      [Car carId typ] <- select @Car conn allEntries
+      typ `shouldBe` "Honda Jazz"
+      carId `shouldBe` 1
     it "updates many Entities re-using a single prepared stmt" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
