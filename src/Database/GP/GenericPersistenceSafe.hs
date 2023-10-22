@@ -1,6 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE LambdaCase          #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Database.GP.GenericPersistenceSafe

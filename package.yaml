@@ -23,6 +23,7 @@ default-extensions:
 - OverloadedRecordDot
 - TemplateHaskell
 - QuasiQuotes
+- LambdaCase
 
 dependencies:
 - base >= 4.7 && < 5

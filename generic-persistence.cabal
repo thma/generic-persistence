@@ -47,6 +47,7 @@ library
       OverloadedRecordDot
       TemplateHaskell
       QuasiQuotes
+      LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       HDBC
@@ -84,6 +85,7 @@ test-suite generic-persistence-test
       OverloadedRecordDot
       TemplateHaskell
       QuasiQuotes
+      LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       HDBC

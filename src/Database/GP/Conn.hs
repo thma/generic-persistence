@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Database.GP.Conn
   ( Conn (..),
     connect,

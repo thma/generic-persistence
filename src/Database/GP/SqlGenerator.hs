@@ -1,5 +1,4 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE LambdaCase          #-}
 
 module Database.GP.SqlGenerator
   ( insertStmtFor,
