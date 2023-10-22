@@ -90,6 +90,12 @@ spec = do
         Left (NoUniqueKey msg) -> msg `shouldContain` "More than one entity found for id SqlInt64 1"
         Left pe -> expectationFailure $ "Expected NoUniqueKey exception, got " ++ show pe
         _ -> expectationFailure "Expected NoUniqueKey exception"
+    it "returns () for successful persist" $ do
+      conn <- prepareDB
+      eitherExRes <- persist conn article :: IO (Either PersistenceException ())
+      case eitherExRes of
+        Right () -> expectationSuccess
+        _ -> expectationFailure "Expected ()"
     it "detects missing entities in selectById" $ do
       conn <- prepareDB
       eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
