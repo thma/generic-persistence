@@ -1,6 +1,4 @@
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
-
+{-# OPTIONS_GHC -Wno-deprecations #-}
 module PostgresSpec
   ( test,
     spec,

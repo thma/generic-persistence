@@ -1,6 +1,3 @@
--- allows automatic derivation from Entity type class
-{-# LANGUAGE DeriveAnyClass #-}
-
 module ConnSpec
   ( test,
     spec,
