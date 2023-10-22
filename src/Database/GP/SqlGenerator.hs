@@ -60,35 +60,35 @@ insertStmtFor =
   "INSERT INTO "
     ++ tableName @a
     ++ " ("
-    ++ intercalate ", " insertColumns
+    ++ intercalate ", " insertCols
     ++ ") VALUES ("
-    ++ intercalate ", " (params (length insertColumns))
+    ++ intercalate ", " (params (length insertCols))
     ++ ");"
   where
+    insertCols = insertColumns @a
+
+insertColumns :: forall a. Entity a => [String]
+insertColumns = 
+  if autoIncrement @a
+    then filter (/= idColumn @a) columns
+    else columns 
+  where
     columns = columnNamesFor @a
-    insertColumns =
-      if autoIncrement @a
-        then filter (/= idColumn @a) columns
-        else columns
 
 insertReturningStmtFor :: forall a. Entity a => String
 insertReturningStmtFor =
   "INSERT INTO "
     ++ tableName @a
     ++ " ("
-    ++ intercalate ", " insertColumns
+    ++ intercalate ", " insertCols
     ++ ") VALUES ("
-    ++ intercalate ", " (params (length insertColumns))
+    ++ intercalate ", " (params (length insertCols))
     ++ ") RETURNING "
-    ++ returnColumns
+    ++ returnCols
     ++ ";"
   where
-    columns = columnNamesFor @a
-    insertColumns =
-      if autoIncrement @a
-        then filter (/= idColumn @a) columns
-        else columns
-    returnColumns = intercalate ", " columns
+    insertCols = insertColumns @a
+    returnCols = intercalate ", " (columnNamesFor @a)
 
 columnNamesFor :: forall a. Entity a => [String]
 columnNamesFor = map snd fieldColumnPairs

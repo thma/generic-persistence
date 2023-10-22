@@ -314,7 +314,7 @@ spec = do
     it "provides a Connection Pool" $ do
       connPool <- postgreSQLPool "host=localhost dbname=postgres user=postgres password=admin port=5431"
       withResource connPool $ \conn -> do
-        setupTable @Person conn defaultPostgresMapping
+        setupTableFor @Person Postgres conn
         _ <- insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1

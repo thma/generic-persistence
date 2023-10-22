@@ -59,6 +59,7 @@ module Database.GP.GenericPersistenceSafe
     limitOffset,
     fieldIndex,
     handleDuplicateInsert,
+    removeIdField,
   )
 where
 

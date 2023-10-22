@@ -161,3 +161,41 @@ spec = do
 
     it "handles duplicate insert exceptions" $ do
       handleDuplicateInsert (toException $ EntityNotFound "24") `shouldBe` DatabaseError "EntityNotFound \"24\""
+
+    it "handles autoincrement edge cases" $ do
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+      let article' = Article 200 "title" 2023
+          expectedRow = [SqlInt64 200, SqlString "title", SqlInt64 2023]
+      articleRow <- toRow conn article'
+      articleRow `shouldBe` expectedRow
+      -- Article is defined with autoIncrement = False
+      removeIdField @Article articleRow `shouldBe` expectedRow
+
+      -- ArticleWithoutPK is defined with autoIncrement = True, but has no primary key field
+      let articleWithoutPK = ArticleWithoutPK "title" 2023
+          rowWithoutPK = [SqlString "title", SqlInt64 2023]
+      articleRowWithoutPK <- toRow conn articleWithoutPK
+      removeIdField @ArticleWithoutPK articleRowWithoutPK `shouldBe` rowWithoutPK
+
+      -- ArticleWithPKatEnd is defined with autoIncrement = True and has a primary key field as last column
+      let articleWithPKatEnd = ArticleWithPKatEnd "title" 2023 200
+          expectedRow2 = [SqlString "title", SqlInt64 2023]
+      articleRowWithPKatEnd <- toRow conn articleWithPKatEnd
+      removeIdField @ArticleWithPKatEnd articleRowWithPKatEnd `shouldBe` expectedRow2
+
+data ArticleWithoutPK = ArticleWithoutPK
+  { title1 :: String,
+    year1  :: Int
+  }
+  deriving (Generic, Show, Entity, Eq)
+
+data ArticleWithPKatEnd = ArticleWithPKatEnd
+  { title2     :: String,
+    year2      :: Int,
+    articleID2 :: Int
+  }
+  deriving (Generic, Show, Eq)
+
+instance Entity ArticleWithPKatEnd where
+  autoIncrement = True
+  idField = "articleID2"
