@@ -1,6 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
-{-# OPTIONS_GHC -Wno-missing-fields #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
+{-# OPTIONS_GHC -Wno-missing-fields #-}
 
 module GenericPersistenceSpec
   ( test,

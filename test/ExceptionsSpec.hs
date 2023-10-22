@@ -95,7 +95,7 @@ spec = do
       eitherExRes <- persist conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Right () -> expectationSuccess
-        _ -> expectationFailure "Expected ()"
+        _        -> expectationFailure "Expected ()"
     it "detects missing entities in selectById" $ do
       conn <- prepareDB
       eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)

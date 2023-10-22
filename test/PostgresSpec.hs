@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-deprecations #-}
+
 module PostgresSpec
   ( test,
     spec,
@@ -19,8 +20,7 @@ test = hspec spec
 
 prepareDB :: IO Conn
 prepareDB = do
-  con <- connect AutoCommit <$> connectPostgreSQL "host=localhost dbname=postgres user=postgres password=admin port=5431"
-  let conn = con {implicitCommit = False}
+  conn <- connect ExplicitCommit <$> connectPostgreSQL "host=localhost dbname=postgres user=postgres password=admin port=5431"
   setupTable @Person conn defaultPostgresMapping
   setupTable @Book conn defaultPostgresMapping
   _ <- run conn "DROP TABLE IF EXISTS Car;" []

@@ -167,7 +167,7 @@ persist conn entity = do
 -- | A function that commits a transaction if the connection is in auto commit mode.
 --   The function takes an HDBC connection as parameter.
 commitIfAutoCommit :: Conn -> IO ()
-commitIfAutoCommit conn = when (implicitCommit conn) $ commit conn
+commitIfAutoCommit (Conn autoCommit conn) = when autoCommit $ commit conn
 
 -- | A function that explicitely inserts an entity into a database.
 insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a)

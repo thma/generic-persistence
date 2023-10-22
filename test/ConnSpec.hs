@@ -33,7 +33,7 @@ spec :: Spec
 spec = do
   describe "Connection Handling" $ do
     it "can work with embedded connection" $ do
-      Conn {implicitCommit = ic, connection = conn} <- prepareDB
+      (Conn ic conn) <- prepareDB
       ic `shouldBe` True
 
       runRaw conn "DROP TABLE IF EXISTS Person;"
@@ -44,7 +44,7 @@ spec = do
 
     it "can handle rollback" $ do
       conn <- prepareDB
-      let conn' = conn {implicitCommit = False}
+      let conn' = connect ExplicitCommit conn
       let article = Article 1 "Hello" 2023
 
       _ <- insert conn' article
@@ -80,5 +80,6 @@ spec = do
       let txSupport = dbTransactionSupport conn
       txSupport `shouldBe` True
 
-      clonedConn <- clone conn
-      implicitCommit clonedConn `shouldBe` implicitCommit conn
+      let (Conn autoCommit _) = conn
+      (Conn clonedAutoCommit _) <- clone conn
+      clonedAutoCommit `shouldBe` autoCommit
