@@ -15,6 +15,7 @@
 - [Status](#status)
 - [Available on Hackage](#available-on-hackage)
 - [Short demo](#short-demo)
+- [Real world examples](#real-world-examples)
 - [Deal with runtime exceptions or use total functions? Your choice!](#deal-with-runtime-exceptions-or-use-total-functions-your-choice)
   - [Exceptions in the default API](#exceptions-in-the-default-api)
   - [Total functions in the safe API](#total-functions-in-the-safe-api)
@@ -155,6 +156,25 @@ main = do
   -- close connection
   disconnect conn
 ```
+
+## Real world examples
+
+To learn how to use the library in more complex scenarios, I recommend looking at the following examples:
+
+### Building a REST service with Servant and GenericPersistence
+
+[This example](https://github.com/thma/servant-gp) shows how to use servant to build a REST API that provides CRUD operations for a medium-complex data model.
+GenericPersistence is used to execute the CRUD operation against a SQLite database.
+A Swagger UI is provided to interact with the API.
+
+### The Elephantine library review
+
+The Elephantine library review provides a good overview of the different libraries available for working with PostgreSQL in Haskell. It also contains a section on *Generic-Persistence*:
+
+[How to use PostgreSQL with Haskell. Elephantine Library Review 2023](https://github.com/Zelenya/elephants#generic-persistence)
+
+In this review all libraries are compared by implementing the same real world application scenario with each library. The source code for *Generic-Persistence* can be found [here](https://github.com/Zelenya/elephants/blob/main/src/Elephants/GenericPersistence.hs).
+
 
 ## Deal with runtime exceptions or use total functions? Your choice!
 
@@ -685,12 +705,4 @@ main = do
 You'll find a more complete example in the [servant-gp repo](https://github.com/thma/servant-gp/blob/main/src/ServerUtils.hs#L45).
 There I have set up a sample REST service based on Servant that uses *Generic-Persistence* and a connection pool to manage the database connections.
 
-## Further readings
 
-The Elephantine library review provides a good overview of the different libraries available for working with PostgreSQL in Haskell. It also contains a section on *Generic-Persistence*:
-
-[How to use PostgreSQL with Haskell. Elephantine Library Review 2023](https://github.com/Zelenya/elephants#generic-persistence)
-
-In this review all libraries are compared by implementing the same real world application scenario with each library. The source code for *Generic-Persistence* can be found [here](https://github.com/Zelenya/elephants/blob/main/src/Elephants/GenericPersistence.hs).
-
-Interestingly, the implementation of the application scenario with *Generic-Persistence* is one of the shortest and most concise of all libraries reviewed.
