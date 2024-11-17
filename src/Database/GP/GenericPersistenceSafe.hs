@@ -7,12 +7,15 @@ module Database.GP.GenericPersistenceSafe
     entitiesFromRows,
     sql,
     persist,
+    upsert,
     insert,
     insertMany,
     update,
     updateMany,
     delete,
+    deleteById,
     deleteMany,
+    deleteManyById,
     setupTableFor,
     setupTable,
     defaultSqliteMapping,
@@ -144,12 +147,8 @@ select conn whereClause = do
 entitiesFromRows :: forall a. (Entity a) => Conn -> [[SqlValue]] -> IO (Either PersistenceException [a])
 entitiesFromRows = (tryPE .) . mapM . fromRow
 
--- | A function that persists an entity to a database.
--- The function takes an HDBC connection and an entity as parameters.
--- The entity is either inserted or updated, depending on whether it already exists in the database.
--- The required SQL statements are generated dynamically using Haskell generics and reflection
-persist :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
-persist conn entity = do
+upsert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
+upsert conn entity = do
   eitherExRes <- try $ do
     eid <- idValue conn entity
     let stmt = selectFromStmt @a byIdColumn
@@ -161,6 +160,16 @@ persist conn entity = do
   case eitherExRes of
     Left ex   -> return $ Left $ fromException ex
     Right res -> return res
+
+-- | A function that persists an entity to a database.
+-- The function takes an HDBC connection and an entity as parameters.
+-- The entity is either inserted or updated, depending on whether it already exists in the database.
+-- The required SQL statements are generated dynamically using Haskell generics and reflection
+-- deprecated: use upsert instead
+{-# DEPRECATED persist "use upsert instead" #-}
+persist :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
+persist = upsert
+
 
 -- | A function that commits a transaction if the connection is in auto commit mode.
 --   The function takes an HDBC connection as parameter.
@@ -261,6 +270,26 @@ delete conn entity = do
     Left ex      -> return $ Left $ fromException ex
     Right result -> return result
 
+deleteById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException ())
+deleteById conn idx = do
+  eitherExRes <- try $ do
+    let eid = toSql idx
+    rowCount <- run conn (deleteStmtFor @a) [eid]
+    if rowCount == 0
+      then return (Left (EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")))
+      else do
+        commitIfAutoCommit conn
+        return $ Right ()
+  case eitherExRes of
+    Left ex      -> return $ Left $ fromException ex
+    Right result -> return result
+
+deleteManyById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> [id] -> IO (Either PersistenceException ())
+deleteManyById conn ids = tryPE $ do
+  stmt <- prepare conn (deleteStmtFor @a)
+  executeMany stmt (map ((: []) . toSql) ids)
+  commitIfAutoCommit conn
+
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
@@ -275,7 +304,7 @@ deleteMany conn entities = tryPE $ do
 --   The function takes an HDBC connection and a database type as parameter.
 {-# DEPRECATED setupTableFor "use setupTable instead" #-}
 setupTableFor :: forall a. (Entity a) => Database -> Conn -> IO ()
-setupTableFor db conn = setupTable @a conn mapping 
+setupTableFor db conn = setupTable @a conn mapping
   where
     mapping = case db of
       Postgres -> defaultPostgresMapping
