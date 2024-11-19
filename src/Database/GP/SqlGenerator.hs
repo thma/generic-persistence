@@ -5,6 +5,7 @@ module Database.GP.SqlGenerator
     insertReturningStmtFor,
     updateStmtFor,
     selectFromStmt,
+    countStmtFor,
     deleteStmtFor,
     createTableStmtFor,
     dropTableStmtFor,
@@ -115,6 +116,14 @@ selectFromStmt whereClauseExpr =
   "SELECT "
     ++ intercalate ", " (columnNamesFor @a)
     ++ " FROM "
+    ++ tableName @a
+    ++ " WHERE "
+    ++ whereClauseExprToSql @a whereClauseExpr
+    ++ ";"
+
+countStmtFor :: forall a. (Entity a) => WhereClauseExpr -> String
+countStmtFor whereClauseExpr =
+  "SELECT COUNT(*) FROM "
     ++ tableName @a
     ++ " WHERE "
     ++ whereClauseExprToSql @a whereClauseExpr

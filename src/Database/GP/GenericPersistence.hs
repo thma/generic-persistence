@@ -3,6 +3,7 @@
 module Database.GP.GenericPersistence
   ( selectById,
     select,
+    count,
     entitiesFromRows,
     sql,
     persist,
@@ -104,6 +105,13 @@ select conn whereClause = do
   case eitherExEntities of
     Left ex        -> throw ex
     Right entities -> pure entities
+
+count :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO Int
+count conn whereClause = do
+  eitherExCount <- GpSafe.count @a conn whereClause
+  case eitherExCount of
+    Left ex   -> throw ex
+    Right cnt -> pure cnt
 
 fromEitherExOrA :: IO (Either PersistenceException a) -> IO a
 fromEitherExOrA ioEitherExUnit = do

@@ -1,6 +1,7 @@
 module Database.GP
   ( selectById,
     select,
+    count,
     entitiesFromRows,
     sql,
     persist,

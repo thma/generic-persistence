@@ -4,6 +4,7 @@
 module Database.GP.GenericPersistenceSafe
   ( selectById,
     select,
+    count,
     entitiesFromRows,
     sql,
     persist,
@@ -126,7 +127,7 @@ fromException ex = DatabaseError $ show ex
 --   The function takes an HDBC connection and a `WhereClauseExpr` as parameters.
 --   The type `a` is determined by the context of the function call.
 --   The function returns a (possibly empty) list of all matching entities.
---   The `WhereClauseExpr` is typically constructed using any tiny query dsl based on infix operators.
+--   The `WhereClauseExpr` is typically constructed using a tiny query dsl based on infix operators.
 select :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
 select conn whereClause = do
   -- print stmt
@@ -136,6 +137,23 @@ select conn whereClause = do
     Right resultRows -> entitiesFromRows conn resultRows
   where
     stmt = selectFromStmt @a whereClause
+    values = whereClauseValues whereClause
+
+-- | This function retrieves the number of entities of type `a` that match some query criteria.
+--   The function takes an HDBC connection and a `WhereClauseExpr` as parameters.
+--   The type `a` is determined by the context of the function call.
+--   The function returns the number of all matching entities.
+--   The `WhereClauseExpr` is typically constructed using a tiny query dsl based on infix operators.
+count :: forall a. (Entity a) => Conn -> WhereClauseExpr -> IO (Either PersistenceException Int)
+count conn whereClause = do
+  eitherExRows <- tryPE $ quickQuery conn stmt values
+  case eitherExRows of
+    Left ex          -> return $ Left ex
+    Right resultRows -> case resultRows of
+      [[countValue]] -> return $ Right $ fromSql countValue
+      _              -> return $ Left $ DatabaseError "count query did not return a single row"
+  where
+    stmt = countStmtFor @a whereClause
     values = whereClauseValues whereClause
 
 -- | This function converts a list of database rows, represented as a `[[SqlValue]]` to a list of entities.
