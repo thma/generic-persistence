@@ -109,6 +109,11 @@ spec = do
       head allPersons `shouldBe` bob
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just bob
+    it "retrieves the number of selected Entities" $ do
+      conn <- prepareDB
+      insertMany conn manyPersons
+      countPersons <- count @Person conn allEntries
+      countPersons `shouldBe` 6
     it "selectById returns Nothing if no Entity was found" $ do
       conn <- prepareDB
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
@@ -292,7 +297,7 @@ spec = do
     it "provides a Connection Pool" $ do
       connPool <- sqlLitePool ":memory:"
       withResource connPool $ \conn -> do
-        setupTableFor @Person SQLite conn
+        setupTable @Person conn defaultSqliteMapping
         _ <- insert conn person
         allPersons <- select conn allEntries :: IO [Person]
         length allPersons `shouldBe` 1

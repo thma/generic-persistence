@@ -14,7 +14,6 @@ module Database.GP
     deleteById,
     deleteMany,
     deleteManyById,
-    setupTableFor,
     setupTable,
     defaultSqliteMapping,
     defaultPostgresMapping,

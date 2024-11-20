@@ -16,7 +16,6 @@ module Database.GP.GenericPersistence
     deleteById,
     deleteMany,
     deleteManyById,
-    setupTableFor,
     setupTable,
     defaultSqliteMapping,
     defaultPostgresMapping,
@@ -68,7 +67,7 @@ import           Data.Convertible                   (Convertible)
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.GenericPersistenceSafe (PersistenceException,
-                                                     setupTableFor, setupTable, sql)
+                                                     setupTable, sql)
 import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo

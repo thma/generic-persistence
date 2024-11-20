@@ -17,7 +17,6 @@ module Database.GP.GenericPersistenceSafe
     deleteById,
     deleteMany,
     deleteManyById,
-    setupTableFor,
     setupTable,
     defaultSqliteMapping,
     defaultPostgresMapping,
@@ -165,6 +164,10 @@ count conn whereClause = do
 entitiesFromRows :: forall a. (Entity a) => Conn -> [[SqlValue]] -> IO (Either PersistenceException [a])
 entitiesFromRows = (tryPE .) . mapM . fromRow
 
+-- | A function that persists an entity to a database.
+-- The function takes an HDBC connection and an entity as parameters.
+-- The entity is either inserted or updated, depending on whether it already exists in the database.
+-- The required SQL statements are generated dynamically using Haskell generics and reflection
 upsert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
 upsert conn entity = do
   eitherExRes <- try $ do
@@ -195,6 +198,10 @@ commitIfAutoCommit :: Conn -> IO ()
 commitIfAutoCommit (Conn autoCommit conn) = when autoCommit $ commit conn
 
 -- | A function that explicitely inserts an entity into a database.
+--   The function takes an HDBC connection and an entity as parameters.
+--   The entity, as retrieved from the database, is returned as a Right value if the entity was successfully inserted.
+--   (this allows to handle automatically updated fields like auto-incremented primary keys)
+--   If the entity could not be inserted, a Left value is returned, containing a PersistenceException.
 insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a)
 insert conn entity = do
   eitherExOrA <- try $ do
@@ -245,6 +252,7 @@ insertMany conn entities = do
     Right _ -> return $ Right ()
 
 -- | A function that explicitely updates an entity in a database.
+--  The function takes an HDBC connection and an entity as parameters.
 update :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
 update conn entity = do
   eitherExUnit <- try $ do
@@ -288,6 +296,8 @@ delete conn entity = do
     Left ex      -> return $ Left $ fromException ex
     Right result -> return result
 
+-- | A function that deletes an entity from a database by its id.
+--   The function takes an HDBC connection and an entity id as parameters.
 deleteById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException ())
 deleteById conn idx = do
   eitherExRes <- try $ do
@@ -302,6 +312,8 @@ deleteById conn idx = do
     Left ex      -> return $ Left $ fromException ex
     Right result -> return result
 
+-- | A function that deletes a list of entities from a database by their ids.
+--   The function takes an HDBC connection and a list of entity ids as parameters.
 deleteManyById :: forall a id. (Entity a, Convertible id SqlValue) => Conn -> [id] -> IO (Either PersistenceException ())
 deleteManyById conn ids = tryPE $ do
   stmt <- prepare conn (deleteStmtFor @a)
@@ -317,16 +329,6 @@ deleteMany conn entities = tryPE $ do
   stmt <- prepare conn (deleteStmtFor @a)
   executeMany stmt (map (: []) eids)
   commitIfAutoCommit conn
-
--- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
---   The function takes an HDBC connection and a database type as parameter.
-{-# DEPRECATED setupTableFor "use setupTable instead" #-}
-setupTableFor :: forall a. (Entity a) => Database -> Conn -> IO ()
-setupTableFor db conn = setupTable @a conn mapping
-  where
-    mapping = case db of
-      Postgres -> defaultPostgresMapping
-      SQLite   -> defaultSqliteMapping
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection and a column type mapping as parameters.
@@ -345,7 +347,7 @@ idValue conn x = do
   where
     idFieldIndex = fieldIndex @a (idField @a)
 
--- an alias for a simple quasiqouter
+-- | an alias for a simple quasiqouter
 sql :: QuasiQuoter
 sql = r
 
