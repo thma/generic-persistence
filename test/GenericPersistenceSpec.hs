@@ -114,6 +114,12 @@ spec = do
       insertMany conn manyPersons
       countPersons <- count @Person conn allEntries
       countPersons `shouldBe` 6
+    it "signals if counting fails" $ do
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:" -- no tables in db
+      eitherEA <- try (count @Person conn allEntries)
+      case eitherEA of
+        Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
+        _ -> expectationFailure "Expected DatabaseError"
     it "selectById returns Nothing if no Entity was found" $ do
       conn <- prepareDB
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
@@ -264,6 +270,12 @@ spec = do
       res `shouldBe` ()
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 5
+    it "signals if deleting by id fails" $ do
+      conn <- prepareDB
+      eitherEA <- try (deleteById @Person conn (6 :: Int))
+      case eitherEA of
+        Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
+        _ -> expectationFailure "Expected EntityNotFound exception"
 
     it "deletes multiple entities by a list of ids" $ do
       conn <- prepareDB
