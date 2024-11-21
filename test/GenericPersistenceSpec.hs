@@ -257,10 +257,11 @@ spec = do
       allPersons'' <- select conn allEntries :: IO [Person]
       length allPersons'' `shouldBe` 0
 
-    it "deletes an entity by a given id" $ do
+    it "deletes a single entity by a given id" $ do
       conn <- prepareDB
       insertMany conn manyPersons
-      deleteById @Person conn (6 :: Int)
+      res <- deleteById @Person conn (6 :: Int)
+      res `shouldBe` ()
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 5
 
