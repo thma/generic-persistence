@@ -85,14 +85,14 @@ spec = do
       runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
       _ <- insert conn article
       _ <- insert conn article {title = "another title"}
-      eitherExRes <- persist conn article :: IO (Either PersistenceException ())
+      eitherExRes <- upsert conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (NoUniqueKey msg) -> msg `shouldContain` "More than one entity found for id SqlInt64 1"
         Left pe -> expectationFailure $ "Expected NoUniqueKey exception, got " ++ show pe
         _ -> expectationFailure "Expected NoUniqueKey exception"
     it "returns () for successful persist" $ do
       conn <- prepareDB
-      eitherExRes <- persist conn article :: IO (Either PersistenceException ())
+      eitherExRes <- upsert conn article :: IO (Either PersistenceException ())
       case eitherExRes of
         Right () -> expectationSuccess
         _        -> expectationFailure "Expected ()"
@@ -133,6 +133,12 @@ spec = do
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
         _ -> expectationFailure "Right: Expected EntityNotFound exception"
+    it "detects missing entities in deleteById" $ do
+      conn <- prepareDB
+      eitherExRes <- deleteById @Article conn "1" :: IO (Either PersistenceException ())
+      case eitherExRes of
+        Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
+        _ -> expectationFailure "Expected EntityNotFound exception"
     it "detects general backend issues" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherExRes <- update conn article :: IO (Either PersistenceException ())
@@ -143,7 +149,7 @@ spec = do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       _ <- update conn article :: IO (Either PersistenceException ())
       _ <- insert conn article :: IO (Either PersistenceException Article)
-      _ <- persist conn article :: IO (Either PersistenceException ())
+      _ <- upsert conn article :: IO (Either PersistenceException ())
       _ <- delete conn article :: IO (Either PersistenceException ())
       _ <- selectById conn "1" :: IO (Either PersistenceException Article)
       _ <- select conn allEntries :: IO (Either PersistenceException [Article])

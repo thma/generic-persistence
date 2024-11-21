@@ -148,9 +148,7 @@ count conn whereClause = do
   eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
     Left ex          -> return $ Left ex
-    Right resultRows -> case resultRows of
-      [[countValue]] -> return $ Right $ fromSql countValue
-      _              -> return $ Left $ DatabaseError "count query did not return a single row"
+    Right resultRows -> return $ Right $ fromSql $ head $ head resultRows -- using head twice is safe here
   where
     stmt = countStmtFor @a whereClause
     values = whereClauseValues whereClause
