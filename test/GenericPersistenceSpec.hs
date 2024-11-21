@@ -257,6 +257,20 @@ spec = do
       allPersons'' <- select conn allEntries :: IO [Person]
       length allPersons'' `shouldBe` 0
 
+    it "deletes an entity by a given id" $ do
+      conn <- prepareDB
+      insertMany conn manyPersons
+      deleteById @Person conn (6 :: Int)
+      allPersons <- select conn allEntries :: IO [Person]
+      length allPersons `shouldBe` 5
+
+    it "deletes multiple entities by a list of ids" $ do
+      conn <- prepareDB
+      insertMany conn manyPersons
+      deleteManyById @Person conn ([2,4,6] :: [Int])
+      allPersons <- select conn allEntries :: IO [Person]
+      length allPersons `shouldBe` 3
+
     it "inserts Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
