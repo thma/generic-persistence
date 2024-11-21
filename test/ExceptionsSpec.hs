@@ -139,6 +139,12 @@ spec = do
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
         _ -> expectationFailure "Expected EntityNotFound exception"
+    it "detects general db issues in deleteById" $ do
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+      eitherExRes <- deleteById @Article conn "1" :: IO (Either PersistenceException ())
+      case eitherExRes of
+        Left (DatabaseError msg) -> msg `shouldContain` "SqlError"
+        _ -> expectationFailure "Expected DatabaseError exception"
     it "detects general backend issues" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
       eitherExRes <- update conn article :: IO (Either PersistenceException ())

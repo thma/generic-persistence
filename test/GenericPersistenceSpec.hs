@@ -170,7 +170,7 @@ spec = do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
-      persist conn person
+      upsert conn person
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)

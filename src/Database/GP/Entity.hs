@@ -170,8 +170,10 @@ instance GFromRow a => GFromRow (M1 i c a) where
 instance (KnownNat (NumFields f), GFromRow f, GFromRow g) => GFromRow (f :*: g) where
   gfromRow row = gfromRow rowf :*: gfromRow rowg
     where
-      (rowf, rowg) = splitAt fNumFields row
-      fNumFields = fromIntegral (natVal (Proxy :: Proxy (NumFields f)))
+      (rowf, rowg) = 
+        splitAt 
+          (fromIntegral (natVal (Proxy :: Proxy (NumFields f)))) 
+          row
 
 type family NumFields (f :: Type -> Type) :: Nat where
   NumFields (M1 i c f) = 1
