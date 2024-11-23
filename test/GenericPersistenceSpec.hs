@@ -27,6 +27,7 @@ prepareDB = do
   setupTable @Person conn defaultSqliteMapping
   setupTable @Book conn defaultSqliteMapping
   setupTable @Car conn defaultSqliteMapping
+  setupTable @Boat conn defaultSqliteMapping
   return conn
 
 -- | A data type with several fields, using record syntax.
@@ -50,6 +51,16 @@ data Car = Car
 instance Entity Car where
   autoIncrement = True
   idField = "carID"
+
+data Boat = Boat
+  { boatID :: Int,
+    boatType :: String
+  }
+  deriving (Generic, Show, Eq)
+
+instance Entity Boat where
+  autoIncrement = False
+  --idField = "boatID"
 
 data Book = Book
   { book_id  :: Int,
@@ -166,6 +177,30 @@ spec = do
       resultRows <- quickQuery conn stmt [toSql (40 :: Int)]
       allPersons <- entitiesFromRows @Person conn resultRows
       length allPersons `shouldBe` 3
+    it "can upsert Entities with AutoIncrement" $ do
+      conn <- prepareDB
+      let car = Car 1 "Honda Jazz"
+      -- insert the car
+      upsert conn car
+      car' <- selectById conn (1 :: Int) :: IO (Maybe Car)
+      car' `shouldBe` Just car
+      -- now update the car 
+      let car2 = Car 1 "Honda Civic"
+      upsert conn car2
+      car2' <- selectById conn (1 :: Int) :: IO (Maybe Car)
+      car2' `shouldBe` Just car2
+    it "can upsert Entities without autoIncrement" $ do
+      conn <- prepareDB
+      let boat = Boat 1 "Sailboat"
+      -- insert the boat
+      upsert conn boat
+      boat' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
+      boat' `shouldBe` Just boat
+      -- now update the boat 
+      let boat2 = Boat 1 "Motorboat"
+      upsert conn boat2
+      boat2' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
+      boat2' `shouldBe` Just boat2
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]

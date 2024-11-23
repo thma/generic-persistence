@@ -32,6 +32,7 @@ data Article = Article
 
 instance Entity Article where
   autoIncrement = False
+  idField = "articleID"
 
 data Bogus = Bogus
   { bogusID    :: Int,
@@ -80,17 +81,7 @@ spec = do
       case eitherExRes of
         Left (DuplicateInsert msg) -> msg `shouldContain` "Entity already exists"
         _ -> expectationFailure "Expected DuplicateInsert exception"
-    it "detects duplicate inserts in persist" $ do
-      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
-      runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
-      _ <- insert conn article
-      _ <- insert conn article {title = "another title"}
-      eitherExRes <- upsert conn article :: IO (Either PersistenceException ())
-      case eitherExRes of
-        Left (NoUniqueKey msg) -> msg `shouldContain` "More than one entity found for id SqlInt64 1"
-        Left pe -> expectationFailure $ "Expected NoUniqueKey exception, got " ++ show pe
-        _ -> expectationFailure "Expected NoUniqueKey exception"
-    it "returns () for successful persist" $ do
+    it "returns () for successful upsert" $ do
       conn <- prepareDB
       eitherExRes <- upsert conn article :: IO (Either PersistenceException ())
       case eitherExRes of
@@ -187,19 +178,19 @@ spec = do
       articleRow <- toRow conn article'
       articleRow `shouldBe` expectedRow
       -- Article is defined with autoIncrement = False
-      removeIdField @Article articleRow `shouldBe` expectedRow
+      removeAutoIncIdField @Article articleRow `shouldBe` expectedRow
 
       -- ArticleWithoutPK is defined with autoIncrement = True, but has no primary key field
       let articleWithoutPK = ArticleWithoutPK "title" 2023
           rowWithoutPK = [SqlString "title", SqlInt64 2023]
       articleRowWithoutPK <- toRow conn articleWithoutPK
-      removeIdField @ArticleWithoutPK articleRowWithoutPK `shouldBe` rowWithoutPK
+      removeAutoIncIdField @ArticleWithoutPK articleRowWithoutPK `shouldBe` rowWithoutPK
 
       -- ArticleWithPKatEnd is defined with autoIncrement = True and has a primary key field as last column
       let articleWithPKatEnd = ArticleWithPKatEnd "title" 2023 200
           expectedRow2 = [SqlString "title", SqlInt64 2023]
       articleRowWithPKatEnd <- toRow conn articleWithPKatEnd
-      removeIdField @ArticleWithPKatEnd articleRowWithPKatEnd `shouldBe` expectedRow2
+      removeAutoIncIdField @ArticleWithPKatEnd articleRowWithPKatEnd `shouldBe` expectedRow2
 
 data ArticleWithoutPK = ArticleWithoutPK
   { title1 :: String,

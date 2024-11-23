@@ -4,6 +4,7 @@ module Database.GP.SqlGenerator
   ( insertStmtFor,
     insertReturningStmtFor,
     updateStmtFor,
+    upsertStmtFor,
     selectFromStmt,
     countStmtFor,
     deleteStmtFor,
@@ -67,6 +68,23 @@ insertStmtFor =
   where
     insertCols = insertColumns @a
 
+upsertStmtFor :: forall a. Entity a => String
+upsertStmtFor =
+  "INSERT INTO "
+    ++ tableName @a
+    ++ " ("
+    ++ intercalate ", " insertCols
+    ++ ") VALUES ("
+    ++ intercalate ", " (params (length insertCols))
+    ++ ") ON CONFLICT ("
+    ++ idColumn @a
+    ++ ") DO UPDATE SET "
+    ++ intercalate ", " updatePairs
+    ++ ";"
+  where
+    insertCols = columnNamesFor @a
+    updatePairs = map (++ " = ?") insertCols
+
 insertColumns :: forall a. Entity a => [String]
 insertColumns = 
   if autoIncrement @a
@@ -121,6 +139,8 @@ selectFromStmt whereClauseExpr =
     ++ whereClauseExprToSql @a whereClauseExpr
     ++ ";"
 
+-- | A function that returns an SQL count statement for an entity. Type 'a' must be an instance of Entity.
+--   The function takes a where clause expression as parameter. This expression is used to filter the result set.
 countStmtFor :: forall a. (Entity a) => WhereClauseExpr -> String
 countStmtFor whereClauseExpr =
   "SELECT COUNT(*) FROM "
@@ -129,6 +149,7 @@ countStmtFor whereClauseExpr =
     ++ whereClauseExprToSql @a whereClauseExpr
     ++ ";"
 
+-- | A function that returns an SQL delete statement for an entity. Type 'a' must be an instance of Entity.
 deleteStmtFor :: forall a. (Entity a) => String
 deleteStmtFor =
   "DELETE FROM "
@@ -140,6 +161,7 @@ deleteStmtFor =
 -- | An enumeration of the supported database types. 
 data Database = Postgres | SQLite
 
+-- | A function that returns an SQL create table statement for an entity type. Type 'a' must be an instance of Entity.
 createTableStmtFor :: forall a. (Entity a) => ColumnTypeMapping -> String
 createTableStmtFor columnTypeMapping =
   "CREATE TABLE "
@@ -154,7 +176,8 @@ isIdField :: forall a. (Entity a) => String -> Bool
 isIdField f = f == idField @a
 
 -- | A function that returns the column type for a field of an entity.
--- TODO: Support other databases than just SQLite and Postgres.
+--   The function takes a column type mapping function as parameter.
+--   This function is used to map Haskell field types to SQL column types.
 columnTypeFor :: forall a. (Entity a) => ColumnTypeMapping -> String -> String
 columnTypeFor columnTypeMapping fieldName = columnTypeMapping fType
   where
@@ -163,9 +186,12 @@ columnTypeFor columnTypeMapping fieldName = columnTypeMapping fType
         then "primaryKey"
         else maybe "OTHER" show $ maybeFieldTypeFor @a fieldName
 
-
+-- | A type alias for mapping a Haskell field type to a SQL column type.
+--   this type can be used to define custom mappings for field types.
 type ColumnTypeMapping = String -> String
 
+-- | The default mapping for SQLite databases.
+--   This mapping is used when no custom mapping is provided.
 defaultSqliteMapping :: ColumnTypeMapping
 defaultSqliteMapping = \case
   "primaryKey" -> "INTEGER"
@@ -176,6 +202,8 @@ defaultSqliteMapping = \case
   "Bool"   -> "INT"
   _        -> "TEXT"
 
+-- | The default mapping for Postgres databases.
+--   This mapping is used when no custom mapping is provided.
 defaultPostgresMapping :: ColumnTypeMapping
 defaultPostgresMapping = \case
   "primaryKey" -> "serial"
@@ -186,6 +214,7 @@ defaultPostgresMapping = \case
   "Bool"   -> "boolean"
   _        -> "varchar"
 
+-- | This function generates a DROP TABLE statement for an entity type.
 dropTableStmtFor :: forall a. (Entity a) => String
 dropTableStmtFor =
   "DROP TABLE IF EXISTS "

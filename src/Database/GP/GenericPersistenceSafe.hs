@@ -60,7 +60,7 @@ module Database.GP.GenericPersistenceSafe
     limitOffset,
     fieldIndex,
     handleDuplicateInsert,
-    removeIdField,
+    removeAutoIncIdField,
   )
 where
 
@@ -75,7 +75,7 @@ import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
 import           Language.Haskell.TH.Quote (QuasiQuoter)
-import           Text.RawString.QQ
+import           Text.RawString.QQ         (r)
 
 -- |
 -- This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
@@ -168,17 +168,13 @@ entitiesFromRows = (tryPE .) . mapM . fromRow
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
 upsert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException ())
 upsert conn entity = do
-  eitherExRes <- try $ do
-    eid <- idValue conn entity
-    let stmt = selectFromStmt @a byIdColumn
-    quickQuery conn stmt [eid]
-      >>= \case
-        [] -> insert conn entity >> return (Right ())
-        [_singleRow] -> update conn entity
-        _ -> return $ Left $ NoUniqueKey $ "More than one entity found for id " ++ show eid
-  case eitherExRes of
-    Left ex   -> return $ Left $ fromException ex
-    Right res -> return res
+  eitherExOrA <- try $ do
+    row <- toRow conn entity
+    _ <- quickQuery' conn (upsertStmtFor @a) (row <> row)
+    commitIfAutoCommit conn
+  case eitherExOrA of
+    Left ex -> return $ Left $ fromException ex
+    Right _ -> return $ Right ()
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
@@ -204,15 +200,15 @@ insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a
 insert conn entity = do
   eitherExOrA <- try $ do
     row <- toRow conn entity
-    [singleRow] <- quickQuery' conn (insertReturningStmtFor @a) (removeIdField @a row)
+    [singleRow] <- quickQuery' conn (insertReturningStmtFor @a) (removeAutoIncIdField @a row)
     commitIfAutoCommit conn
     fromRow @a conn singleRow
   case eitherExOrA of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right a -> return $ Right a
 
-removeIdField :: forall a. (Entity a) => [SqlValue] -> [SqlValue]
-removeIdField row =
+removeAutoIncIdField :: forall a. (Entity a) => [SqlValue] -> [SqlValue]
+removeAutoIncIdField row =
   if autoIncrement @a
     then case maybeIdFieldIndex @a of
       Nothing      -> row
@@ -243,7 +239,7 @@ insertMany conn entities = do
   eitherExUnit <- try $ do
     rows <- mapM (toRow conn) entities
     stmt <- prepare conn (insertStmtFor @a)
-    executeMany stmt (map (removeIdField @a) rows)
+    executeMany stmt (map (removeAutoIncIdField @a) rows)
     commitIfAutoCommit conn
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
