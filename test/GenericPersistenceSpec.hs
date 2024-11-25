@@ -60,7 +60,6 @@ data Boat = Boat
 
 instance Entity Boat where
   autoIncrement = False
-  --idField = "boatID"
 
 data Book = Book
   { book_id  :: Int,

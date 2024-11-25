@@ -23,6 +23,7 @@ prepareDB = do
   conn <- connect ExplicitCommit <$> connectPostgreSQL "host=localhost dbname=postgres user=postgres password=admin port=5431"
   setupTable @Person conn defaultPostgresMapping
   setupTable @Book conn defaultPostgresMapping
+  setupTable @Boat conn defaultPostgresMapping 
   _ <- run conn "DROP TABLE IF EXISTS Car;" []
   _ <- run conn "CREATE TABLE Car (carID serial4 PRIMARY KEY, carType varchar);" []
   commit conn
@@ -45,6 +46,15 @@ data Car = Car
     carType :: String
   }
   deriving (Generic, Entity, Show, Eq)
+
+data Boat = Boat
+  { boatID :: Int,
+    boatType :: String
+  }
+  deriving (Generic, Show, Eq)
+
+instance Entity Boat where
+  autoIncrement = False
 
 data Book = Book
   { book_id  :: Int,
@@ -211,6 +221,31 @@ spec = do
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book {year = 1938}
       commit conn
+    it "can upsert Entities with AutoIncrement" $ do
+      conn <- prepareDB
+      let car = Car 1 "Honda Jazz"
+      -- insert the car
+      upsert conn car
+      car' <- selectById conn (1 :: Int) :: IO (Maybe Car)
+      car' `shouldBe` Just car
+      -- now update the car 
+      let car2 = Car 1 "Honda Civic"
+      upsert conn car2
+      car2' <- selectById conn (1 :: Int) :: IO (Maybe Car)
+      car2' `shouldBe` Just car2
+    it "can upsert Entities without autoIncrement" $ do
+      conn <- prepareDB
+      let boat = Boat 1 "Sailboat"
+      -- insert the boat
+      upsert conn boat
+      boat' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
+      boat' `shouldBe` Just boat
+      -- now update the boat 
+      let boat2 = Boat 1 "Motorboat"
+      upsert conn boat2
+      boat2' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
+      boat2' `shouldBe` Just boat2
+
     it "inserts Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
