@@ -18,7 +18,7 @@ license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 tested-with:
-    GHC==9.2.5, GHC==9.4.4
+    GHC==9.2, GHC==9.4, GHC==9.6, GHC==9.8
 extra-source-files:
     README.md
 

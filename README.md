@@ -167,6 +167,12 @@ To learn how to use the library in more complex scenarios, I recommend looking a
 GenericPersistence is used to execute the CRUD operation against a SQLite database.
 A Swagger UI is provided to interact with the API.
 
+### Building a REST service with Scotty and GenericPersistence
+[This example](https://github.com/thma/scotty-gp-service) shows how to use Scotty to build a REST API that provides CRUD operations for a simple data model.
+GenericPersistence is used to execute the CRUD operation against a SQLite database.
+This example also demonstrate how a paging mechanism can be implemented with GenericPersistence.
+The code also shows how to use GenericPersistence to manage BearerTokens for validating incoming requests.
+
 ### The Elephantine library review
 
 The Elephantine library review provides a good overview of the different libraries available for working with PostgreSQL in Haskell. It also contains a section on *Generic-Persistence*:
@@ -475,18 +481,18 @@ instance Entity Article where
   fromRow :: Conn -> [SqlValue] -> IO Article
   fromRow conn row = do    
     authorById <- fromJust <$> selectById conn (row !! 2)  -- load author by foreign key
-    return $ rawArticle {author = authorById}                -- add author to article
+    return $ rawArticle {author = authorById}              -- add author to article
     where
-      rawArticle = Article (col 0) (col 1)                   -- create article from row, 
-                           (Author (col 2) "" "") (col 3)    -- using a dummy author
+      rawArticle = Article (col 0) (col 1)                 -- create article from row, 
+                           (Author (col 2) "" "") (col 3)  -- using a dummy author
         where
           col i = fromSql (row !! i)
 
   toRow :: Conn -> Article -> IO [SqlValue]
   toRow conn a = do
-    persist conn (author a)                                  -- persist author first
-    return [toSql (articleID a), toSql (title a),            -- return row for article table where 
-            toSql $ authorID (author a), toSql (year a)]     -- authorID is foreign key to author table 
+    upsert conn (author a)                                  -- persist author first
+    return [toSql (articleID a), toSql (title a),           -- return row for article table where 
+            toSql $ authorID (author a), toSql (year a)]    -- authorID is foreign key to author table 
 ```
 
 Persisting the `Author`as a side effect in `toRow` may sound like an *interesting* idea...
@@ -539,7 +545,7 @@ instance Entity Author where
 
   toRow :: Conn -> Author -> IO [SqlValue]
   toRow conn a = do
-    mapM_ (persist conn) (articles a)                     -- persist all articles of this author (update or insert)
+    mapM_ (upsert conn) (articles a)                      -- persist all articles of this author (update or insert)
     return [toSql (authorID a),                           -- return the author as a list of SqlValues
             toSql (name a), toSql (address a)]
 ```
