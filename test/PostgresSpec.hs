@@ -197,11 +197,11 @@ spec = do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
-      persist conn person
+      upsert conn person
       commit conn
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
-      persist conn person {age = 26}
+      upsert conn person {age = 26}
       commit conn
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person {age = 26}
@@ -233,6 +233,8 @@ spec = do
       upsert conn car2
       car2' <- selectById conn (1 :: Int) :: IO (Maybe Car)
       car2' `shouldBe` Just car2
+      commit conn
+
     it "can upsert Entities without autoIncrement" $ do
       conn <- prepareDB
       let boat = Boat 1 "Sailboat"
@@ -245,6 +247,7 @@ spec = do
       upsert conn boat2
       boat2' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
       boat2' `shouldBe` Just boat2
+      commit conn
 
     it "inserts Entities using Generics" $ do
       conn <- prepareDB

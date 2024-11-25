@@ -134,7 +134,7 @@ entitiesFromRows = (fromEitherExOrA .) . GpSafe.entitiesFromRows
 -- deprecated: use upsert instead
 {-# DEPRECATED persist "use upsert instead" #-}
 persist :: forall a. (Entity a) => Conn -> a -> IO ()
-persist = upsert --(fromEitherExOrA .) . GpSafe.upsert
+persist = upsert
 
 -- | A function that upserts an entity into a database.
 -- The function takes an HDBC connection and an entity as parameters.
