@@ -28,6 +28,7 @@ prepareDB = do
   setupTable @Book conn defaultSqliteMapping
   setupTable @Car conn defaultSqliteMapping
   setupTable @Boat conn defaultSqliteMapping
+  setupTable @BearerToken conn defaultSqliteMapping
   return conn
 
 -- | A data type with several fields, using record syntax.
@@ -88,6 +89,17 @@ instance Entity Book where
       col i = fromSql (row !! i)
 
   toRow _c b = pure [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
+
+data BearerToken = BearerToken
+  { 
+    token   :: String,
+    expires :: Int
+  }
+  deriving (Generic, Show, Eq)
+
+instance Entity BearerToken where
+  autoIncrement = False
+  idField = "token"
 
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"
@@ -200,6 +212,12 @@ spec = do
       upsert conn boat2
       boat2' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
       boat2' `shouldBe` Just boat2
+    it "can handle tables with non-numeric primary keys" $ do
+      conn <- prepareDB
+      let token = BearerToken "secret token" 202411271659
+      upsert conn token
+      token' <- selectById @BearerToken conn "secret token"
+      token' `shouldBe` Just token 
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]

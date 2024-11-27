@@ -24,6 +24,7 @@ prepareDB = do
   setupTable @Person conn defaultPostgresMapping
   setupTable @Book conn defaultPostgresMapping
   setupTable @Boat conn defaultPostgresMapping 
+  setupTable @BearerToken conn defaultPostgresMapping
   _ <- run conn "DROP TABLE IF EXISTS Car;" []
   _ <- run conn "CREATE TABLE Car (carID serial4 PRIMARY KEY, carType varchar);" []
   commit conn
@@ -83,6 +84,17 @@ instance Entity Book where
       col i = fromSql (row !! i)
 
   toRow _c b = pure [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
+
+data BearerToken = BearerToken
+  { 
+    token   :: String,
+    expires :: Int
+  }
+  deriving (Generic, Show, Eq)
+
+instance Entity BearerToken where
+  autoIncrement = False
+  idField = "token"
 
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"
@@ -248,7 +260,13 @@ spec = do
       boat2' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
       boat2' `shouldBe` Just boat2
       commit conn
-
+    it "can handle tables with non-numeric primary keys" $ do
+      conn <- prepareDB
+      let token = BearerToken "secret token" 202411271659
+      upsert conn token
+      token' <- selectById @BearerToken conn "secret token"
+      token' `shouldBe` Just token 
+      commit conn
     it "inserts Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]

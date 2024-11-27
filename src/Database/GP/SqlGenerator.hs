@@ -182,8 +182,8 @@ columnTypeFor :: forall a. (Entity a) => ColumnTypeMapping -> String -> String
 columnTypeFor columnTypeMapping fieldName = columnTypeMapping fType
   where
     fType = 
-      if isIdField @a fieldName 
-        then "primaryKey"
+      if autoIncrement @a && isIdField @a fieldName 
+        then "AUTOINCREMENT"
         else maybe "OTHER" show $ maybeFieldTypeFor @a fieldName
 
 -- | A type alias for mapping a Haskell field type to a SQL column type.
@@ -194,7 +194,7 @@ type ColumnTypeMapping = String -> String
 --   This mapping is used when no custom mapping is provided.
 defaultSqliteMapping :: ColumnTypeMapping
 defaultSqliteMapping = \case
-  "primaryKey" -> "INTEGER"
+  "AUTOINCREMENT" -> "INTEGER"
   "Int"    -> "INTEGER"
   "[Char]" -> "TEXT"
   "Double" -> "REAL"
@@ -206,7 +206,7 @@ defaultSqliteMapping = \case
 --   This mapping is used when no custom mapping is provided.
 defaultPostgresMapping :: ColumnTypeMapping
 defaultPostgresMapping = \case
-  "primaryKey" -> "serial"
+  "AUTOINCREMENT" -> "serial"
   "Int"    -> "numeric"
   "[Char]" -> "varchar"
   "Double" -> "numeric"
