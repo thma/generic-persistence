@@ -10,8 +10,6 @@ on:
     # additionally run once per week (At 00:00 on Sunday) to maintain cache
     # - cron: '0 0 * * 0'
 
-
-
 jobs:
 
   stack:
@@ -40,7 +38,7 @@ jobs:
     strategy:
       matrix:
         stack: ["latest"]
-        ghc: ["9.2", "9.4", "9.6", "9.8", "9.10", "9.12"]
+        ghc: ["9.2", "9.4", "9.6", "9.8", "9.10"]
 
     steps:
     - uses: actions/checkout@v4
@@ -50,7 +48,7 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         stack-version: ${{ matrix.stack }}
-        cabal-version: '3.6'
+        cabal-version: '3.10'
 
     - uses: actions/cache@v4
       name: Cache ~/.stack
