@@ -40,7 +40,7 @@ jobs:
     strategy:
       matrix:
         stack: ["latest"]
-        ghc: ["9.2", "9.4", "9.6", "9.8"]
+        ghc: ["9.2", "9.4", "9.6", "9.8", "9.10", "9.12"]
 
     steps:
     - uses: actions/checkout@v4

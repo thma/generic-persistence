@@ -1,5 +1,5 @@
 name:                generic-persistence
-version:             0.7.0.0
+version:             0.7.0.1
 github:              "thma/generic-persistence"
 license:             BSD3
 author:              "Thomas Mahler"
@@ -14,7 +14,7 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/thma/generic-persistence#readme>
 
 language: GHC2021    # See https://ghc-proposals.readthedocs.io/en/latest/proposals/0380-ghc2021.html
-tested-with: GHC==9.2, GHC==9.4, GHC==9.6, GHC==9.8
+tested-with: GHC==9.2, GHC==9.4, GHC==9.6, GHC==9.8, GHC==9.10, GHC==9.12
 
 default-extensions:
 - DuplicateRecordFields
