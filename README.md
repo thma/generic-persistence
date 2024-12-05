@@ -168,18 +168,19 @@ GenericPersistence is used to execute the CRUD operation against a SQLite databa
 A Swagger UI is provided to interact with the API.
 
 ### Building a REST service with Scotty and GenericPersistence
-[This example](https://github.com/thma/scotty-gp-service) shows how to use Scotty to build a REST API that provides CRUD operations for a simple data model.
+[This blog post](https://thma.github.io/posts/2024-12-05-real-worlds-rest-services-with-scotty-and-gp.html)
+explains how to use Scotty to build a REST API that provides CRUD operations for a simple data model.
 GenericPersistence is used to execute the CRUD operation against a SQLite database.
-This example also demonstrate how a paging mechanism can be implemented with GenericPersistence.
+This example also demonstrate how easy a paging mechanism can be implemented with GenericPersistence.
 The code also shows how to use GenericPersistence to manage BearerTokens for validating incoming requests.
 
 ### The Elephantine library review
 
-The Elephantine library review provides a good overview of the different libraries available for working with PostgreSQL in Haskell. It also contains a section on *Generic-Persistence*:
-
+The Elephantine library review provides a good overview of the different libraries available for working with PostgreSQL in Haskell. It evaluates the libraries based on a real world application scenario. This allows to compare the libraries based on the same use cases and see how the libraries differ in their approach.
+It also contains a section on *Generic-Persistence*: 
 [How to use PostgreSQL with Haskell. Elephantine Library Review 2023](https://github.com/Zelenya/elephants#generic-persistence)
 
-In this review all libraries are compared by implementing the same real world application scenario with each library. The source code for *Generic-Persistence* can be found [here](https://github.com/Zelenya/elephants/blob/main/src/Elephants/GenericPersistence.hs).
+The source code for *the Generic-Persistence based solution* can be found [here](https://github.com/Zelenya/elephants/blob/main/src/Elephants/GenericPersistence.hs).
 
 
 ## Deal with runtime exceptions or use total functions? Your choice!
