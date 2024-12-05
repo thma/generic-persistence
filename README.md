@@ -3,7 +3,7 @@
 [![License BSD3](https://img.shields.io/badge/license-BSD3-brightgreen.svg)](http://opensource.org/licenses/BSD-3-Clause)
 [![Actions Status](https://github.com/thma/generic-persistence/workflows/Haskell%20CI/badge.svg)](https://github.com/thma/generic-persistence/actions)
 [![codecov](https://codecov.io/gh/thma/generic-persistence/graph/badge.svg?token=DBCFLEA8JZ)](https://codecov.io/gh/thma/generic-persistence)
-[![Available on Hackage](https://img.shields.io/hackage/v/generic-persistence.svg?style=flat)]([https://github.com/thma/generic-persistence](https://hackage.haskell.org/package/generic-persistence))
+[![Available on Hackage](https://img.shields.io/hackage/v/generic-persistence.svg?style=flat)](https://hackage.haskell.org/package/generic-persistence)
 
 ![GP Logo](https://github.com/thma/generic-persistence/blob/main/gp-logo-300.png?raw=true)
 
