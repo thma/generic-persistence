@@ -75,6 +75,7 @@ test-suite generic-persistence-test
       PostgresSpec
       QuerySpec
       ReferenceSpec
+      SelfReferenceSpec
       Paths_generic_persistence
   hs-source-dirs:
       test
@@ -101,5 +102,6 @@ test-suite generic-persistence-test
     , raw-strings-qq
     , resource-pool
     , template-haskell
+    , text
   default-language: GHC2021
   build-tool-depends: hspec-discover:hspec-discover == 2.*
