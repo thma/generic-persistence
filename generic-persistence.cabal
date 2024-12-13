@@ -33,6 +33,7 @@ library
       Database.GP.Entity
       Database.GP.GenericPersistence
       Database.GP.GenericPersistenceSafe
+      Database.GP.HdbcCarveout
       Database.GP.Query
       Database.GP.SqlGenerator
       Database.GP.TypeInfo
@@ -50,12 +51,12 @@ library
       LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      HDBC
-    , base >=4.7 && <5
+      base >=4.7 && <5
     , convertible
     , generic-deriving
     , raw-strings-qq
     , resource-pool
+    , sqlite-simple
     , template-haskell
   default-language: GHC2021
 
@@ -63,18 +64,6 @@ test-suite generic-persistence-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      ConnSpec
-      DemoSpec
-      EmbeddedSpec
-      EnumSpec
-      ExceptionsSpec
-      GenericPersistenceSpec
-      OneToManySafeSpec
-      OneToManySpec
-      PostgresQuerySpec
-      PostgresSpec
-      QuerySpec
-      ReferenceSpec
       Paths_generic_persistence
   hs-source-dirs:
       test
@@ -88,18 +77,17 @@ test-suite generic-persistence-test
       LambdaCase
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      HDBC
-    , HDBC-postgresql
-    , HDBC-sqlite3
-    , QuickCheck
+      QuickCheck
     , base >=4.7 && <5
     , convertible
     , generic-deriving
     , generic-persistence
     , hspec
     , hspec-discover
+    , postgresql-simple
     , raw-strings-qq
     , resource-pool
+    , sqlite-simple
     , template-haskell
   default-language: GHC2021
   build-tool-depends: hspec-discover:hspec-discover == 2.*

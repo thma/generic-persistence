@@ -63,7 +63,7 @@ module Database.GP
     run,
     commit,
     rollback,
-    withTransaction,
+    --withTransaction,
     runRaw,
     disconnect,
   )
@@ -71,7 +71,10 @@ where
 
 -- We are just re-exporting from the GenericPersistence module.
 import           Database.GP.GenericPersistence
-import           Database.HDBC                  (IConnection (disconnect, runRaw),
-                                                 SqlValue, commit, fromSql,
-                                                 quickQuery, rollback, run,
-                                                 toSql, withTransaction)
+-- import           Database.HDBC                  (IConnection (disconnect, runRaw),
+--                                                  SqlValue, commit, fromSql,
+--                                                  quickQuery, rollback, run,
+--                                                  toSql, withTransaction)
+
+import          Database.GP.HdbcCarveout       
+import          Database.GP.Conn

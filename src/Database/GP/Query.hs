@@ -48,7 +48,7 @@ import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
 import           Database.GP.Entity (Entity, columnNameFor, idField)
-import           Database.HDBC      (SqlValue, toSql)
+import           Database.GP.HdbcCarveout      (SqlValue, toSql)
 
 data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like
 

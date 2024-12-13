@@ -27,9 +27,6 @@ data Person = Person
   }
   deriving (Generic, Entity, Show) -- deriving Entity allows us to use the GenericPersistence API
 
--- print :: Show a => a -> IO ()
--- print = putStrLn . show
-
 print :: a -> IO ()
 print _ = pure ()
 

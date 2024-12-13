@@ -28,11 +28,12 @@ default-extensions:
 dependencies:
 - base >= 4.7 && < 5
 - convertible
-- HDBC
+#- HDBC
 - generic-deriving
 - resource-pool
 - raw-strings-qq
 - template-haskell
+- sqlite-simple
 
 ghc-options:
 - -Wall
@@ -61,8 +62,10 @@ tests:
     - hspec
     - hspec-discover
     - QuickCheck
-    - HDBC-sqlite3 #>= 2.3.3.1
-    - HDBC-postgresql #>= 2.5.0.1
+#    - HDBC-sqlite3 #>= 2.3.3.1
+#    - HDBC-postgresql #>= 2.5.0.1
+    - sqlite-simple
+    - postgresql-simple
     verbatim:
       build-tool-depends:
         hspec-discover:hspec-discover == 2.*

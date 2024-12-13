@@ -5,7 +5,7 @@ module ConnSpec
 where
 
 import           Database.GP
-import           Database.HDBC
+import           Database.GP.Conn
 import           Database.HDBC.Sqlite3
 import           GHC.Generics
 import           Test.Hspec

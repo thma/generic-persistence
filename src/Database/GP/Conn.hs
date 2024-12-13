@@ -5,13 +5,14 @@ module Database.GP.Conn
     ConnectionPool,
     createConnPool,
     withResource,
+    quickQuery,
+    quickQuery'
   )
 where
 
-import           Control.Monad ((>=>))
 import           Data.Pool     (Pool, PoolConfig, defaultPoolConfig, newPool,
                                 withResource)
-import           Database.HDBC (IConnection (..))
+import           Database.GP.HdbcCarveout 
 
 -- |
 --  This module defines a wrapper around an HDBC IConnection.
@@ -51,15 +52,25 @@ instance IConnection Conn where
   runRaw w = withWConn w runRaw
   run w = withWConn w run
   prepare w = withWConn w prepare
-  clone w@(Conn ic _) = withWConn w (clone >=> return . Conn ic)
-  hdbcDriverName w = withWConn w hdbcDriverName
-  hdbcClientVer w = withWConn w hdbcClientVer
-  proxiedClientName w = withWConn w proxiedClientName
-  proxiedClientVer w = withWConn w proxiedClientVer
-  dbServerVer w = withWConn w dbServerVer
-  dbTransactionSupport w = withWConn w dbTransactionSupport
-  getTables w = withWConn w getTables
-  describeTable w = withWConn w describeTable
+
+quickQuery :: Conn -> String -> [SqlValue] -> IO [[SqlValue]]
+quickQuery conn sql vals = do
+  stmt <- prepare conn sql
+  execute stmt vals
+  fetchAllRows stmt
+
+quickQuery' :: Conn -> String -> [SqlValue] -> IO ()
+quickQuery' conn sql vals = do
+  stmt <- prepare conn sql
+  execute stmt vals
+  return ()
+
+fetchAllRows :: Statement -> IO [[SqlValue]]
+fetchAllRows stmt = do
+  row <- fetchRow stmt
+  case row of
+    Nothing -> pure []
+    Just r -> (r :) <$> fetchAllRows stmt
 
 -- | A pool of connections.
 type ConnectionPool = Pool Conn

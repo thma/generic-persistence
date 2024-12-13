@@ -6,7 +6,7 @@
 module Spec where
 
 import           Database.GP
---import           Database.HDBC.Sqlite3 (connectSqlite3)
+import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
 
 -- | An Entity data type with several fields, using record syntax.
@@ -18,7 +18,8 @@ data Person = Person
   }
   deriving (Generic, Entity, Show) -- deriving Entity allows us to use the GenericPersistence API
 
-
+print :: a -> IO ()
+print _ = pure ()
 
 main :: IO ()
 main = do

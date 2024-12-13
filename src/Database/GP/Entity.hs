@@ -27,7 +27,7 @@ import           Data.List            (elemIndex)
 import           Data.Typeable        (Proxy (..), TypeRep)
 import           Database.GP.Conn
 import           Database.GP.TypeInfo
-import           Database.HDBC        (SqlValue)
+import           Database.GP.HdbcCarveout        (SqlValue)
 import           GHC.Generics
 import           GHC.TypeNats
 

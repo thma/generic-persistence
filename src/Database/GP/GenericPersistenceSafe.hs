@@ -73,7 +73,7 @@ import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
-import           Database.HDBC
+import           Database.GP.HdbcCarveout
 import           Language.Haskell.TH.Quote (QuasiQuoter)
 import           Text.RawString.QQ         (r)
 
@@ -200,7 +200,7 @@ insert :: forall a. (Entity a) => Conn -> a -> IO (Either PersistenceException a
 insert conn entity = do
   eitherExOrA <- try $ do
     row <- toRow conn entity
-    [singleRow] <- quickQuery' conn (insertReturningStmtFor @a) (removeAutoIncIdField @a row)
+    [singleRow] <- quickQuery conn (insertReturningStmtFor @a) (removeAutoIncIdField @a row)
     commitIfAutoCommit conn
     fromRow @a conn singleRow
   case eitherExOrA of
