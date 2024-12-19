@@ -29,10 +29,13 @@ source-repository head
 library
   exposed-modules:
       Database.GP
+      Database.GP.Class
+      Database.GP.Class.IO
       Database.GP.Conn
       Database.GP.Entity
       Database.GP.GenericPersistence
       Database.GP.GenericPersistenceSafe
+      Database.GP.Operations
       Database.GP.Query
       Database.GP.SqlGenerator
       Database.GP.TypeInfo
