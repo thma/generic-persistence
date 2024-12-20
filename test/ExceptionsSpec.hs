@@ -30,7 +30,7 @@ data Article = Article
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article where
+instance Entity Article Int where
   autoIncrement = False
   idField = "articleID"
 
@@ -41,7 +41,7 @@ data Bogus = Bogus
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Bogus where
+instance Entity Bogus Int where
   tableName = "Article"
 
   fieldsToColumns :: [(String, String)] -- ommitting the articles field,
@@ -89,7 +89,7 @@ spec = do
         _        -> expectationFailure "Expected ()"
     it "detects missing entities in selectById" $ do
       conn <- prepareDB
-      eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
+      eitherExRes <- selectById conn 1 :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "not found"
         _ -> expectationFailure "Expected EntityNotFound exception"
@@ -98,15 +98,15 @@ spec = do
       runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
       _ <- insert conn article
       _ <- insert conn article {title = "another title"}
-      eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Article)
+      eitherExRes <- selectById conn 1 :: IO (Either PersistenceException Article)
       case eitherExRes of
-        Left (NoUniqueKey msg) -> msg `shouldContain` "More than one Article found for id SqlString \"1\""
+        Left (NoUniqueKey msg) -> msg `shouldContain` "More than one Article found for id SqlInt64 1"
         _ -> expectationFailure "Expected DuplicateEntity exception"
 
     it "detects bogus data in selectById" $ do
       conn <- prepareDB
       _ <- insert conn article
-      eitherExRes <- selectById conn "1" :: IO (Either PersistenceException Bogus)
+      eitherExRes <- selectById conn 1 :: IO (Either PersistenceException Bogus)
       case eitherExRes of
         Left (DatabaseError msg) -> msg `shouldContain` "can't create bogus"
         Left pe -> expectationFailure $ "Expected DatabaseError exception, got " ++ show pe
@@ -126,13 +126,13 @@ spec = do
         _ -> expectationFailure "Right: Expected EntityNotFound exception"
     it "detects missing entities in deleteById" $ do
       conn <- prepareDB
-      eitherExRes <- deleteById @Article conn "1" :: IO (Either PersistenceException ())
+      eitherExRes <- deleteById @Article conn 1 :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
         _ -> expectationFailure "Expected EntityNotFound exception"
     it "detects general db issues in deleteById" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
-      eitherExRes <- deleteById @Article conn "1" :: IO (Either PersistenceException ())
+      eitherExRes <- deleteById @Article conn 1 :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (DatabaseError msg) -> msg `shouldContain` "SqlError"
         _ -> expectationFailure "Expected DatabaseError exception"
@@ -148,7 +148,7 @@ spec = do
       _ <- insert conn article :: IO (Either PersistenceException Article)
       _ <- upsert conn article :: IO (Either PersistenceException ())
       _ <- delete conn article :: IO (Either PersistenceException ())
-      _ <- selectById conn "1" :: IO (Either PersistenceException Article)
+      _ <- selectById conn 1 :: IO (Either PersistenceException Article)
       _ <- select conn allEntries :: IO (Either PersistenceException [Article])
       _ <- select conn (yearField =. "2023") :: IO (Either PersistenceException [Article])
       _ <- insertMany conn [article] :: IO (Either PersistenceException ())
@@ -196,7 +196,9 @@ data ArticleWithoutPK = ArticleWithoutPK
   { title1 :: String,
     year1  :: Int
   }
-  deriving (Generic, Show, Entity, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity ArticleWithoutPK Int
 
 data ArticleWithPKatEnd = ArticleWithPKatEnd
   { title2     :: String,
@@ -205,6 +207,6 @@ data ArticleWithPKatEnd = ArticleWithPKatEnd
   }
   deriving (Generic, Show, Eq)
 
-instance Entity ArticleWithPKatEnd where
+instance Entity ArticleWithPKatEnd Int where
   autoIncrement = True
   idField = "articleID2"

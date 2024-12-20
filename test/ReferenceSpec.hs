@@ -39,10 +39,10 @@ data Author = Author
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Author where
+instance Entity Author Int where
   autoIncrement = False
 
-instance Entity Article where
+instance Entity Article Int where
   autoIncrement :: Bool
   autoIncrement = False
 
@@ -57,7 +57,8 @@ instance Entity Article where
 
   fromRow :: Conn -> [SqlValue] -> IO Article
   fromRow conn row = do
-    authorById <- fromJust <$> selectById conn (row !! 2) -- load author by foreign key
+    let fkValue = fromSql (row !! 2) :: Int
+    authorById <- fromJust <$> selectById conn fkValue -- load author by foreign key
     return $ rawArticle {author = authorById} -- add author to article
     where
       rawArticle =
@@ -103,8 +104,8 @@ spec = do
       conn <- prepareDB
       _ <- insert conn article
 
-      author' <- selectById conn "2" :: IO (Maybe Author)
+      author' <- selectById conn 2 :: IO (Maybe Author)
       author' `shouldBe` Just arthur
 
-      article' <- selectById conn "1" :: IO (Maybe Article)
+      article' <- selectById conn 1 :: IO (Maybe Article)
       article' `shouldBe` Just article

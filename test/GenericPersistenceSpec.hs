@@ -40,7 +40,7 @@ data Person = Person
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Person where
+instance Entity Person Int where
   autoIncrement = False
 
 data Car = Car
@@ -49,7 +49,7 @@ data Car = Car
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Car where
+instance Entity Car Int where
   autoIncrement = True
   idField = "carID"
 
@@ -59,7 +59,7 @@ data Boat = Boat
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Boat where
+instance Entity Boat Int where
   autoIncrement = False
 
 data Book = Book
@@ -74,7 +74,7 @@ data Book = Book
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
   deriving (Generic, Read, Show, Eq, Enum)
 
-instance Entity Book where
+instance Entity Book Int where
   idField = "book_id"
   fieldsToColumns =
     [ ("book_id", "bookId"),
@@ -97,7 +97,7 @@ data BearerToken = BearerToken
   }
   deriving (Generic, Show, Eq)
 
-instance Entity BearerToken where
+instance Entity BearerToken String where
   autoIncrement = False
   idField = "token"
 

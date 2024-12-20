@@ -30,7 +30,9 @@ data Book = Book
     year     :: Int,
     category :: BookCategory
   }
-  deriving (Generic, Show, Eq, Entity)
+  deriving (Generic, Show, Eq)
+
+instance Entity Book Int
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
   deriving (Generic, Show, Read, Eq)

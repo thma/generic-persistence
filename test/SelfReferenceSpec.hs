@@ -1,26 +1,24 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE NamedFieldPuns #-}
+
 module SelfReferenceSpec
-  ( test,
-    spec,
-  )
+--  ( test,
+--    spec,
+--  )
 where
 
 import Database.GP.GenericPersistence
-    ( connect,
-      selectById,
-      upsert,
-      setupTable,
-      defaultSqliteMapping,
-      Conn,
-      TxHandling(AutoCommit),
-      Entity(autoIncrement, toRow, fromRow, fieldsToColumns, idField) )
+import Database.GP.Entity 
 import Database.HDBC ( fromSql, toSql, SqlValue )
 import Database.HDBC.Sqlite3 ( connectSqlite3 )
 import GHC.Generics ( Generic )
 import Test.Hspec ( hspec, describe, it, shouldBe, Spec )
-import           Data.Foldable ( forM_ )
+import Data.Foldable ( forM_ )
 import Data.Text ( Text )
+import GHC.Base (IO(IO))
+import           Data.Typeable
+import GHC.Generics
 
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
@@ -43,17 +41,36 @@ data Employee = Employee
   , boss :: Maybe Employee
   } deriving (Generic, Show, Eq)
 
+{--
+oneToOneFromRow :: forall a b. (Entity a, Entity b, (GFromRow (Rep a))) => String -> (a -> b) -> Conn -> [SqlValue] -> IO a
+oneToOneFromRow fieldName getter conn row = do
+  let columnIndex = fieldIndex @a fieldName
+  maybeReferenced <- selectById conn (row !! columnIndex) :: IO (Maybe b)
+  let ti = typeInfo @a
+  
+  let raw = to @a (gfromRow row)
+  return undefined
+  --let complete = raw {getter = maybeReferenced}
 
-instance Entity Employee where
+  --return complete
+
+  -- return $ boss (fromRow conn row) maybeBoss
+  --where
+  --  col i = fromSql (row !! i)
+-}
+  
+
+
+instance Entity Employee Text where
   autoIncrement = False 
   idField = "name"                      -- the name field is the primary key
 
-  fieldsToColumns :: [(String, String)] -- omitting the "boss" field,
-  fieldsToColumns =                     -- as this can not be mapped to a single column
-    [ ("name", "name"),                 -- instead we use a new column bossName to store the primary key of the boss
-      ("age", "age"),
-      ("bossName", "bossName")
-    ]
+  -- fieldsToColumns :: [(String, String)] -- omitting the "boss" field,
+  -- fieldsToColumns =                     -- as this can not be mapped to a single column
+  --   [ ("name", "name"),                 -- instead we use a new column bossName to store the primary key of the boss
+  --     ("age", "age"),
+  --     ("bossName", "bossName")
+  --   ]
 
   -- this functions defines how to create an Employee from a row in the database
   -- for the fields 'name' and 'age' it is straightforward: just use fromSql to convert the SqlValue to the desired type of the field
@@ -61,8 +78,9 @@ instance Entity Employee where
   -- it loads the boss by the foreign key and merges it to the raw employee record
   fromRow :: Conn -> [SqlValue] -> IO Employee
   fromRow conn row = do
-    maybeBoss <- selectById @Employee conn (row !! 2)  -- load boss by foreign key
-    return $ rawEmployee {boss = maybeBoss}            -- merge the boss to the employee
+    let fkValue = fromSql (row !! 2) :: Text
+    maybeBoss <- selectById @Employee conn fkValue  -- load boss by foreign key
+    return $ rawEmployee {boss = maybeBoss}         -- merge the boss to the employee
     where
       rawEmployee =
         Employee 

@@ -27,7 +27,10 @@ data Article = Article
     title     :: String,
     year      :: Int
   }
-  deriving (Generic, Entity, Show, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity Article Int where
+
 
 spec :: Spec
 spec = do

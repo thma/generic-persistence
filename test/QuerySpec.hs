@@ -33,7 +33,7 @@ data Person = Person
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Person where
+instance Entity Person Int where
   autoIncrement = False
 
 alice, bob, charlie, dave :: Person
@@ -171,4 +171,6 @@ data SomeRecord = SomeRecord
     someRecordFlag :: Bool,
     someRecordDate :: Integer
   }
-  deriving (Generic, Entity, Show, Eq)
+  deriving (Generic, Show, Eq)
+
+instance Entity SomeRecord Int
