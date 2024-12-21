@@ -23,7 +23,7 @@ prepareDB = do
   conn <- connect ExplicitCommit <$> connectPostgreSQL "host=localhost dbname=postgres user=postgres password=admin port=5431"
   setupTable @Person conn defaultPostgresMapping
   setupTable @Book conn defaultPostgresMapping
-  setupTable @Boat conn defaultPostgresMapping 
+  setupTable @Boat conn defaultPostgresMapping
   setupTable @BearerToken conn defaultPostgresMapping
   _ <- run conn "DROP TABLE IF EXISTS Car;" []
   _ <- run conn "CREATE TABLE Car (carID serial4 PRIMARY KEY, carType varchar);" []
@@ -51,7 +51,7 @@ data Car = Car
 instance Entity Car Int
 
 data Boat = Boat
-  { boatID :: Int,
+  { boatID   :: Int,
     boatType :: String
   }
   deriving (Generic, Show, Eq)
@@ -88,8 +88,7 @@ instance Entity Book Int where
   toRow _c b = pure [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
 
 data BearerToken = BearerToken
-  { 
-    token   :: String,
+  { token   :: String,
     expires :: Int
   }
   deriving (Generic, Show, Eq)
@@ -176,38 +175,38 @@ spec = do
         Left _                   -> expectationFailure "Expected DatabaseError"
         Right _                  -> expectationFailure "Expected DatabaseError"
       rollback conn
-    it "persists new Entities using Generics" $ do
+    it "upserts new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
-      persist conn person
+      upsert conn person
       commit conn
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person
       commit conn
-    it "persists new Entities using user implementation" $ do
+    it "upserts new Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
-      persist conn book
+      upsert conn book
       commit conn
       allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
       commit conn
-    it "persist throws an exception if things go wrong" $ do
+    it "upsert throws an exception if things go wrong" $ do
       conn <- prepareDB
       runRaw conn "DROP TABLE BOOK_TBL;"
       commit conn
-      eitherEA <- try (persist conn book)
+      eitherEA <- try (upsert conn book)
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "does not exist"
         Left _                   -> expectationFailure "Expected DatabaseError"
         Right _                  -> expectationFailure "Expected DatabaseError"
-    it "persists existing Entities using Generics" $ do
+    it "upserts existing Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
@@ -220,15 +219,15 @@ spec = do
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person {age = 26}
       commit conn
-    it "persists existing Entities using user implementation" $ do
+    it "upserts existing Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
-      persist conn book
+      upsert conn book
       commit conn
       allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
-      eitherEA <- try $ persist conn book {year = 1938} :: IO (Either PersistenceException ())
+      eitherEA <- try $ upsert conn book {year = 1938} :: IO (Either PersistenceException ())
       case eitherEA of
         Left _  -> expectationFailure "should not throw an exception"
         Right x -> x `shouldBe` ()
@@ -242,7 +241,7 @@ spec = do
       upsert conn car
       car' <- selectById conn (1 :: Int) :: IO (Maybe Car)
       car' `shouldBe` Just car
-      -- now update the car 
+      -- now update the car
       let car2 = Car 1 "Honda Civic"
       upsert conn car2
       car2' <- selectById conn (1 :: Int) :: IO (Maybe Car)
@@ -256,7 +255,7 @@ spec = do
       upsert conn boat
       boat' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
       boat' `shouldBe` Just boat
-      -- now update the boat 
+      -- now update the boat
       let boat2 = Boat 1 "Motorboat"
       upsert conn boat2
       boat2' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
@@ -267,7 +266,7 @@ spec = do
       let token = BearerToken "secret token" 202411271659
       upsert conn token
       token' <- selectById @BearerToken conn "secret token"
-      token' `shouldBe` Just token 
+      token' `shouldBe` Just token
       commit conn
     it "inserts Entities using Generics" $ do
       conn <- prepareDB

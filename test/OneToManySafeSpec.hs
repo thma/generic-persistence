@@ -63,7 +63,7 @@ instance Entity Author Int where
 
   toRow :: Conn -> Author -> IO [SqlValue]
   toRow conn a = do
-    mapM_ (persist conn) (articles a) -- persist all articles of this author (update or insert)
+    mapM_ (upsert conn) (articles a) -- persist all articles of this author (update or insert)
     return
       [ toSql (authorID a), -- return the author as a list of SqlValues
         toSql (name a),
@@ -129,7 +129,7 @@ spec = do
         Right author -> do
           length (articles author) `shouldBe` 2
 
-      _ <- persist conn arthur {address = "New York"}
+      _ <- upsert conn arthur {address = "New York"}
       eitherPeAuthor' <- selectById @Author conn 2
       eitherPeAuthor' `shouldBe` Right arthur {address = "New York"}
     it "delete returns unit in case of success" $ do

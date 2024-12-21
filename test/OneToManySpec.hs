@@ -64,7 +64,7 @@ instance Entity Author Int where
 
   toRow :: Conn -> Author -> IO [SqlValue]
   toRow conn a = do
-    mapM_ (persist conn) (articles a) -- persist all articles of this author (update or insert)
+    mapM_ (upsert conn) (articles a) -- persist all articles of this author (update or insert)
     return
       [ toSql (authorID a), -- return the author as a list of SqlValues
         toSql (name a),

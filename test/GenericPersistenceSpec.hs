@@ -54,7 +54,7 @@ instance Entity Car Int where
   idField = "carID"
 
 data Boat = Boat
-  { boatID :: Int,
+  { boatID   :: Int,
     boatType :: String
   }
   deriving (Generic, Show, Eq)
@@ -91,8 +91,7 @@ instance Entity Book Int where
   toRow _c b = pure [toSql (book_id b), toSql (title b), toSql (author b), toSql (year b), toSql (category b)]
 
 data BearerToken = BearerToken
-  { 
-    token   :: String,
+  { token   :: String,
     expires :: Int
   }
   deriving (Generic, Show, Eq)
@@ -141,7 +140,7 @@ spec = do
       eitherEA <- try (count @Person conn allEntries)
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: Person"
-        _ -> expectationFailure "Expected DatabaseError"
+        _                        -> expectationFailure "Expected DatabaseError"
     it "selectById returns Nothing if no Entity was found" $ do
       conn <- prepareDB
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
@@ -195,7 +194,7 @@ spec = do
       upsert conn car
       car' <- selectById conn (1 :: Int) :: IO (Maybe Car)
       car' `shouldBe` Just car
-      -- now update the car 
+      -- now update the car
       let car2 = Car 1 "Honda Civic"
       upsert conn car2
       car2' <- selectById conn (1 :: Int) :: IO (Maybe Car)
@@ -207,7 +206,7 @@ spec = do
       upsert conn boat
       boat' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
       boat' `shouldBe` Just boat
-      -- now update the boat 
+      -- now update the boat
       let boat2 = Boat 1 "Motorboat"
       upsert conn boat2
       boat2' <- selectById conn (1 :: Int) :: IO (Maybe Boat)
@@ -217,7 +216,7 @@ spec = do
       let token = BearerToken "secret token" 202411271659
       upsert conn token
       token' <- selectById @BearerToken conn "secret token"
-      token' `shouldBe` Just token 
+      token' `shouldBe` Just token
     it "persists new Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
@@ -227,40 +226,40 @@ spec = do
       length allPersons' `shouldBe` 1
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person
-    it "persists new Entities using user implementation" $ do
+    it "upserts new Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
-      persist conn book
+      upsert conn book
       allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just book
-    it "persist throws an exception if things go wrong" $ do
+    it "upsert throws an exception if things go wrong" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
-      eitherEA <- try (persist conn book)
+      eitherEA <- try (upsert conn book)
       case eitherEA of
         Left (DatabaseError msg) -> msg `shouldContain` "no such table: BOOK_TBL"
         Left _ -> expectationFailure "Expected DatabaseError"
         Right _ -> expectationFailure "Expected DatabaseError"
-    it "persists existing Entities using Generics" $ do
+    it "upserts existing Entities using Generics" $ do
       conn <- prepareDB
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 0
-      persist conn person
+      upsert conn person
       allPersons' <- select conn allEntries :: IO [Person]
       length allPersons' `shouldBe` 1
-      persist conn person {age = 26}
+      upsert conn person {age = 26}
       person' <- selectById conn (123456 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just person {age = 26}
-    it "persists existing Entities using user implementation" $ do
+    it "upserts existing Entities using user implementation" $ do
       conn <- prepareDB
       allbooks <- select conn allEntries :: IO [Book]
       length allbooks `shouldBe` 0
-      persist conn book
+      upsert conn book
       allbooks' <- select conn allEntries :: IO [Book]
       length allbooks' `shouldBe` 1
-      eitherEA <- try $ persist conn book {year = 1938} :: IO (Either PersistenceException ())
+      eitherEA <- try $ upsert conn book {year = 1938} :: IO (Either PersistenceException ())
       case eitherEA of
         Left _  -> expectationFailure "should not throw an exception"
         Right x -> x `shouldBe` ()
@@ -332,7 +331,7 @@ spec = do
     it "deletes multiple entities by a list of ids" $ do
       conn <- prepareDB
       insertMany conn manyPersons
-      deleteManyById @Person conn ([2,4,6] :: [Int])
+      deleteManyById @Person conn ([2, 4, 6] :: [Int])
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 3
 

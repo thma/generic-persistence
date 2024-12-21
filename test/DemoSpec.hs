@@ -25,9 +25,11 @@ data Person = Person
     age      :: Int,
     address  :: String
   }
-  deriving (Generic, Show) -- deriving Entity allows us to use the GenericPersistence API
+  deriving (Generic, Show)
 
-instance Entity Person Int -- Person is an Entity with an Int as the id type
+-- deriving Entity allows us to use the GenericPersistence API
+-- Person is an Entity with an Int as the id type
+instance Entity Person Int
 
 -- print :: Show a => a -> IO ()
 -- print = putStrLn . show

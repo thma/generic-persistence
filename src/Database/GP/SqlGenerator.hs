@@ -85,11 +85,11 @@ upsertStmtFor =
     insertCols = columnNamesFor @a
     updatePairs = map (++ " = ?") insertCols
 
-insertColumns :: forall a id . Entity a id => [String]
-insertColumns = 
+insertColumns :: forall a id. Entity a id => [String]
+insertColumns =
   if autoIncrement @a
     then filter (/= idColumn @a) columns
-    else columns 
+    else columns
   where
     columns = columnNamesFor @a
 
@@ -108,13 +108,13 @@ insertReturningStmtFor =
     insertCols = insertColumns @a
     returnCols = intercalate ", " (columnNamesFor @a)
 
-columnNamesFor :: forall a id . Entity a id => [String]
+columnNamesFor :: forall a id. Entity a id => [String]
 columnNamesFor = map snd fieldColumnPairs
   where
     fieldColumnPairs = fieldsToColumns @a
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Entity.
-updateStmtFor :: forall a id . (Entity a id) => String
+updateStmtFor :: forall a id. (Entity a id) => String
 updateStmtFor =
   "UPDATE "
     ++ tableName @a
@@ -158,7 +158,7 @@ deleteStmtFor =
     ++ idColumn @a
     ++ " = ?;"
 
--- | An enumeration of the supported database types. 
+-- | An enumeration of the supported database types.
 data Database = Postgres | SQLite
 
 -- | A function that returns an SQL create table statement for an entity type. Type 'a' must be an instance of Entity.
@@ -181,8 +181,8 @@ isIdField f = f == idField @a
 columnTypeFor :: forall a id. (Entity a id) => ColumnTypeMapping -> String -> String
 columnTypeFor columnTypeMapping fieldName = columnTypeMapping fType
   where
-    fType = 
-      if autoIncrement @a && isIdField @a fieldName 
+    fType =
+      if autoIncrement @a && isIdField @a fieldName
         then "AUTOINCREMENT"
         else maybe "OTHER" show $ maybeFieldTypeFor @a fieldName
 
@@ -195,24 +195,24 @@ type ColumnTypeMapping = String -> String
 defaultSqliteMapping :: ColumnTypeMapping
 defaultSqliteMapping = \case
   "AUTOINCREMENT" -> "INTEGER"
-  "Int"    -> "INTEGER"
-  "[Char]" -> "TEXT"
-  "Double" -> "REAL"
-  "Float"  -> "REAL"
-  "Bool"   -> "INT"
-  _        -> "TEXT"
+  "Int"           -> "INTEGER"
+  "[Char]"        -> "TEXT"
+  "Double"        -> "REAL"
+  "Float"         -> "REAL"
+  "Bool"          -> "INT"
+  _               -> "TEXT"
 
 -- | The default mapping for Postgres databases.
 --   This mapping is used when no custom mapping is provided.
 defaultPostgresMapping :: ColumnTypeMapping
 defaultPostgresMapping = \case
   "AUTOINCREMENT" -> "serial"
-  "Int"    -> "numeric"
-  "[Char]" -> "varchar"
-  "Double" -> "numeric"
-  "Float"  -> "numeric"
-  "Bool"   -> "boolean"
-  _        -> "varchar"
+  "Int"           -> "numeric"
+  "[Char]"        -> "varchar"
+  "Double"        -> "numeric"
+  "Float"         -> "numeric"
+  "Bool"          -> "boolean"
+  _               -> "varchar"
 
 -- | This function generates a DROP TABLE statement for an entity type.
 dropTableStmtFor :: forall a id. (Entity a id) => String

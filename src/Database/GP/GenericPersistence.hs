@@ -6,7 +6,6 @@ module Database.GP.GenericPersistence
     count,
     entitiesFromRows,
     sql,
-    persist,
     upsert,
     insert,
     insertMany,
@@ -71,6 +70,7 @@ import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
+import           GHC.Generics
 
 -- |
 -- This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -126,15 +126,6 @@ fromEitherExOrA ioEitherExUnit = do
 entitiesFromRows :: forall a id. (Entity a id) => Conn -> [[SqlValue]] -> IO [a]
 entitiesFromRows = (fromEitherExOrA .) . GpSafe.entitiesFromRows
 
--- | A function that persists an entity to a database.
--- The function takes an HDBC connection and an entity as parameters.
--- The entity is either inserted or updated, depending on whether it already exists in the database.
--- The required SQL statements are generated dynamically using Haskell generics and reflection
--- deprecated: use upsert instead
-{-# DEPRECATED persist "use upsert instead" #-}
-persist :: forall a id. (Entity a id) => Conn -> a -> IO ()
-persist = upsert
-
 -- | A function that upserts an entity into a database.
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
@@ -153,18 +144,18 @@ insertMany :: forall a id. (Entity a id) => Conn -> [a] -> IO ()
 insertMany = (fromEitherExOrA .) . GpSafe.insertMany
 
 -- | A function that explicitely updates an entity in a database.
-update :: forall a id. (Entity a id) => Conn -> a -> IO ()
+update :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> a -> IO ()
 update = (fromEitherExOrA .) . GpSafe.update
 
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
-updateMany :: forall a id. (Entity a id) => Conn -> [a] -> IO ()
+updateMany :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> [a] -> IO ()
 updateMany = (fromEitherExOrA .) . GpSafe.updateMany
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
-delete :: forall a id. (Entity a id) => Conn -> a -> IO ()
+delete :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> a -> IO ()
 delete = (fromEitherExOrA .) . GpSafe.delete
 
 -- | A function that deletes an entity from a database.
@@ -175,12 +166,10 @@ deleteById = (fromEitherExOrA .) . GpSafe.deleteById @a
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
-deleteMany :: forall a id. (Entity a id) => Conn -> [a] -> IO ()
+deleteMany :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> [a] -> IO ()
 deleteMany = (fromEitherExOrA .) . GpSafe.deleteMany
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entity ids as parameters.
 deleteManyById :: forall a id. (Entity a id) => Conn -> [id] -> IO ()
 deleteManyById = (fromEitherExOrA .) . GpSafe.deleteManyById @a
-
-

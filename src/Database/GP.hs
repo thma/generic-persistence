@@ -4,7 +4,6 @@ module Database.GP
     count,
     entitiesFromRows,
     sql,
-    persist,
     upsert,
     insert,
     insertMany,

@@ -72,7 +72,7 @@ instance Entity Article Int where
 
   toRow :: Conn -> Article -> IO [SqlValue]
   toRow conn a = do
-    persist conn (author a) -- persist author first
+    upsert conn (author a) -- persist author first
     return
       [ toSql (articleID a),
         toSql (title a), -- return row for article table where

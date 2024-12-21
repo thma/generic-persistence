@@ -26,8 +26,8 @@ import           Database.HDBC (IConnection (..))
 --  This module also defines a ConnectionPool type, which provides basic connection pooling functionality.
 
 -- | A wrapper around an HDBC IConnection.
-data Conn = forall conn. IConnection conn => 
-  Conn 
+data Conn = forall conn. IConnection conn =>
+  Conn
     Bool -- | If True, the GenericPersistence functions will commit the transaction after each operation.
     conn -- | The wrapped HDBC IConnection
 

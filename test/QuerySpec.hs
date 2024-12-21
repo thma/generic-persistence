@@ -155,9 +155,10 @@ spec = do
     it "allows to write custom SQL queries" $ do
       conn <- prepareDB
       _ <- insert conn dave
-      let stmt = [sql|
-        SELECT * 
-        FROM person 
+      let stmt =
+            [sql|
+        SELECT *
+        FROM person
         WHERE name = (?)|]
       persons <- entitiesFromRows @Person conn =<< quickQuery conn stmt [toSql "Dave"]
       length persons `shouldBe` 1

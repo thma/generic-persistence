@@ -1,25 +1,24 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE NamedFieldPuns #-}
 
 module SelfReferenceSpec
---  ( test,
---    spec,
---  )
+  ( test,
+    spec,
+  )
 where
 
-import Database.GP.GenericPersistence
-import Database.GP.Entity 
-import Database.HDBC ( fromSql, toSql, SqlValue )
-import Database.HDBC.Sqlite3 ( connectSqlite3 )
-import GHC.Generics ( Generic )
-import Test.Hspec ( hspec, describe, it, shouldBe, Spec )
-import Data.Foldable ( forM_ )
-import Data.Text ( Text )
-import GHC.Base (IO(IO))
-import           Data.Typeable
-import GHC.Generics
+-- import Database.GP.Entity
+-- import Database.HDBC ( fromSql, toSql, SqlValue )
 
+-- import GHC.Generics ( Generic )
+
+import           Data.Foldable         (forM_)
+import           Data.Text             (Text)
+import           Database.GP
+import           Database.HDBC.Sqlite3 (connectSqlite3)
+-- import           Data.Typeable
+import           GHC.Generics
+import           Test.Hspec            (Spec, describe, hspec, it, shouldBe)
 
 -- `test` is here so that this module can be run from GHCi on its own.  It is
 -- not needed for automatic spec discovery.
@@ -34,43 +33,16 @@ prepareDB = do
   setupTable @Employee conn defaultSqliteMapping
   return conn
 
-
 data Employee = Employee
-  { name :: Text
-  , age :: Int
-  , boss :: Maybe Employee
-  } deriving (Generic, Show, Eq)
-
-{--
-oneToOneFromRow :: forall a b. (Entity a, Entity b, (GFromRow (Rep a))) => String -> (a -> b) -> Conn -> [SqlValue] -> IO a
-oneToOneFromRow fieldName getter conn row = do
-  let columnIndex = fieldIndex @a fieldName
-  maybeReferenced <- selectById conn (row !! columnIndex) :: IO (Maybe b)
-  let ti = typeInfo @a
-  
-  let raw = to @a (gfromRow row)
-  return undefined
-  --let complete = raw {getter = maybeReferenced}
-
-  --return complete
-
-  -- return $ boss (fromRow conn row) maybeBoss
-  --where
-  --  col i = fromSql (row !! i)
--}
-  
-
+  { name :: Text,
+    age  :: Int,
+    boss :: Maybe Employee
+  }
+  deriving (Generic, Show, Eq)
 
 instance Entity Employee Text where
-  autoIncrement = False 
-  idField = "name"                      -- the name field is the primary key
-
-  -- fieldsToColumns :: [(String, String)] -- omitting the "boss" field,
-  -- fieldsToColumns =                     -- as this can not be mapped to a single column
-  --   [ ("name", "name"),                 -- instead we use a new column bossName to store the primary key of the boss
-  --     ("age", "age"),
-  --     ("bossName", "bossName")
-  --   ]
+  autoIncrement = False
+  idField = "name" -- the name field is the primary key
 
   -- this functions defines how to create an Employee from a row in the database
   -- for the fields 'name' and 'age' it is straightforward: just use fromSql to convert the SqlValue to the desired type of the field
@@ -79,11 +51,11 @@ instance Entity Employee Text where
   fromRow :: Conn -> [SqlValue] -> IO Employee
   fromRow conn row = do
     let fkValue = fromSql (row !! 2) :: Text
-    maybeBoss <- selectById @Employee conn fkValue  -- load boss by foreign key
-    return $ rawEmployee {boss = maybeBoss}         -- merge the boss to the employee
+    maybeBoss <- selectById @Employee conn fkValue -- load boss by foreign key
+    return $ rawEmployee {boss = maybeBoss} -- merge the boss to the employee
     where
       rawEmployee =
-        Employee 
+        Employee
           (col 0)
           (col 1)
           Nothing -- no Boss in the raw employee
@@ -104,6 +76,20 @@ instance Entity Employee Text where
         toSql $ maybe "" name (boss emp)
       ]
 
+{--
+oneToOneFromRow :: forall a b. (Entity a, Entity b, (GFromRow (Rep a))) => String -> (a -> b) -> Conn -> [SqlValue] -> IO a
+oneToOneFromRow fieldName getter conn row = do
+  let columnIndex = fieldIndex @a fieldName
+  maybeReferenced <- selectById conn (row !! columnIndex) :: IO (Maybe b)
+  let ti = typeInfo @a
+
+  let raw = to @a (gfromRow row)
+  return undefined
+  --let complete = raw {getter = maybeReferenced}
+
+  --return complete
+
+-}
 
 -- for the test we define some employees
 -- Alice is the boss of Bob, who is the boss of Charlie
@@ -131,8 +117,7 @@ alice =
       boss = Nothing
     }
 
-
--- here we are testing that if we 
+-- here we are testing that if we
 spec :: Spec
 spec = do
   describe "Handling of 1:1 References on same table" $ do
@@ -156,6 +141,3 @@ spec = do
             Just bob' -> do
               let boss'' = boss bob'
               boss'' `shouldBe` Just alice
-            
-
-      

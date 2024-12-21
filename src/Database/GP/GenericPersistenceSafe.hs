@@ -1,4 +1,5 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes  #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Database.GP.GenericPersistenceSafe
@@ -7,7 +8,6 @@ module Database.GP.GenericPersistenceSafe
     count,
     entitiesFromRows,
     sql,
-    persist,
     upsert,
     insert,
     insertMany,
@@ -74,6 +74,7 @@ import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
+import           GHC.Generics              (Generic (Rep, from))
 import           Language.Haskell.TH.Quote (QuasiQuoter)
 import           Text.RawString.QQ         (r)
 
@@ -174,16 +175,6 @@ upsert conn entity = do
     Left ex -> return $ Left $ fromException ex
     Right _ -> return $ Right ()
 
--- | A function that persists an entity to a database.
--- The function takes an HDBC connection and an entity as parameters.
--- The entity is either inserted or updated, depending on whether it already exists in the database.
--- The required SQL statements are generated dynamically using Haskell generics and reflection
--- deprecated: use upsert instead
-{-# DEPRECATED persist "use upsert instead" #-}
-persist :: forall a id. (Entity a id) => Conn -> a -> IO (Either PersistenceException ())
-persist = upsert
-
-
 -- | A function that commits a transaction if the connection is in auto commit mode.
 --   The function takes an HDBC connection as parameter.
 commitIfAutoCommit :: Conn -> IO ()
@@ -245,10 +236,10 @@ insertMany conn entities = do
 
 -- | A function that explicitely updates an entity in a database.
 --  The function takes an HDBC connection and an entity as parameters.
-update :: forall a id. (Entity a id) => Conn -> a -> IO (Either PersistenceException ())
+update :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> a -> IO (Either PersistenceException ())
 update conn entity = do
   eitherExUnit <- try $ do
-    eid <- idValue conn entity
+    let eid = idValue entity
     row <- toRow conn entity
     rowcount <- run conn (updateStmtFor @a) (row ++ [eid])
     if rowcount == 0
@@ -263,9 +254,9 @@ update conn entity = do
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
-updateMany :: forall a id. (Entity a id) => Conn -> [a] -> IO (Either PersistenceException ())
+updateMany :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> [a] -> IO (Either PersistenceException ())
 updateMany conn entities = tryPE $ do
-  eids <- mapM (idValue conn) entities
+  let eids = map idValue entities
   rows <- mapM (toRow conn) entities
   stmt <- prepare conn (updateStmtFor @a)
   -- the update statement has one more parameter than the row: the id value for the where clause
@@ -274,10 +265,10 @@ updateMany conn entities = tryPE $ do
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
-delete :: forall a id. (Entity a id) => Conn -> a -> IO (Either PersistenceException ())
+delete :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> a -> IO (Either PersistenceException ())
 delete conn entity = do
   eitherExRes <- try $ do
-    eid <- idValue conn entity
+    let eid = idValue entity
     rowCount <- run conn (deleteStmtFor @a) [eid]
     if rowCount == 0
       then return (Left (EntityNotFound (constructorName (typeInfo @a) ++ " " ++ show eid ++ " does not exist")))
@@ -315,9 +306,9 @@ deleteManyById conn ids = tryPE $ do
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
-deleteMany :: forall a id. (Entity a id) => Conn -> [a] -> IO (Either PersistenceException ())
+deleteMany :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> [a] -> IO (Either PersistenceException ())
 deleteMany conn entities = tryPE $ do
-  eids <- mapM (idValue conn) entities
+  let eids = map idValue entities
   stmt <- prepare conn (deleteStmtFor @a)
   executeMany stmt (map (: []) eids)
   commitIfAutoCommit conn
@@ -332,11 +323,10 @@ setupTable conn mapping = do
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.
-idValue :: forall a id. (Entity a id) => Conn -> a -> IO SqlValue
-idValue conn x = do
-  sqlValues <- toRow conn x
-  return (sqlValues !! idFieldIndex)
+idValue :: forall a id. (Entity a id, GToRow (Rep a)) => a -> SqlValue
+idValue x = sqlValues !! idFieldIndex
   where
+    sqlValues = gtoRow (from x)
     idFieldIndex = fieldIndex @a (idField @a)
 
 -- | an alias for a simple quasiqouter
@@ -352,3 +342,8 @@ instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible SqlValue a where
 instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible a SqlValue where
   safeConvert :: a -> ConvertResult SqlValue
   safeConvert = Right . toSql . fromEnum
+
+-- this is needed to make the compiler happy when using 1:n relations
+instance forall a id. (Entity a id) => Enum [a] where
+  toEnum _ = error "toEnum is not implemented for [a]"
+  fromEnum _ = error "fromEnum is not implemented for [a]"

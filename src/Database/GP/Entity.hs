@@ -1,11 +1,11 @@
-{-# LANGUAGE AllowAmbiguousTypes  #-}
-{-# LANGUAGE DataKinds            #-}
-{-# LANGUAGE DefaultSignatures    #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE TypeFamilies         #-}
-{-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes    #-}
+{-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE DefaultSignatures      #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE ScopedTypeVariables    #-}
+{-# LANGUAGE TypeFamilies           #-}
+{-# LANGUAGE TypeOperators          #-}
+{-# LANGUAGE UndecidableInstances   #-}
 
 module Database.GP.Entity
   ( Entity (..),
@@ -51,7 +51,14 @@ import           GHC.TypeNats
 -- - The type must be a product type in record notation.
 -- - The type must have exactly one constructor.
 -- - There must be single primary key field, compound primary keys are not supported.
-class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a), Convertible id SqlValue) => Entity a id | a -> id where
+class
+  ( Generic a,
+    HasConstructor (Rep a),
+    HasSelectors (Rep a),
+    Convertible id SqlValue,
+    Convertible SqlValue id
+  ) =>
+  Entity a id | a -> id where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: Conn -> [SqlValue] -> IO a
 
@@ -97,7 +104,7 @@ class (Generic a, HasConstructor (Rep a), HasSelectors (Rep a), Convertible id S
 
 -- | Returns Just index of the primary key field for a type 'a'.
 --   if the type has no primary key field, Nothing is returned.
-maybeIdFieldIndex :: forall a id . (Entity a id) => Maybe Int
+maybeIdFieldIndex :: forall a id. (Entity a id) => Maybe Int
 maybeIdFieldIndex = elemIndex (idField @a) (fieldNames (typeInfo @a))
 
 -- | returns the index of a field of an entity.
@@ -119,7 +126,7 @@ expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
-columnNameFor :: forall a id . (Entity a id) => String -> String
+columnNameFor :: forall a id. (Entity a id) => String -> String
 columnNameFor fieldName =
   case maybeColumnNameFor fieldName of
     Just columnName -> columnName

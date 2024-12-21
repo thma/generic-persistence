@@ -1,18 +1,18 @@
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-import qualified Database.SQLite.Simple as SQLite
+import           Data.Aeson                 (Value)
+import           Data.ByteString            (ByteString)
+import           Data.Int                   (Int64)
+import           Data.Text                  (Text)
+import           Data.Time                  (Day, LocalTime)
+import qualified Database.MySQL.Simple      as MySQL
 import qualified Database.PostgreSQL.Simple as Postgres
-import qualified Database.MySQL.Simple as MySQL
-import Data.Text (Text)
-import Data.ByteString (ByteString)
-import Data.Time (Day, LocalTime)
-import Data.Int (Int64)
-import Data.Aeson (Value)
-import GHC.Generics (Generic)
+import qualified Database.SQLite.Simple     as SQLite
+import           GHC.Generics               (Generic)
 
 
 -- | Convertible typeclass for conversion between Haskell types and SqlValue
@@ -24,42 +24,42 @@ class Convertible a where
 instance Convertible Int64 where
     toSqlValue = SqlInt
     fromSqlValue (SqlInt i) = Just i
-    fromSqlValue _ = Nothing
+    fromSqlValue _          = Nothing
 
 instance Convertible Double where
     toSqlValue = SqlDouble
     fromSqlValue (SqlDouble d) = Just d
-    fromSqlValue _ = Nothing
+    fromSqlValue _             = Nothing
 
 instance Convertible Text where
     toSqlValue = SqlText
     fromSqlValue (SqlText t) = Just t
-    fromSqlValue _ = Nothing
+    fromSqlValue _           = Nothing
 
 instance Convertible ByteString where
     toSqlValue = SqlBlob
     fromSqlValue (SqlBlob b) = Just b
-    fromSqlValue _ = Nothing
+    fromSqlValue _           = Nothing
 
 instance Convertible Bool where
     toSqlValue = SqlBool
     fromSqlValue (SqlBool b) = Just b
-    fromSqlValue _ = Nothing
+    fromSqlValue _           = Nothing
 
 instance Convertible Day where
     toSqlValue = SqlDate
     fromSqlValue (SqlDate d) = Just d
-    fromSqlValue _ = Nothing
+    fromSqlValue _           = Nothing
 
 instance Convertible LocalTime where
     toSqlValue = SqlTimestamp
     fromSqlValue (SqlTimestamp ts) = Just ts
-    fromSqlValue _ = Nothing
+    fromSqlValue _                 = Nothing
 
 instance Convertible () where
     toSqlValue _ = SqlNull
     fromSqlValue SqlNull = Just ()
-    fromSqlValue _ = Nothing
+    fromSqlValue _       = Nothing
 
 -- | Abstract Row Type
 type Row = [(Text, SqlValue)]
@@ -79,7 +79,7 @@ instance Database SQLite.Connection where
         SQLite.execute conn (SQLite.Query stmt) (map toSqlValue params)
     query conn stmt params = do
         rows <- SQLite.query conn (SQLite.Query stmt) (map toSqlValue params) :: IO [[SQLite.Only SqlValue]]
-        return $ map (zip ["column1", "column2", ...] . SQLite.fromOnly) rows
+        return $ map (zip ["column1", "column2"] . SQLite.fromOnly) rows
 
 -- | PostgreSQL Implementation
 instance Database Postgres.Connection where
@@ -89,7 +89,7 @@ instance Database Postgres.Connection where
         Postgres.execute conn (Postgres.Query stmt) (map toSqlValue params) >> pure ()
     query conn stmt params = do
         rows <- Postgres.query conn (Postgres.Query stmt) (map toSqlValue params) :: IO [[Postgres.Only SqlValue]]
-        return $ map (zip ["column1", "column2", ...] . Postgres.fromOnly) rows
+        return $ map (zip ["column1", "column2"] . Postgres.fromOnly) rows
 
 -- | MySQL Implementation
 instance Database MySQL.Connection where
@@ -99,7 +99,7 @@ instance Database MySQL.Connection where
         MySQL.execute conn (MySQL.Query stmt) (map toSqlValue params) >> pure ()
     query conn stmt params = do
         rows <- MySQL.query conn (MySQL.Query stmt) (map toSqlValue params) :: IO [[MySQL.Only SqlValue]]
-        return $ map (zip ["column1", "column2", ...] . MySQL.fromOnly) rows
+        return $ map (zip ["column1", "column2"] . MySQL.fromOnly) rows
 
 main :: IO ()
 main = do
