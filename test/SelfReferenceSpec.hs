@@ -40,9 +40,8 @@ data Employee = Employee
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Employee Text where
+instance Entity Employee "name" Text where
   autoIncrement = False
-  idField = "name" -- the name field is the primary key
 
   -- this functions defines how to create an Employee from a row in the database
   -- for the fields 'name' and 'age' it is straightforward: just use fromSql to convert the SqlValue to the desired type of the field

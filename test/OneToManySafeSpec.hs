@@ -32,7 +32,7 @@ data Article = Article
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article Int where
+instance Entity Article "articleID" Int where
   autoIncrement = False
 
 data Author = Author
@@ -43,7 +43,7 @@ data Author = Author
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Author Int where
+instance Entity Author "authorID" Int where
   fieldsToColumns :: [(String, String)] -- ommitting the articles field,
   fieldsToColumns =
     -- as this can not be mapped to a single column
@@ -122,7 +122,7 @@ spec = do
       articles' <- fromRight [] <$> select @Article conn allEntries
       length articles' `shouldBe` 3
 
-      eitherPeAuthor <- selectById @Author conn 2
+      eitherPeAuthor <- selectById @Author conn (2::Int)
       eitherPeAuthor `shouldBe` Right arthur
       case eitherPeAuthor of
         Left _ -> fail "should not happen"
@@ -130,7 +130,7 @@ spec = do
           length (articles author) `shouldBe` 2
 
       _ <- upsert conn arthur {address = "New York"}
-      eitherPeAuthor' <- selectById @Author conn 2
+      eitherPeAuthor' <- selectById @Author conn (2::Int)
       eitherPeAuthor' `shouldBe` Right arthur {address = "New York"}
     it "delete returns unit in case of success" $ do
       conn <- prepareDB
@@ -155,7 +155,7 @@ spec = do
       _ <- insert conn arthur
       eitherPeUnit <- update conn arthur {address = "New York"}
       eitherPeUnit `shouldBe` Right ()
-      eitherPeAuthor <- selectById @Author conn 2
+      eitherPeAuthor <- selectById @Author conn (2::Int)
       eitherPeAuthor `shouldBe` Right arthur {address = "New York"}
     it "updateMany works with references" $ do
       conn <- prepareDB

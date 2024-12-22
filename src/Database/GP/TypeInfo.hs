@@ -46,10 +46,6 @@ class HasConstructor (f :: Type -> Type) where
 instance HasConstructor f => HasConstructor (D1 c f) where
   genericConstrName (M1 x) = genericConstrName x
 
--- instance (HasConstructor x, HasConstructor y) => HasConstructor (x :+: y) where
---   genericConstrName (L1 l) = genericConstrName l
---   genericConstrName (R1 r) = genericConstrName r
-
 instance Constructor c => HasConstructor (C1 c f) where
   genericConstrName = conName
 
@@ -73,5 +69,3 @@ instance (Selector s, Typeable t) => HasSelectors (M1 S s (K1 R t)) where
 instance (HasSelectors a, HasSelectors b) => HasSelectors (a :*: b) where
   selectors = selectors @a ++ selectors @b
 
--- instance HasSelectors U1 where
---   selectors = []

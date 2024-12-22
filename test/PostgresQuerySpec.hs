@@ -34,7 +34,7 @@ data Person = Person
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Person Int where
+instance Entity Person "personID" Int where
   autoIncrement = False
 
 alice, bob, charlie, dave :: Person
@@ -161,7 +161,7 @@ spec = do
       columnTypeFor @SomeRecord defaultSqliteMapping "someRecordFlag" `shouldBe` "INT"
       columnTypeFor @SomeRecord defaultSqliteMapping "someRecordDate" `shouldBe` "TEXT"
     it "can create column types for a Postgres" $ do
-      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordID" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordID" `shouldBe` "serial"
       columnTypeFor @SomeRecord defaultPostgresMapping "someRecordName" `shouldBe` "varchar"
       columnTypeFor @SomeRecord defaultPostgresMapping "someRecordAge" `shouldBe` "numeric"
       columnTypeFor @SomeRecord defaultPostgresMapping "someRecordTax" `shouldBe` "numeric"
@@ -180,4 +180,4 @@ data SomeRecord = SomeRecord
   }
   deriving (Generic, Show, Eq)
 
-instance Entity SomeRecord Int
+instance Entity SomeRecord "someRecordID" Int

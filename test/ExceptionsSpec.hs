@@ -30,9 +30,8 @@ data Article = Article
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article Int where
+instance Entity Article "articleID" Int where
   autoIncrement = False
-  idField = "articleID"
 
 data Bogus = Bogus
   { bogusID    :: Int,
@@ -41,7 +40,7 @@ data Bogus = Bogus
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Bogus Int where
+instance Entity Bogus "bogusID" Int where
   tableName = "Article"
 
   fieldsToColumns :: [(String, String)] -- ommitting the articles field,
@@ -89,7 +88,7 @@ spec = do
         _        -> expectationFailure "Expected ()"
     it "detects missing entities in selectById" $ do
       conn <- prepareDB
-      eitherExRes <- selectById conn 1 :: IO (Either PersistenceException Article)
+      eitherExRes <- selectById conn (1::Int) :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "not found"
         _ -> expectationFailure "Expected EntityNotFound exception"
@@ -98,7 +97,7 @@ spec = do
       runRaw conn "CREATE TABLE article (articleID INTEGER, title TEXT, year INTEGER)"
       _ <- insert conn article
       _ <- insert conn article {title = "another title"}
-      eitherExRes <- selectById conn 1 :: IO (Either PersistenceException Article)
+      eitherExRes <- selectById conn (1::Int) :: IO (Either PersistenceException Article)
       case eitherExRes of
         Left (NoUniqueKey msg) -> msg `shouldContain` "More than one Article found for id SqlInt64 1"
         _ -> expectationFailure "Expected DuplicateEntity exception"
@@ -106,7 +105,7 @@ spec = do
     it "detects bogus data in selectById" $ do
       conn <- prepareDB
       _ <- insert conn article
-      eitherExRes <- selectById conn 1 :: IO (Either PersistenceException Bogus)
+      eitherExRes <- selectById conn (1::Int) :: IO (Either PersistenceException Bogus)
       case eitherExRes of
         Left (DatabaseError msg) -> msg `shouldContain` "can't create bogus"
         Left pe -> expectationFailure $ "Expected DatabaseError exception, got " ++ show pe
@@ -126,13 +125,13 @@ spec = do
         _ -> expectationFailure "Right: Expected EntityNotFound exception"
     it "detects missing entities in deleteById" $ do
       conn <- prepareDB
-      eitherExRes <- deleteById @Article conn 1 :: IO (Either PersistenceException ())
+      eitherExRes <- deleteById @Article conn (1::Int) :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (EntityNotFound msg) -> msg `shouldContain` "does not exist"
         _ -> expectationFailure "Expected EntityNotFound exception"
     it "detects general db issues in deleteById" $ do
       conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
-      eitherExRes <- deleteById @Article conn 1 :: IO (Either PersistenceException ())
+      eitherExRes <- deleteById @Article conn (1::Int) :: IO (Either PersistenceException ())
       case eitherExRes of
         Left (DatabaseError msg) -> msg `shouldContain` "SqlError"
         _ -> expectationFailure "Expected DatabaseError exception"
@@ -148,7 +147,7 @@ spec = do
       _ <- insert conn article :: IO (Either PersistenceException Article)
       _ <- upsert conn article :: IO (Either PersistenceException ())
       _ <- delete conn article :: IO (Either PersistenceException ())
-      _ <- selectById conn 1 :: IO (Either PersistenceException Article)
+      _ <- selectById conn (1::Int) :: IO (Either PersistenceException Article)
       _ <- select conn allEntries :: IO (Either PersistenceException [Article])
       _ <- select conn (yearField =. "2023") :: IO (Either PersistenceException [Article])
       _ <- insertMany conn [article] :: IO (Either PersistenceException ())
@@ -180,9 +179,9 @@ spec = do
       -- Article is defined with autoIncrement = False
       removeAutoIncIdField @Article articleRow `shouldBe` expectedRow
 
-      -- ArticleWithoutPK is defined with autoIncrement = True, but has no primary key field
+      -- ArticleWithoutPK is defined with autoIncrement = True, but DB can't auto-increment the primary key type
       let articleWithoutPK = ArticleWithoutPK "title" 2023
-          rowWithoutPK = [SqlString "title", SqlInt64 2023]
+          rowWithoutPK = [SqlInt64 2023]
       articleRowWithoutPK <- toRow conn articleWithoutPK
       removeAutoIncIdField @ArticleWithoutPK articleRowWithoutPK `shouldBe` rowWithoutPK
 
@@ -198,7 +197,8 @@ data ArticleWithoutPK = ArticleWithoutPK
   }
   deriving (Generic, Show, Eq)
 
-instance Entity ArticleWithoutPK Int
+instance Entity ArticleWithoutPK "title1" String where
+  autoIncrement = True
 
 data ArticleWithPKatEnd = ArticleWithPKatEnd
   { title2     :: String,
@@ -207,6 +207,5 @@ data ArticleWithPKatEnd = ArticleWithPKatEnd
   }
   deriving (Generic, Show, Eq)
 
-instance Entity ArticleWithPKatEnd Int where
+instance Entity ArticleWithPKatEnd "articleID2" Int where
   autoIncrement = True
-  idField = "articleID2"

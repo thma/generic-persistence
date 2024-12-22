@@ -56,7 +56,7 @@ import           Database.GP.Query
 -- The function will use the field names of the data type to generate the column names in the insert statement.
 -- The values of the fields will be used as the values in the insert statement.
 -- Output example: INSERT INTO Person (id, name, age, address) VALUES (123456, "Alice", 25, "123 Main St");
-insertStmtFor :: forall a id. Entity a id => String
+insertStmtFor :: forall a fn id. Entity a fn id => String
 insertStmtFor =
   "INSERT INTO "
     ++ tableName @a
@@ -68,7 +68,7 @@ insertStmtFor =
   where
     insertCols = insertColumns @a
 
-upsertStmtFor :: forall a id. Entity a id => String
+upsertStmtFor :: forall a fn id. Entity a fn id => String
 upsertStmtFor =
   "INSERT INTO "
     ++ tableName @a
@@ -85,7 +85,7 @@ upsertStmtFor =
     insertCols = columnNamesFor @a
     updatePairs = map (++ " = ?") insertCols
 
-insertColumns :: forall a id. Entity a id => [String]
+insertColumns :: forall a fn id. Entity a fn id => [String]
 insertColumns =
   if autoIncrement @a
     then filter (/= idColumn @a) columns
@@ -93,7 +93,7 @@ insertColumns =
   where
     columns = columnNamesFor @a
 
-insertReturningStmtFor :: forall a id. Entity a id => String
+insertReturningStmtFor :: forall a fn id. Entity a fn id => String
 insertReturningStmtFor =
   "INSERT INTO "
     ++ tableName @a
@@ -108,13 +108,13 @@ insertReturningStmtFor =
     insertCols = insertColumns @a
     returnCols = intercalate ", " (columnNamesFor @a)
 
-columnNamesFor :: forall a id. Entity a id => [String]
+columnNamesFor :: forall a fn id. Entity a fn id => [String]
 columnNamesFor = map snd fieldColumnPairs
   where
     fieldColumnPairs = fieldsToColumns @a
 
 -- | A function that returns an SQL update statement for an entity. Type 'a' must be an instance of Entity.
-updateStmtFor :: forall a id. (Entity a id) => String
+updateStmtFor :: forall a fn id. (Entity a fn id) => String
 updateStmtFor =
   "UPDATE "
     ++ tableName @a
@@ -129,7 +129,7 @@ updateStmtFor =
 
 -- | A function that returns an SQL select statement for an entity. Type 'a' must be an instance of Entity.
 --   The function takes a where clause expression as parameter. This expression is used to filter the result set.
-selectFromStmt :: forall a id. (Entity a id) => WhereClauseExpr -> String
+selectFromStmt :: forall a fn id. (Entity a fn id) => WhereClauseExpr -> String
 selectFromStmt whereClauseExpr =
   "SELECT "
     ++ intercalate ", " (columnNamesFor @a)
@@ -141,7 +141,7 @@ selectFromStmt whereClauseExpr =
 
 -- | A function that returns an SQL count statement for an entity. Type 'a' must be an instance of Entity.
 --   The function takes a where clause expression as parameter. This expression is used to filter the result set.
-countStmtFor :: forall a id. (Entity a id) => WhereClauseExpr -> String
+countStmtFor :: forall a fn id. (Entity a fn id) => WhereClauseExpr -> String
 countStmtFor whereClauseExpr =
   "SELECT COUNT(*) FROM "
     ++ tableName @a
@@ -150,7 +150,7 @@ countStmtFor whereClauseExpr =
     ++ ";"
 
 -- | A function that returns an SQL delete statement for an entity. Type 'a' must be an instance of Entity.
-deleteStmtFor :: forall a id. (Entity a id) => String
+deleteStmtFor :: forall a fn id. (Entity a fn id) => String
 deleteStmtFor =
   "DELETE FROM "
     ++ tableName @a
@@ -162,7 +162,7 @@ deleteStmtFor =
 data Database = Postgres | SQLite
 
 -- | A function that returns an SQL create table statement for an entity type. Type 'a' must be an instance of Entity.
-createTableStmtFor :: forall a id. (Entity a id) => ColumnTypeMapping -> String
+createTableStmtFor :: forall a fn id. (Entity a fn id) => ColumnTypeMapping -> String
 createTableStmtFor columnTypeMapping =
   "CREATE TABLE "
     ++ tableName @a
@@ -172,13 +172,13 @@ createTableStmtFor columnTypeMapping =
   where
     optionalPK f = if isIdField @a f then " PRIMARY KEY" else ""
 
-isIdField :: forall a id. (Entity a id) => String -> Bool
-isIdField f = f == idField @a
+isIdField :: forall a fn id. (Entity a fn id) => String -> Bool
+isIdField f = f == idFieldName @a @fn @id
 
 -- | A function that returns the column type for a field of an entity.
 --   The function takes a column type mapping function as parameter.
 --   This function is used to map Haskell field types to SQL column types.
-columnTypeFor :: forall a id. (Entity a id) => ColumnTypeMapping -> String -> String
+columnTypeFor :: forall a fn id. (Entity a fn id) => ColumnTypeMapping -> String -> String
 columnTypeFor columnTypeMapping fieldName = columnTypeMapping fType
   where
     fType =
@@ -215,7 +215,7 @@ defaultPostgresMapping = \case
   _               -> "varchar"
 
 -- | This function generates a DROP TABLE statement for an entity type.
-dropTableStmtFor :: forall a id. (Entity a id) => String
+dropTableStmtFor :: forall a fn id. (Entity a fn id) => String
 dropTableStmtFor =
   "DROP TABLE IF EXISTS "
     ++ tableName @a

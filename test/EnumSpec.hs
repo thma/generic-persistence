@@ -32,7 +32,7 @@ data Book = Book
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Book Int
+instance Entity Book "bookID" Int
 
 data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Other
   deriving (Generic, Show, Read, Eq)
