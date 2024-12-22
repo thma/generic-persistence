@@ -18,7 +18,7 @@ module Database.GP.Entity
     Conn (..),
     TxHandling (..),
     maybeIdFieldIndex,
-    fieldIndex,
+    fieldIndex
   )
 where
 
@@ -26,12 +26,14 @@ import           Data.Char            (toLower)
 import           Data.Convertible
 import           Data.Kind
 import           Data.List            (elemIndex)
-import           Data.Typeable        (Proxy (..), TypeRep)
+import           Data.Typeable        (Typeable, Proxy (..), TypeRep, typeRep)
 import           Database.GP.Conn
 import           Database.GP.TypeInfo
 import           Database.HDBC        (SqlValue)
 import           GHC.Generics
-import           GHC.TypeNats
+import           GHC.TypeNats ( KnownNat, type (+), Nat, natVal )
+import           GHC.Records ( HasField(..) )
+
 
 -- | This is the Entity class. It is a type class that is used to define the mapping
 -- between a Haskell product type in record notation and a database table.
@@ -54,11 +56,11 @@ import           GHC.TypeNats
 class
   ( Generic a,
     HasConstructor (Rep a),
-    HasSelectors (Rep a),
-    Convertible id SqlValue,
-    Convertible SqlValue id
-  ) =>
-  Entity a id | a -> id where
+    HasSelectors (Rep a)
+    --Convertible SqlValue id,
+    --Convertible id SqlValue
+  )  =>
+  Entity a fieldName | a -> fieldName where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: Conn -> [SqlValue] -> IO a
 
@@ -76,6 +78,13 @@ class
 
   -- | Returns True if the primary key field for a type 'a' is autoincremented by the database.
   autoIncrement :: Bool
+
+  primaryKey :: (Convertible id SqlValue, HasField fieldName a id) => a -> id
+  primaryKey = getField @fieldName
+
+  primaryKeyFieldName         ::                 String
+  default primaryKeyFieldName :: (Typeable fieldName) => String
+  primaryKeyFieldName = show (typeRep (Proxy @fieldName))
 
   -- | fromRow generic default implementation
   default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
@@ -126,7 +135,7 @@ expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
-columnNameFor :: forall a id. (Entity a id) => String -> String
+columnNameFor :: forall a fn. (Entity a fn) => String -> String
 columnNameFor fieldName =
   case maybeColumnNameFor fieldName of
     Just columnName -> columnName
@@ -141,7 +150,7 @@ columnNameFor fieldName =
     maybeColumnNameFor :: String -> Maybe String
     maybeColumnNameFor field = lookup field (fieldsToColumns @a)
 
-maybeFieldTypeFor :: forall a id. (Entity a id) => String -> Maybe TypeRep
+maybeFieldTypeFor :: forall a fn. (Entity a fn) => String -> Maybe TypeRep
 maybeFieldTypeFor field = lookup field (fieldsAndTypes (typeInfo @a))
   where
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]

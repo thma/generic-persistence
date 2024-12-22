@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-missing-fields #-}
+{-# LANGUAGE DataKinds #-}
 
 module DemoSpec
   ( test,
@@ -29,7 +30,7 @@ data Person = Person
 
 -- deriving Entity allows us to use the GenericPersistence API
 -- Person is an Entity with an Int as the id type
-instance Entity Person Int
+instance Entity Person "personID"
 
 -- print :: Show a => a -> IO ()
 -- print = putStrLn . show

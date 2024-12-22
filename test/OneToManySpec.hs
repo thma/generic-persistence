@@ -32,7 +32,7 @@ data Article = Article
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article Int where
+instance Entity Article "articleID" where
   autoIncrement = False
 
 data Author = Author
@@ -43,7 +43,7 @@ data Author = Author
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Author Int where
+instance Entity Author "authorID" where
   fieldsToColumns :: [(String, String)] -- ommitting the articles field,
   fieldsToColumns =
     -- as this can not be mapped to a single column
@@ -122,6 +122,6 @@ spec = do
       articles' <- select conn allEntries :: IO [Article]
       length articles' `shouldBe` 3
 
-      author2 <- selectById conn 2 :: IO (Maybe Author)
+      author2 <- selectById conn (2::Int) :: IO (Maybe Author)
       fromJust author2 `shouldBe` arthur
       length (articles $ fromJust author2) `shouldBe` 2

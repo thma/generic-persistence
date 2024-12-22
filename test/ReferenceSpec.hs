@@ -39,10 +39,10 @@ data Author = Author
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Author Int where
+instance Entity Author "authorID" where
   autoIncrement = False
 
-instance Entity Article Int where
+instance Entity Article "articleID" where
   autoIncrement :: Bool
   autoIncrement = False
 
@@ -104,8 +104,8 @@ spec = do
       conn <- prepareDB
       _ <- insert conn article
 
-      author' <- selectById conn 2 :: IO (Maybe Author)
+      author' <- selectById conn (2::Int) :: IO (Maybe Author)
       author' `shouldBe` Just arthur
 
-      article' <- selectById conn 1 :: IO (Maybe Article)
+      article' <- selectById conn (1::Int) :: IO (Maybe Article)
       article' `shouldBe` Just article

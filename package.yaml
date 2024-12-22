@@ -24,6 +24,7 @@ default-extensions:
 - TemplateHaskell
 - QuasiQuotes
 - LambdaCase
+- DataKinds
 
 dependencies:
 - base >= 4.7 && < 5

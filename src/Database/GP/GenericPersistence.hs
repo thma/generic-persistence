@@ -70,7 +70,8 @@ import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
 import           Database.HDBC
-import           GHC.Generics
+import           GHC.Records (HasField)
+import Data.Convertible (Convertible)
 
 -- |
 -- This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.
@@ -84,7 +85,7 @@ import           GHC.Generics
 -- If an entity with the given id exists in the database, it is returned as a Just value.
 -- If no such entity exists, Nothing is returned.
 -- An error is thrown if there are more than one entity with the given id.
-selectById :: forall a id. (Entity a id) => Conn -> id -> IO (Maybe a)
+selectById :: forall a fn id. (Entity a fn, Convertible id SqlValue) => Conn -> id -> IO (Maybe a)
 selectById conn idx = do
   eitherExEntity <- GpSafe.selectById conn idx
   case eitherExEntity of
@@ -144,32 +145,32 @@ insertMany :: forall a id. (Entity a id) => Conn -> [a] -> IO ()
 insertMany = (fromEitherExOrA .) . GpSafe.insertMany
 
 -- | A function that explicitely updates an entity in a database.
-update :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> a -> IO ()
+update :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> a -> IO ()
 update = (fromEitherExOrA .) . GpSafe.update
 
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
-updateMany :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> [a] -> IO ()
+updateMany :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> [a] -> IO ()
 updateMany = (fromEitherExOrA .) . GpSafe.updateMany
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
-delete :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> a -> IO ()
+delete :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> a -> IO ()
 delete = (fromEitherExOrA .) . GpSafe.delete
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity id as parameters.
-deleteById :: forall a id. (Entity a id) => Conn -> id -> IO ()
+deleteById :: forall a fn id. (Entity a fn, Convertible id SqlValue) => Conn -> id -> IO ()
 deleteById = (fromEitherExOrA .) . GpSafe.deleteById @a
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
-deleteMany :: forall a id. (Entity a id, GToRow (Rep a)) => Conn -> [a] -> IO ()
+deleteMany :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> [a] -> IO ()
 deleteMany = (fromEitherExOrA .) . GpSafe.deleteMany
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entity ids as parameters.
-deleteManyById :: forall a id. (Entity a id) => Conn -> [id] -> IO ()
+deleteManyById :: forall a fn id. (Entity a fn, Convertible id SqlValue) => Conn -> [id] -> IO ()
 deleteManyById = (fromEitherExOrA .) . GpSafe.deleteManyById @a
