@@ -32,7 +32,6 @@ data Article = Article
 
 instance Entity Article "articleID" Int where
   autoIncrement = False
-  idField = "articleID"
 
 data Bogus = Bogus
   { bogusID    :: Int,
@@ -180,9 +179,9 @@ spec = do
       -- Article is defined with autoIncrement = False
       removeAutoIncIdField @Article articleRow `shouldBe` expectedRow
 
-      -- ArticleWithoutPK is defined with autoIncrement = True, but has no primary key field
+      -- ArticleWithoutPK is defined with autoIncrement = True, but DB can't auto-increment the primary key type
       let articleWithoutPK = ArticleWithoutPK "title" 2023
-          rowWithoutPK = [SqlString "title", SqlInt64 2023]
+          rowWithoutPK = [SqlInt64 2023]
       articleRowWithoutPK <- toRow conn articleWithoutPK
       removeAutoIncIdField @ArticleWithoutPK articleRowWithoutPK `shouldBe` rowWithoutPK
 
@@ -198,7 +197,8 @@ data ArticleWithoutPK = ArticleWithoutPK
   }
   deriving (Generic, Show, Eq)
 
-instance Entity ArticleWithoutPK "title1" String
+instance Entity ArticleWithoutPK "title1" String where
+  autoIncrement = True
 
 data ArticleWithPKatEnd = ArticleWithPKatEnd
   { title2     :: String,
@@ -207,6 +207,5 @@ data ArticleWithPKatEnd = ArticleWithPKatEnd
   }
   deriving (Generic, Show, Eq)
 
-instance Entity ArticleWithPKatEnd "title2" String where
+instance Entity ArticleWithPKatEnd "articleID2" Int where
   autoIncrement = True
-  idField = "articleID2"

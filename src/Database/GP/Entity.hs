@@ -22,7 +22,6 @@ module Database.GP.Entity
   )
 where
 
-import           Data.Char            (toLower)
 import           Data.Convertible
 import           Data.Kind
 import           Data.List            (elemIndex)
@@ -52,70 +51,70 @@ import           GHC.Records ( HasField(..) )
 --
 -- - The type must be a product type in record notation.
 -- - The type must have exactly one constructor.
--- - There must be single primary key field, compound primary keys are not supported.
+-- - There must be a single primary key field, compound primary keys are not supported.
 class
   ( Generic a,
     HasConstructor (Rep a),
     HasSelectors (Rep a),
     Convertible SqlValue id,
     Convertible id SqlValue,
-    HasField fieldName a id
+    HasField fieldName a id,
+    Typeable fieldName
   )  =>
   Entity a fieldName id | a -> fieldName, a -> id where
-  -- | Converts a database row to a value of type 'a'.
-  fromRow :: Conn -> [SqlValue] -> IO a
+    -- | Converts a database row to a value of type 'a'.
+    fromRow :: Conn -> [SqlValue] -> IO a
 
-  -- | Converts a value of type 'a' to a database row.
-  toRow :: Conn -> a -> IO [SqlValue]
+    -- | Converts a value of type 'a' to a database row.
+    toRow :: Conn -> a -> IO [SqlValue]
 
-  -- | Returns the name of the primary key field for a type 'a'.
-  idField :: String
+    -- | Returns a list of tuples that map field names to column names for a type 'a'.
+    fieldsToColumns :: [(String, String)]
 
-  -- | Returns a list of tuples that map field names to column names for a type 'a'.
-  fieldsToColumns :: [(String, String)]
+    -- | Returns the name of the table for a type 'a'.
+    tableName :: String
 
-  -- | Returns the name of the table for a type 'a'.
-  tableName :: String
+    -- | Returns True if the primary key field for a type 'a' is autoincremented by the database.
+    autoIncrement :: Bool
 
-  -- | Returns True if the primary key field for a type 'a' is autoincremented by the database.
-  autoIncrement :: Bool
+    -- | Returns the value of the primary key field for a value of type 'a'.
+    --   Due to the functional dependency 'a -> id', 
+    --   the type of the primary key field, 'id', is determined by the 'Entity' instance declaration of 'a'.
+    idFieldValue :: a -> id
+    idFieldValue = getField @fieldName
 
-  primaryKey :: (Convertible id SqlValue, HasField fieldName a id) => a -> id
-  primaryKey = getField @fieldName
+    -- | Returns the name of the primary key field for a type 'a'.
+    --   Due to the functional dependency 'a -> fieldName', 
+    ---  the name of the primary key field is determined by the 'Entity' instance declaration of 'a'.
+    idFieldName :: (Typeable fieldName) => String
+    idFieldName = stripQuotes $ show $ typeRep (Proxy @fieldName) where
+      stripQuotes :: String -> String
+      stripQuotes = filter (/= '\"')
 
-  primaryKeyFieldName :: String
-  default primaryKeyFieldName :: (Typeable fieldName) => String
-  primaryKeyFieldName = show (typeRep (Proxy @fieldName))
+    -- | fromRow generic default implementation
+    default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
+    fromRow _conn = pure . to <$> gfromRow
 
-  -- | fromRow generic default implementation
-  default fromRow :: (GFromRow (Rep a)) => Conn -> [SqlValue] -> IO a
-  fromRow _conn = pure . to <$> gfromRow
+    -- | toRow generic default implementation
+    default toRow :: GToRow (Rep a) => Conn -> a -> IO [SqlValue]
+    toRow _ = pure . gtoRow . from
 
-  -- | toRow generic default implementation
-  default toRow :: GToRow (Rep a) => Conn -> a -> IO [SqlValue]
-  toRow _ = pure . gtoRow . from
+    -- | fieldsToColumns default implementation: the field names are used as column names
+    default fieldsToColumns :: [(String, String)]
+    fieldsToColumns = zip (fieldNames (typeInfo @a)) (fieldNames (typeInfo @a))
 
-  -- | idField default implementation: the ID field is the field with the same name
-  --   as the type name in lower case and appended with "ID", e.g. "bookID"
-  default idField :: String
-  idField = map toLower (constructorName (typeInfo @a)) ++ "ID"
+    -- | tableName default implementation: the type name is used as table name
+    default tableName :: String
+    tableName = constructorName (typeInfo @a)
 
-  -- | fieldsToColumns default implementation: the field names are used as column names
-  default fieldsToColumns :: [(String, String)]
-  fieldsToColumns = zip (fieldNames (typeInfo @a)) (fieldNames (typeInfo @a))
-
-  -- | tableName default implementation: the type name is used as table name
-  default tableName :: String
-  tableName = constructorName (typeInfo @a)
-
-  -- | autoIncrement default implementation: the ID field is autoincremented
-  default autoIncrement :: Bool
-  autoIncrement = True
+    -- | autoIncrement default implementation: the ID field is autoincremented
+    default autoIncrement :: Bool
+    autoIncrement = True
 
 -- | Returns Just index of the primary key field for a type 'a'.
 --   if the type has no primary key field, Nothing is returned.
 maybeIdFieldIndex :: forall a fn id. (Entity a fn id) => Maybe Int
-maybeIdFieldIndex = elemIndex (idField @a) (fieldNames (typeInfo @a))
+maybeIdFieldIndex = elemIndex (idFieldName @a @fn) (fieldNames (typeInfo @a))
 
 -- | returns the index of a field of an entity.
 --   The index is the position of the field in the list of fields of the entity.

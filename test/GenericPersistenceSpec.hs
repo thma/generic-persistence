@@ -51,7 +51,6 @@ data Car = Car
 
 instance Entity Car "carID" Int where
   autoIncrement = True
-  idField = "carID"
 
 data Boat = Boat
   { boatID   :: Int,
@@ -75,7 +74,6 @@ data BookCategory = Fiction | Travel | Arts | Science | History | Biography | Ot
   deriving (Generic, Read, Show, Eq, Enum)
 
 instance Entity Book "book_id" Int where
-  idField = "book_id"
   fieldsToColumns =
     [ ("book_id", "bookId"),
       ("title", "bookTitle"),
@@ -98,7 +96,6 @@ data BearerToken = BearerToken
 
 instance Entity BearerToken "token" String where
   autoIncrement = False
-  idField = "token"
 
 person :: Person
 person = Person 123456 "Alice" 25 "123 Main St"

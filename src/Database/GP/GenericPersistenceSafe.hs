@@ -323,11 +323,7 @@ setupTable conn mapping = do
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.
 idValue :: forall a fn id. (Entity a fn id) => a -> SqlValue
--- idValue x = sqlValues !! idFieldIndex
---   where
---     sqlValues = gtoRow (from x   )
---     idFieldIndex = fieldIndex @a (idField @a)
-idValue x =  toSql (primaryKey x)
+idValue =  toSql . idFieldValue
 
 
 -- | an alias for a simple quasiqouter

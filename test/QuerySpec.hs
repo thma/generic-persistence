@@ -144,7 +144,7 @@ spec = do
       columnTypeFor @SomeRecord defaultSqliteMapping "someRecordFlag" `shouldBe` "INT"
       columnTypeFor @SomeRecord defaultSqliteMapping "someRecordDate" `shouldBe` "TEXT"
     it "can create column types for a Postgres" $ do
-      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordID" `shouldBe` "numeric"
+      columnTypeFor @SomeRecord defaultPostgresMapping "someRecordID" `shouldBe` "serial"
       columnTypeFor @SomeRecord defaultPostgresMapping "someRecordName" `shouldBe` "varchar"
       columnTypeFor @SomeRecord defaultPostgresMapping "someRecordAge" `shouldBe` "numeric"
       columnTypeFor @SomeRecord defaultPostgresMapping "someRecordTax" `shouldBe` "numeric"

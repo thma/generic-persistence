@@ -8,6 +8,7 @@ module DemoSpec
 where
 
 import           Database.GP
+import Database.GP.SqlGenerator
 import           Database.HDBC.Sqlite3 (connectSqlite3)
 import           GHC.Generics
 import           Prelude               hiding (print)
@@ -29,11 +30,11 @@ data Person = Person
   deriving (Generic, Show)
 
 -- deriving Entity allows us to use the GenericPersistence API
--- Person is an Entity with an Int as the id type
+-- Person is an Entity with primary key field "personID" and Int as the pk type
 instance Entity Person "personID" Int
 
--- print :: Show a => a -> IO ()
--- print = putStrLn . show
+--print :: Show a => a -> IO ()
+--print = putStrLn . show
 
 print :: a -> IO ()
 print _ = pure ()
@@ -41,12 +42,16 @@ print _ = pure ()
 spec :: Spec
 spec = do
   describe "A simple demo" $ do
-    it "shows some basic use cases" $ do
+    it "demonstrates some basic use cases" $ do
       -- connect to a database in auto commit mode
       conn <- connect AutoCommit <$> connectSqlite3 "sqlite.db"
 
       -- initialize Person table
       setupTable @Person conn defaultSqliteMapping
+      print $ createTableStmtFor @Person defaultSqliteMapping
+
+      maybePerson <- selectById @Person conn 1
+      print maybePerson
 
       alice <- insert conn Person {name = "Alice", age = 25, address = "Elmstreet 1"}
       print alice

@@ -173,7 +173,7 @@ createTableStmtFor columnTypeMapping =
     optionalPK f = if isIdField @a f then " PRIMARY KEY" else ""
 
 isIdField :: forall a fn id. (Entity a fn id) => String -> Bool
-isIdField f = f == idField @a
+isIdField f = f == idFieldName @a @fn @id
 
 -- | A function that returns the column type for a field of an entity.
 --   The function takes a column type mapping function as parameter.
