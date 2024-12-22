@@ -32,7 +32,7 @@ data Article = Article
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article "articleID" where
+instance Entity Article "articleID" Int where
   autoIncrement = False
 
 data Author = Author
@@ -43,7 +43,7 @@ data Author = Author
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Author "authorID" where
+instance Entity Author "authorID" Int where
   fieldsToColumns :: [(String, String)] -- ommitting the articles field,
   fieldsToColumns =
     -- as this can not be mapped to a single column

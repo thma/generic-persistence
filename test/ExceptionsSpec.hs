@@ -30,7 +30,7 @@ data Article = Article
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article "articleID" where
+instance Entity Article "articleID" Int where
   autoIncrement = False
   idField = "articleID"
 
@@ -41,7 +41,7 @@ data Bogus = Bogus
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Bogus Int where
+instance Entity Bogus "bogusID" Int where
   tableName = "Article"
 
   fieldsToColumns :: [(String, String)] -- ommitting the articles field,
@@ -198,7 +198,7 @@ data ArticleWithoutPK = ArticleWithoutPK
   }
   deriving (Generic, Show, Eq)
 
-instance Entity ArticleWithoutPK Int
+instance Entity ArticleWithoutPK "title1" String
 
 data ArticleWithPKatEnd = ArticleWithPKatEnd
   { title2     :: String,
@@ -207,6 +207,6 @@ data ArticleWithPKatEnd = ArticleWithPKatEnd
   }
   deriving (Generic, Show, Eq)
 
-instance Entity ArticleWithPKatEnd Int where
+instance Entity ArticleWithPKatEnd "title2" String where
   autoIncrement = True
   idField = "articleID2"

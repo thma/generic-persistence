@@ -56,11 +56,12 @@ import           GHC.Records ( HasField(..) )
 class
   ( Generic a,
     HasConstructor (Rep a),
-    HasSelectors (Rep a)
-    --Convertible SqlValue id,
-    --Convertible id SqlValue
+    HasSelectors (Rep a),
+    Convertible SqlValue id,
+    Convertible id SqlValue,
+    HasField fieldName a id
   )  =>
-  Entity a fieldName | a -> fieldName where
+  Entity a fieldName id | a -> fieldName, a -> id where
   -- | Converts a database row to a value of type 'a'.
   fromRow :: Conn -> [SqlValue] -> IO a
 
@@ -82,7 +83,7 @@ class
   primaryKey :: (Convertible id SqlValue, HasField fieldName a id) => a -> id
   primaryKey = getField @fieldName
 
-  primaryKeyFieldName         ::                 String
+  primaryKeyFieldName :: String
   default primaryKeyFieldName :: (Typeable fieldName) => String
   primaryKeyFieldName = show (typeRep (Proxy @fieldName))
 
@@ -113,7 +114,7 @@ class
 
 -- | Returns Just index of the primary key field for a type 'a'.
 --   if the type has no primary key field, Nothing is returned.
-maybeIdFieldIndex :: forall a id. (Entity a id) => Maybe Int
+maybeIdFieldIndex :: forall a fn id. (Entity a fn id) => Maybe Int
 maybeIdFieldIndex = elemIndex (idField @a) (fieldNames (typeInfo @a))
 
 -- | returns the index of a field of an entity.
@@ -121,7 +122,7 @@ maybeIdFieldIndex = elemIndex (idField @a) (fieldNames (typeInfo @a))
 --   If no such field exists, an error is thrown.
 --   The function takes an field name as parameters,
 --   the type of the entity is determined by the context.
-fieldIndex :: forall a id. (Entity a id) => String -> Int
+fieldIndex :: forall a fn id. (Entity a fn id) => String -> Int
 fieldIndex fieldName =
   expectJust
     ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
@@ -135,7 +136,7 @@ expectJust _ (Just x)  = x
 expectJust err Nothing = error ("expectJust " ++ err)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
-columnNameFor :: forall a fn. (Entity a fn) => String -> String
+columnNameFor :: forall a fn id. (Entity a fn id) => String -> String
 columnNameFor fieldName =
   case maybeColumnNameFor fieldName of
     Just columnName -> columnName
@@ -150,7 +151,7 @@ columnNameFor fieldName =
     maybeColumnNameFor :: String -> Maybe String
     maybeColumnNameFor field = lookup field (fieldsToColumns @a)
 
-maybeFieldTypeFor :: forall a fn. (Entity a fn) => String -> Maybe TypeRep
+maybeFieldTypeFor :: forall a fn id. (Entity a fn id) => String -> Maybe TypeRep
 maybeFieldTypeFor field = lookup field (fieldsAndTypes (typeInfo @a))
   where
     fieldsAndTypes :: TypeInfo a -> [(String, TypeRep)]

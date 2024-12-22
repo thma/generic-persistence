@@ -39,10 +39,10 @@ data Author = Author
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Author "authorID" where
+instance Entity Author "authorID" Int where
   autoIncrement = False
 
-instance Entity Article "articleID" where
+instance Entity Article "articleID" Int where
   autoIncrement :: Bool
   autoIncrement = False
 

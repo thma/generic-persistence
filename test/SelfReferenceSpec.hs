@@ -40,7 +40,7 @@ data Employee = Employee
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Employee Text where
+instance Entity Employee "name" Text where
   autoIncrement = False
   idField = "name" -- the name field is the primary key
 

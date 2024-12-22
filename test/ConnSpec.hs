@@ -29,7 +29,7 @@ data Article = Article
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article Int
+instance Entity Article "articleID" Int
 
 spec :: Spec
 spec = do

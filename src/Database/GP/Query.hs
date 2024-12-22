@@ -131,7 +131,7 @@ limit = Limit
 limitOffset :: WhereClauseExpr -> (Int, Int) -> WhereClauseExpr
 limitOffset c (offset, lim) = LimitOffset c offset lim
 
-whereClauseExprToSql :: forall a id. (Entity a id) => WhereClauseExpr -> String
+whereClauseExprToSql :: forall a fn id. (Entity a fn id) => WhereClauseExpr -> String
 whereClauseExprToSql (Where f op _) = columnToSql @a f ++ " " ++ opToSql op ++ " ?"
 whereClauseExprToSql (And e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") AND (" ++ whereClauseExprToSql @a e2 ++ ")"
 whereClauseExprToSql (Or e1 e2) = "(" ++ whereClauseExprToSql @a e1 ++ ") OR (" ++ whereClauseExprToSql @a e2 ++ ")"
@@ -161,13 +161,13 @@ opToSql LtEq  = "<="
 opToSql NotEq = "<>"
 opToSql Like  = "LIKE"
 
-columnToSql :: forall a id. (Entity a id) => Field -> String
+columnToSql :: forall a fn id. (Entity a fn id) => Field -> String
 columnToSql = expandFunctions @a
 
-idColumn :: forall a id. (Entity a id) => String
+idColumn :: forall a fn id. (Entity a fn id) => String
 idColumn = columnNameFor @a (idField @a)
 
-expandFunctions :: forall a id. (Entity a id) => Field -> String
+expandFunctions :: forall a fn id. (Entity a fn id) => Field -> String
 expandFunctions (Field [] name) = columnNameFor @a name
 expandFunctions (Field (f : fs) name) = f ++ "(" ++ expandFunctions @a (Field fs name) ++ ")"
 

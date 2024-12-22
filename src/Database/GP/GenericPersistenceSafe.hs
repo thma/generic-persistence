@@ -76,7 +76,6 @@ import           Database.GP.TypeInfo
 import           Database.HDBC
 import           Language.Haskell.TH.Quote (QuasiQuoter)
 import           Text.RawString.QQ         (r)
-import           GHC.Records ( HasField )
 
 -- |
 -- This is the "safe" version of the module Database.GP.GenericPersistence. It uses Either to return errors.
@@ -100,7 +99,7 @@ data PersistenceException
 -- If an entity with the given id exists in the database, it is returned as a Just value.
 -- If no such entity exists, Nothing is returned.
 -- An error is thrown if there are more than one entity with the given id.
-selectById :: forall a fn id. (Entity a fn, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException a)
+selectById :: forall a fn id. (Entity a fn id) => Conn -> id -> IO (Either PersistenceException a)
 selectById conn idx = do
   eitherExResultRows <- try $ quickQuery conn stmt [eid]
   case eitherExResultRows of
@@ -127,7 +126,7 @@ fromException ex = DatabaseError $ show ex
 --   The type `a` is determined by the context of the function call.
 --   The function returns a (possibly empty) list of all matching entities.
 --   The `WhereClauseExpr` is typically constructed using a tiny query dsl based on infix operators.
-select :: forall a id. (Entity a id) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
+select :: forall a fn id. (Entity a fn id) => Conn -> WhereClauseExpr -> IO (Either PersistenceException [a])
 select conn whereClause = do
   eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
@@ -142,7 +141,7 @@ select conn whereClause = do
 --   The type `a` is determined by the context of the function call.
 --   The function returns the number of all matching entities.
 --   The `WhereClauseExpr` is typically constructed using a tiny query dsl based on infix operators.
-count :: forall a id. (Entity a id) => Conn -> WhereClauseExpr -> IO (Either PersistenceException Int)
+count :: forall a fn id. (Entity a fn id) => Conn -> WhereClauseExpr -> IO (Either PersistenceException Int)
 count conn whereClause = do
   eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
@@ -158,14 +157,14 @@ count conn whereClause = do
 --   The function returns a (possibly empty) list of all matching entities.
 --   The function is used internally by `retrieveAll` and `retrieveAllWhere`.
 --   But it can also be used to convert the result of a custom SQL query to a list of entities.
-entitiesFromRows :: forall a id. (Entity a id) => Conn -> [[SqlValue]] -> IO (Either PersistenceException [a])
+entitiesFromRows :: forall a fn id. (Entity a fn id) => Conn -> [[SqlValue]] -> IO (Either PersistenceException [a])
 entitiesFromRows = (tryPE .) . mapM . fromRow
 
 -- | A function that persists an entity to a database.
 -- The function takes an HDBC connection and an entity as parameters.
 -- The entity is either inserted or updated, depending on whether it already exists in the database.
 -- The required SQL statements are generated dynamically using Haskell generics and reflection
-upsert :: forall a id. (Entity a id) => Conn -> a -> IO (Either PersistenceException ())
+upsert :: forall a fn id. (Entity a fn id) => Conn -> a -> IO (Either PersistenceException ())
 upsert conn entity = do
   eitherExOrA <- try $ do
     row <- toRow conn entity
@@ -185,7 +184,7 @@ commitIfAutoCommit (Conn autoCommit conn) = when autoCommit $ commit conn
 --   The entity, as retrieved from the database, is returned as a Right value if the entity was successfully inserted.
 --   (this allows to handle automatically updated fields like auto-incremented primary keys)
 --   If the entity could not be inserted, a Left value is returned, containing a PersistenceException.
-insert :: forall a id. (Entity a id) => Conn -> a -> IO (Either PersistenceException a)
+insert :: forall a fn id. (Entity a fn id) => Conn -> a -> IO (Either PersistenceException a)
 insert conn entity = do
   eitherExOrA <- try $ do
     row <- toRow conn entity
@@ -196,7 +195,7 @@ insert conn entity = do
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right a -> return $ Right a
 
-removeAutoIncIdField :: forall a id. (Entity a id) => [SqlValue] -> [SqlValue]
+removeAutoIncIdField :: forall a fn id. (Entity a fn id) => [SqlValue] -> [SqlValue]
 removeAutoIncIdField row =
   if autoIncrement @a
     then case maybeIdFieldIndex @a of
@@ -223,7 +222,7 @@ tryPE action = do
 -- | A function that inserts a list of entities into a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The insert-statement is compiled only once and then executed for each entity.
-insertMany :: forall a id. (Entity a id) => Conn -> [a] -> IO (Either PersistenceException ())
+insertMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
 insertMany conn entities = do
   eitherExUnit <- try $ do
     rows <- mapM (toRow conn) entities
@@ -236,7 +235,7 @@ insertMany conn entities = do
 
 -- | A function that explicitely updates an entity in a database.
 --  The function takes an HDBC connection and an entity as parameters.
-update :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> a -> IO (Either PersistenceException ())
+update :: forall a fn id. (Entity a fn id) => Conn -> a -> IO (Either PersistenceException ())
 update conn entity = do
   eitherExUnit <- try $ do
     let eid = idValue entity
@@ -254,7 +253,7 @@ update conn entity = do
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
-updateMany :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> [a] -> IO (Either PersistenceException ())
+updateMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
 updateMany conn entities = tryPE $ do
   let eids = map idValue entities
   rows <- mapM (toRow conn) entities
@@ -265,7 +264,7 @@ updateMany conn entities = tryPE $ do
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
-delete :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> a -> IO (Either PersistenceException ())
+delete :: forall a fn id. (Entity a fn id) => Conn -> a -> IO (Either PersistenceException ())
 delete conn entity = do
   eitherExRes <- try $ do
     let eid = idValue entity
@@ -281,7 +280,7 @@ delete conn entity = do
 
 -- | A function that deletes an entity from a database by its id.
 --   The function takes an HDBC connection and an entity id as parameters.
-deleteById :: forall a fn id. (Entity a fn, Convertible id SqlValue) => Conn -> id -> IO (Either PersistenceException ())
+deleteById :: forall a fn id. (Entity a fn id) => Conn -> id -> IO (Either PersistenceException ())
 deleteById conn idx = do
   eitherExRes <- try $ do
     let eid = toSql idx
@@ -297,7 +296,7 @@ deleteById conn idx = do
 
 -- | A function that deletes a list of entities from a database by their ids.
 --   The function takes an HDBC connection and a list of entity ids as parameters.
-deleteManyById :: forall a fn id. (Entity a fn, Convertible id SqlValue) => Conn -> [id] -> IO (Either PersistenceException ())
+deleteManyById :: forall a fn id. (Entity a fn id) => Conn -> [id] -> IO (Either PersistenceException ())
 deleteManyById conn ids = tryPE $ do
   stmt <- prepare conn (deleteStmtFor @a)
   executeMany stmt (map ((: []) . toSql) ids)
@@ -306,7 +305,7 @@ deleteManyById conn ids = tryPE $ do
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
-deleteMany :: forall a fn id. (Entity a fn, HasField fn a id, Convertible id SqlValue) => Conn -> [a] -> IO (Either PersistenceException ())
+deleteMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
 deleteMany conn entities = tryPE $ do
   let eids = map idValue entities
   stmt <- prepare conn (deleteStmtFor @a)
@@ -315,7 +314,7 @@ deleteMany conn entities = tryPE $ do
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection and a column type mapping as parameters.
-setupTable :: forall a id. (Entity a id) => Conn -> ColumnTypeMapping -> IO ()
+setupTable :: forall a fn id. (Entity a fn id) => Conn -> ColumnTypeMapping -> IO ()
 setupTable conn mapping = do
   runRaw conn $ dropTableStmtFor @a
   runRaw conn $ createTableStmtFor @a mapping
@@ -323,7 +322,7 @@ setupTable conn mapping = do
 
 -- | A function that returns the primary key value of an entity as a SqlValue.
 --   The function takes an HDBC connection and an entity as parameters.
-idValue :: forall a fieldName id. (Entity a fieldName, HasField fieldName a id, Convertible id SqlValue) => a -> SqlValue
+idValue :: forall a fn id. (Entity a fn id) => a -> SqlValue
 -- idValue x = sqlValues !! idFieldIndex
 --   where
 --     sqlValues = gtoRow (from x   )
@@ -346,6 +345,6 @@ instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible a SqlValue where
   safeConvert = Right . toSql . fromEnum
 
 -- this is needed to make the compiler happy when using 1:n relations
-instance forall a id. (Entity a id) => Enum [a] where
+instance forall a fn id. (Entity a fn id) => Enum [a] where
   toEnum _ = error "toEnum is not implemented for [a]"
   fromEnum _ = error "fromEnum is not implemented for [a]"

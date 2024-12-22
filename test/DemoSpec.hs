@@ -30,7 +30,7 @@ data Person = Person
 
 -- deriving Entity allows us to use the GenericPersistence API
 -- Person is an Entity with an Int as the id type
-instance Entity Person "personID"
+instance Entity Person "personID" Int
 
 -- print :: Show a => a -> IO ()
 -- print = putStrLn . show

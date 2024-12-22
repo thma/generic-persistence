@@ -37,7 +37,7 @@ data Author = Author
   }
   deriving (Generic, Show, Eq)
 
-instance Entity Article Int where
+instance Entity Article "articleID" Int where
   fieldsToColumns =
     [ ("articleID", "articleID"),
       ("title", "title"),
