@@ -38,7 +38,7 @@ jobs:
     strategy:
       matrix:
         stack: ["latest"]
-        ghc: ["9.2", "9.4", "9.6", "9.8", "9.10"]
+        ghc: ["9.2", "9.4", "9.6", "9.8", "9.10", "9.12"]
 
     steps:
     - uses: actions/checkout@v4
@@ -78,3 +78,9 @@ jobs:
       uses: codecov/codecov-action@v5
       env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}

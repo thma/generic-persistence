@@ -65,6 +65,7 @@ tests:
     - HDBC-sqlite3 #>= 2.3.3.1
     - HDBC-postgresql #>= 2.5.0.1
     - text
+    - hspec-junit-formatter
     verbatim:
       build-tool-depends:
         hspec-discover:hspec-discover == 2.*
