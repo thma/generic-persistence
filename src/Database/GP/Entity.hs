@@ -123,16 +123,12 @@ maybeIdFieldIndex = elemIndex (idFieldName @a @fn) (fieldNames (typeInfo @a))
 --   the type of the entity is determined by the context.
 fieldIndex :: forall a fn id. (Entity a fn id) => String -> Int
 fieldIndex fieldName =
-  expectJust
-    ("Field " ++ fieldName ++ " is not present in type " ++ constructorName ti)
-    (elemIndex fieldName fieldList)
+  case elemIndex fieldName fieldList of
+    Just idx -> idx
+    Nothing -> error $ "fieldIndex: Field " ++ fieldName ++ " is not present in type " ++ constructorName ti
   where
     ti = typeInfo @a
     fieldList = fieldNames ti
-
-expectJust :: String -> Maybe a -> a
-expectJust _ (Just x)  = x
-expectJust err Nothing = error ("expectJust " ++ err)
 
 -- | A convenience function: returns the name of the column for a field of a type 'a'.
 columnNameFor :: forall a fn id. (Entity a fn id) => String -> String
@@ -173,7 +169,8 @@ class GFromRow f where
   gfromRow :: [SqlValue] -> f a
 
 instance (Convertible SqlValue a) => GFromRow (K1 i a) where
-  gfromRow = K1 <$> convert . head
+  gfromRow [] = error "GFromRow: empty row - this indicates a bug in the library"
+  gfromRow (x:_) = K1 (convert x)
 
 instance GFromRow a => GFromRow (M1 i c a) where
   gfromRow = M1 <$> gfromRow

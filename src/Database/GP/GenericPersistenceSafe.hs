@@ -145,8 +145,11 @@ count :: forall a fn id. (Entity a fn id) => Conn -> WhereClauseExpr -> IO (Eith
 count conn whereClause = do
   eitherExRows <- tryPE $ quickQuery conn stmt values
   case eitherExRows of
-    Left ex          -> return $ Left ex
-    Right resultRows -> return $ Right $ fromSql $ head $ head resultRows -- using head twice is safe here
+    Left ex -> return $ Left ex
+    Right resultRows -> case resultRows of
+      [[countVal]] -> return $ Right $ fromSql countVal
+      [] -> return $ Left $ DatabaseError "COUNT query returned no results"
+      _ ->  return $ Left $ DatabaseError "COUNT query returned unexpected result structure"
   where
     stmt = countStmtFor @a whereClause
     values = whereClauseValues whereClause
@@ -342,5 +345,5 @@ instance {-# OVERLAPS #-} forall a. (Enum a) => Convertible a SqlValue where
 
 -- this is needed to make the compiler happy when using 1:n relations
 instance forall a fn id. (Entity a fn id) => Enum [a] where
-  toEnum _ = error "toEnum is not implemented for [a]"
-  fromEnum _ = error "fromEnum is not implemented for [a]"
+  toEnum _ = error "Enum [a]: toEnum is not implemented for entity lists - this is a type system workaround only"
+  fromEnum _ = error "Enum [a]: fromEnum is not implemented for entity lists - this is a type system workaround only"

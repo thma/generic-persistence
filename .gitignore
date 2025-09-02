@@ -6,3 +6,5 @@ test.db
 dist-newstyle/
 *.iml
 .DS_Store
+junit.xml
+CL*.md

@@ -165,7 +165,7 @@ spec = do
 
     it "reports unknown fields" $ do
       let index = fieldIndex @Article "unknown"
-      print index `shouldThrow` errorCall "expectJust Field unknown is not present in type Article"
+      print index `shouldThrow` errorCall "fieldIndex: Field unknown is not present in type Article"
 
     it "handles duplicate insert exceptions" $ do
       handleDuplicateInsert (toException $ EntityNotFound "24") `shouldBe` DatabaseError "EntityNotFound \"24\""
