@@ -9,6 +9,7 @@ module GenericPersistenceSpec
 where
 
 import           Control.Exception
+import           Data.List                      (isPrefixOf)
 import           Database.GP.GenericPersistence
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
@@ -329,6 +330,42 @@ spec = do
       conn <- prepareDB
       insertMany conn manyPersons
       deleteManyById @Person conn ([2, 4, 6] :: [Int])
+      allPersons <- select conn allEntries :: IO [Person]
+      length allPersons `shouldBe` 3
+
+    it "rolls back insertMany on duplicate key violation" $ do
+      conn <- prepareDB
+      -- First insert a person
+      _ <- insert conn person
+      -- Now try to insert many including a duplicate
+      let duplicatePersons = [manyPersons !! 1, manyPersons !! 2, person] -- person is a duplicate
+      eitherResult <- try $ insertMany conn duplicatePersons
+      case eitherResult of
+        Left (DuplicateInsert _) -> do
+          -- Check that no new records were inserted (transaction rolled back)
+          allPersons <- select conn allEntries :: IO [Person]
+          length allPersons `shouldBe` 1 -- Only the first person should exist
+        Left ex -> expectationFailure $ "Unexpected exception: " ++ show ex
+        Right _ -> expectationFailure "Expected DuplicateInsert exception"
+
+    it "commits entire batch in insertMany when successful" $ do
+      conn <- prepareDB
+      insertMany conn (take 3 manyPersons)
+      allPersons <- select conn allEntries :: IO [Person]
+      length allPersons `shouldBe` 3
+
+    it "commits entire batch in updateMany when successful" $ do
+      conn <- prepareDB
+      insertMany conn (take 3 manyPersons)
+      let updatedPersons = zipWith (\p i -> p {name = "Updated" ++ show i}) (take 3 manyPersons) [1::Int ..]
+      updateMany conn updatedPersons
+      allPersons <- select conn allEntries :: IO [Person]
+      all (\p -> "Updated" `isPrefixOf` name p) allPersons `shouldBe` True
+
+    it "commits entire batch in deleteMany when successful" $ do
+      conn <- prepareDB
+      insertMany conn manyPersons
+      deleteMany conn (take 3 manyPersons)
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 3
 

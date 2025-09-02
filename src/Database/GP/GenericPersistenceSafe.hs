@@ -182,6 +182,28 @@ upsert conn entity = do
 commitIfAutoCommit :: Conn -> IO ()
 commitIfAutoCommit (Conn autoCommit conn) = when autoCommit $ commit conn
 
+-- | A function that maintains proper transaction semantics for batch operations.
+--   In AutoCommit mode, it starts a transaction, executes the action, and commits/rollbacks based on success.
+--   In ExplicitCommit mode, it just executes the action (transaction management is left to the user).
+handleTransaction :: Conn -> IO (Either PersistenceException a) -> IO (Either PersistenceException a)
+handleTransaction (Conn autoCommit innerConn) action = 
+  if autoCommit
+    then do
+      -- In AutoCommit mode, wrap the entire batch in a transaction
+      result <- action
+      case result of
+        Left ex -> do
+          -- Rollback on error
+          rollback innerConn
+          return $ Left ex
+        Right val -> do
+          -- Commit on success
+          commit innerConn
+          return $ Right val
+    else
+      -- In ExplicitCommit mode, just execute the action
+      action
+
 -- | A function that explicitely inserts an entity into a database.
 --   The function takes an HDBC connection and an entity as parameters.
 --   The entity, as retrieved from the database, is returned as a Right value if the entity was successfully inserted.
@@ -225,13 +247,13 @@ tryPE action = do
 -- | A function that inserts a list of entities into a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The insert-statement is compiled only once and then executed for each entity.
+--   The entire batch operation is wrapped in a transaction in AutoCommit mode.
 insertMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
-insertMany conn entities = do
+insertMany conn entities = handleTransaction conn $ do
   eitherExUnit <- try $ do
     rows <- mapM (toRow conn) entities
     stmt <- prepare conn (insertStmtFor @a)
     executeMany stmt (map (removeAutoIncIdField @a) rows)
-    commitIfAutoCommit conn
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right _ -> return $ Right ()
@@ -256,14 +278,14 @@ update conn entity = do
 -- | A function that updates a list of entities in a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
+--   The entire batch operation is wrapped in a transaction in AutoCommit mode.
 updateMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
-updateMany conn entities = tryPE $ do
+updateMany conn entities = handleTransaction conn $ tryPE $ do
   let eids = map idValue entities
   rows <- mapM (toRow conn) entities
   stmt <- prepare conn (updateStmtFor @a)
   -- the update statement has one more parameter than the row: the id value for the where clause
   executeMany stmt (zipWith (\l x -> l ++ [x]) rows eids)
-  commitIfAutoCommit conn
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
@@ -299,21 +321,22 @@ deleteById conn idx = do
 
 -- | A function that deletes a list of entities from a database by their ids.
 --   The function takes an HDBC connection and a list of entity ids as parameters.
+--   The entire batch operation is wrapped in a transaction in AutoCommit mode.
 deleteManyById :: forall a fn id. (Entity a fn id) => Conn -> [id] -> IO (Either PersistenceException ())
-deleteManyById conn ids = tryPE $ do
+deleteManyById conn ids = handleTransaction conn $ tryPE $ do
   stmt <- prepare conn (deleteStmtFor @a)
   executeMany stmt (map ((: []) . toSql) ids)
-  commitIfAutoCommit conn
+
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
+--   The entire batch operation is wrapped in a transaction in AutoCommit mode.
 deleteMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
-deleteMany conn entities = tryPE $ do
+deleteMany conn entities = handleTransaction conn $ tryPE $ do
   let eids = map idValue entities
   stmt <- prepare conn (deleteStmtFor @a)
   executeMany stmt (map (: []) eids)
-  commitIfAutoCommit conn
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection and a column type mapping as parameters.
