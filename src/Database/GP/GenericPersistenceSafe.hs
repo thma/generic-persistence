@@ -27,6 +27,8 @@ module Database.GP.GenericPersistenceSafe
     ConnectionPool,
     createConnPool,
     withResource,
+    withPreparedStatement,
+    withPreparedStatementMany,
     Entity (..),
     GToRow,
     GFromRow,
@@ -64,7 +66,7 @@ module Database.GP.GenericPersistenceSafe
   )
 where
 
-import           Control.Exception         (Exception, SomeException, try)
+import           Control.Exception         (Exception, SomeException, bracket, try)
 import           Control.Monad             (when)
 import           Data.Convertible          (ConvertResult, Convertible)
 import           Data.Convertible.Base     (Convertible (safeConvert))
@@ -73,7 +75,11 @@ import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
-import           Database.HDBC
+import           Database.HDBC             (IConnection (runRaw),
+                                             Statement, SqlValue, commit, executeMany, 
+                                             finish, fromSql, prepare, 
+                                             quickQuery, quickQuery', rollback, run,
+                                             toSql)
 import           Language.Haskell.TH.Quote (QuasiQuoter)
 import           Text.RawString.QQ         (r)
 
@@ -204,6 +210,25 @@ handleTransaction (Conn autoCommit innerConn) action =
       -- In ExplicitCommit mode, just execute the action
       action
 
+-- | A helper function that safely prepares and executes a statement using bracket for cleanup.
+--   The prepared statement is automatically finished after use, even if an exception occurs.
+withPreparedStatement :: Conn -> String -> (Statement -> IO a) -> IO a
+{- HLINT ignore withPreparedStatement "Eta reduce" -}
+withPreparedStatement conn stmt action =
+  bracket
+    (prepare conn stmt)     -- acquire resource
+    finish                  -- release resource
+    action                  -- use resource
+
+-- | A helper function for executing many statements with proper cleanup.
+--   The prepared statement is automatically finished after use.
+withPreparedStatementMany :: Conn -> String -> [[SqlValue]] -> IO ()
+withPreparedStatementMany conn stmt values =
+  bracket
+    (prepare conn stmt)          -- acquire resource
+    finish                       -- release resource
+    (`executeMany` values)       -- use resource
+
 -- | A function that explicitely inserts an entity into a database.
 --   The function takes an HDBC connection and an entity as parameters.
 --   The entity, as retrieved from the database, is returned as a Right value if the entity was successfully inserted.
@@ -248,12 +273,12 @@ tryPE action = do
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The insert-statement is compiled only once and then executed for each entity.
 --   The entire batch operation is wrapped in a transaction in AutoCommit mode.
+--   Prepared statements are properly cleaned up using bracket pattern.
 insertMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
 insertMany conn entities = handleTransaction conn $ do
   eitherExUnit <- try $ do
     rows <- mapM (toRow conn) entities
-    stmt <- prepare conn (insertStmtFor @a)
-    executeMany stmt (map (removeAutoIncIdField @a) rows)
+    withPreparedStatementMany conn (insertStmtFor @a) (map (removeAutoIncIdField @a) rows)
   case eitherExUnit of
     Left ex -> return $ Left $ handleDuplicateInsert ex
     Right _ -> return $ Right ()
@@ -279,13 +304,13 @@ update conn entity = do
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The update-statement is compiled only once and then executed for each entity.
 --   The entire batch operation is wrapped in a transaction in AutoCommit mode.
+--   Prepared statements are properly cleaned up using bracket pattern.
 updateMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
 updateMany conn entities = handleTransaction conn $ tryPE $ do
   let eids = map idValue entities
   rows <- mapM (toRow conn) entities
-  stmt <- prepare conn (updateStmtFor @a)
   -- the update statement has one more parameter than the row: the id value for the where clause
-  executeMany stmt (zipWith (\l x -> l ++ [x]) rows eids)
+  withPreparedStatementMany conn (updateStmtFor @a) (zipWith (\l x -> l ++ [x]) rows eids)
 
 -- | A function that deletes an entity from a database.
 --   The function takes an HDBC connection and an entity as parameters.
@@ -322,21 +347,21 @@ deleteById conn idx = do
 -- | A function that deletes a list of entities from a database by their ids.
 --   The function takes an HDBC connection and a list of entity ids as parameters.
 --   The entire batch operation is wrapped in a transaction in AutoCommit mode.
+--   Prepared statements are properly cleaned up using bracket pattern.
 deleteManyById :: forall a fn id. (Entity a fn id) => Conn -> [id] -> IO (Either PersistenceException ())
-deleteManyById conn ids = handleTransaction conn $ tryPE $ do
-  stmt <- prepare conn (deleteStmtFor @a)
-  executeMany stmt (map ((: []) . toSql) ids)
+deleteManyById conn ids = handleTransaction conn $ tryPE $ 
+  withPreparedStatementMany conn (deleteStmtFor @a) (map ((: []) . toSql) ids)
 
 
 -- | A function that deletes a list of entities from a database.
 --   The function takes an HDBC connection and a list of entities as parameters.
 --   The delete-statement is compiled only once and then executed for each entity.
 --   The entire batch operation is wrapped in a transaction in AutoCommit mode.
+--   Prepared statements are properly cleaned up using bracket pattern.
 deleteMany :: forall a fn id. (Entity a fn id) => Conn -> [a] -> IO (Either PersistenceException ())
 deleteMany conn entities = handleTransaction conn $ tryPE $ do
   let eids = map idValue entities
-  stmt <- prepare conn (deleteStmtFor @a)
-  executeMany stmt (map (: []) eids)
+  withPreparedStatementMany conn (deleteStmtFor @a) (map (: []) eids)
 
 -- | set up a table for a given entity type. The table is dropped (if existing) and recreated.
 --   The function takes an HDBC connection and a column type mapping as parameters.

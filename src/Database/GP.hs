@@ -23,6 +23,8 @@ module Database.GP
     ConnectionPool,
     createConnPool,
     withResource,
+    withPreparedStatement,
+    withPreparedStatementMany,
     Entity (..),
     GToRow,
     GFromRow,

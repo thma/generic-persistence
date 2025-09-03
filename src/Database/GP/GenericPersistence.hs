@@ -25,6 +25,8 @@ module Database.GP.GenericPersistence
     ConnectionPool,
     createConnPool,
     withResource,
+    withPreparedStatement,
+    withPreparedStatementMany,
     Entity (..),
     GToRow,
     GFromRow,
@@ -65,7 +67,9 @@ import           Control.Exception
 import           Database.GP.Conn
 import           Database.GP.Entity
 import           Database.GP.GenericPersistenceSafe (PersistenceException,
-                                                     setupTable, sql)
+                                                     setupTable, sql,
+                                                     withPreparedStatement,
+                                                     withPreparedStatementMany)
 import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
