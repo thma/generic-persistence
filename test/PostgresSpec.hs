@@ -126,7 +126,9 @@ spec = do
       commit conn
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 3
-      head allPersons `shouldBe` bob
+      case allPersons of
+        (p:_) -> p `shouldBe` bob
+        []    -> expectationFailure "allPersons is empty"
       person' <- selectById conn (2 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just alice
       commit conn
@@ -154,7 +156,9 @@ spec = do
       commit conn
       allBooks <- select conn allEntries :: IO [Book]
       length allBooks `shouldBe` 3
-      head allBooks `shouldBe` hobbit
+      case allBooks of
+        (b:_) -> b `shouldBe` hobbit
+        []    -> expectationFailure "allBooks is empty"
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just hobbit
       commit conn

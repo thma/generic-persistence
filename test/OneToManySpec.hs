@@ -4,7 +4,6 @@ module OneToManySpec
   )
 where
 
-import           Data.Maybe                     (fromJust)
 import           Database.GP.GenericPersistence
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
@@ -55,12 +54,17 @@ instance Entity Author "authorID" Int where
 
   fromRow :: Conn -> [SqlValue] -> IO Author
   fromRow conn row = do
-    let authID = head row -- authorID is the first column
+    let authID = case row of
+                   (x:_) -> x
+                   []    -> error "fromRow: empty row" -- This should never happen in practice
     articlesBy <- select conn (field "authorId" =. authID) -- retrieve all articles by this author
     return rawAuthor {articles = articlesBy} -- add the articles to the author
     where
       rawAuthor = Author (col 0) (col 1) (col 2) [] -- create the author from row (w/o articles)
-      col i = fromSql (row !! i) -- helper function to convert SqlValue to Haskell type
+      col i = fromSql (atIndex i) -- helper function to convert SqlValue to Haskell type
+      atIndex n = case drop n row of
+                    (y:_) -> y
+                    []    -> error $ "fromRow: index " ++ show n ++ " out of bounds"
 
   toRow :: Conn -> Author -> IO [SqlValue]
   toRow conn a = do
@@ -123,5 +127,8 @@ spec = do
       length articles' `shouldBe` 3
 
       author2 <- selectById conn (2::Int) :: IO (Maybe Author)
-      fromJust author2 `shouldBe` arthur
-      length (articles $ fromJust author2) `shouldBe` 2
+      case author2 of
+        Just auth -> do
+          auth `shouldBe` arthur
+          length (articles auth) `shouldBe` 2
+        Nothing -> expectationFailure "author2 is Nothing"

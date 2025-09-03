@@ -125,7 +125,9 @@ spec = do
       runRaw conn "INSERT INTO Person (personID, name, age, address) VALUES (3, \"Frank\", 56, \"7 West Street\");"
       allPersons <- select conn allEntries :: IO [Person]
       length allPersons `shouldBe` 3
-      head allPersons `shouldBe` bob
+      case allPersons of
+        (p:_) -> p `shouldBe` bob
+        []    -> expectationFailure "allPersons is empty"
       person' <- selectById conn (1 :: Int) :: IO (Maybe Person)
       person' `shouldBe` Just bob
     it "retrieves the number of selected Entities" $ do
@@ -158,7 +160,9 @@ spec = do
       runRaw conn "INSERT INTO BOOK_TBL (bookId, bookTitle, bookAuthor, bookYear, bookCategory) VALUES (3, \"Smith of Wootton Major\", \"J.R.R. Tolkien\", 1967, 0);"
       allBooks <- select conn allEntries :: IO [Book]
       length allBooks `shouldBe` 3
-      head allBooks `shouldBe` hobbit
+      case allBooks of
+        (b:_) -> b `shouldBe` hobbit
+        []    -> expectationFailure "allBooks is empty"
       book' <- selectById conn (1 :: Int) :: IO (Maybe Book)
       book' `shouldBe` Just hobbit
     it "select returns Nothing if no Entity was found" $ do

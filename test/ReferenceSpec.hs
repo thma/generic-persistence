@@ -57,10 +57,16 @@ instance Entity Article "articleID" Int where
 
   fromRow :: Conn -> [SqlValue] -> IO Article
   fromRow conn row = do
-    let fkValue = fromSql (row !! 2) :: Int
-    authorById <- fromJust <$> selectById conn fkValue -- load author by foreign key
+    let fkValue = fromSql (atIndex 2) :: Int
+    maybeAuthor <- selectById conn fkValue -- load author by foreign key
+    let authorById = case maybeAuthor of
+                       Just a  -> a
+                       Nothing -> error $ "fromRow: author not found for id " ++ show fkValue
     return $ rawArticle {author = authorById} -- add author to article
     where
+      atIndex n = case drop n row of
+                    (y:_) -> y
+                    []    -> error $ "fromRow: index " ++ show n ++ " out of bounds"
       rawArticle =
         Article
           (col 0)
@@ -68,7 +74,7 @@ instance Entity Article "articleID" Int where
           (Author (col 2) "" "")
           (col 3) -- using a dummy author
         where
-          col i = fromSql (row !! i)
+          col i = fromSql (atIndex i)
 
   toRow :: Conn -> Article -> IO [SqlValue]
   toRow conn a = do

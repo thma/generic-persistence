@@ -68,16 +68,22 @@ spec = do
       driverName `shouldBe` "sqlite3"
 
       let clientVer = hdbcClientVer conn
-      head clientVer `shouldBe` '3'
+      case clientVer of
+        (c:_) -> c `shouldBe` '3'
+        []    -> expectationFailure "clientVer is empty"
 
       let proxiedClient = proxiedClientName conn
       proxiedClient `shouldBe` "sqlite3"
 
       let proxiedClientVerion = proxiedClientVer conn
-      head proxiedClientVerion `shouldBe` '3'
+      case proxiedClientVerion of
+        (c:_) -> c `shouldBe` '3'
+        []    -> expectationFailure "proxiedClientVerion is empty"
 
       let serverVer = dbServerVer conn
-      head serverVer `shouldBe` '3'
+      case serverVer of
+        (c:_) -> c `shouldBe` '3'
+        []    -> expectationFailure "serverVer is empty"
 
       let txSupport = dbTransactionSupport conn
       txSupport `shouldBe` True

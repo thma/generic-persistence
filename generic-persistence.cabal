@@ -68,6 +68,7 @@ test-suite generic-persistence-test
       DemoSpec
       EmbeddedSpec
       EnumSpec
+      ErrorRecoverySpec
       ExceptionsSpec
       GenericPersistenceSpec
       OneToManySafeSpec

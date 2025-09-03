@@ -61,7 +61,9 @@ spec = do
       conn <- prepareDB
       one <- select conn (nameField =. "Bob" &&. ageField =. (36 :: Int))
       length one `shouldBe` 1
-      head one `shouldBe` bob
+      case one of
+        (p:_) -> p `shouldBe` bob
+        []    -> expectationFailure "one is empty"
       commit conn
     -- TODO: FIXME
     it "supports disjunction with ||." $ do
@@ -125,7 +127,9 @@ spec = do
       conn <- prepareDB
       charlie' <- select conn (byId "3") :: IO [Person]
       length charlie' `shouldBe` 1
-      head charlie' `shouldBe` charlie
+      case charlie' of
+        (p:_) -> p `shouldBe` charlie
+        []    -> expectationFailure "charlie' is empty"
       commit conn
     it "supports ORDER BY" $ do
       conn <- prepareDB
@@ -151,7 +155,9 @@ spec = do
       _ <- insert conn dave
       limitedPersons <- select @Person conn (allEntries `limitOffset` (2, 1))
       length limitedPersons `shouldBe` 1
-      head limitedPersons `shouldBe` charlie
+      case limitedPersons of
+        (p:_) -> p `shouldBe` charlie
+        []    -> expectationFailure "limitedPersons is empty"
       commit conn
     it "can create column types for a SqlLite" $ do
       columnTypeFor @SomeRecord defaultSqliteMapping "someRecordID" `shouldBe` "INTEGER"
