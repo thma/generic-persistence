@@ -7,6 +7,7 @@ where
 
 import           Control.Exception
 import           Control.Monad                   (forM_)
+import           Data.List                       (isInfixOf)
 import           Database.GP
 import           Database.HDBC
 import           Database.HDBC.Sqlite3
@@ -45,12 +46,12 @@ prepareDB = do
   setupTable @TestAutoInc conn defaultSqliteMapping
   return conn
 
--- prepareDBExplicit :: IO Conn
--- prepareDBExplicit = do
---   conn <- connect ExplicitCommit <$> connectSqlite3 ":memory:"
---   setupTable @TestEntity conn defaultSqliteMapping
---   setupTable @TestAutoInc conn defaultSqliteMapping
---   return conn
+prepareDBExplicit :: IO Conn
+prepareDBExplicit = do
+  conn <- connect ExplicitCommit <$> connectSqlite3 ":memory:"
+  setupTable @TestEntity conn defaultSqliteMapping
+  setupTable @TestAutoInc conn defaultSqliteMapping
+  return conn
 
 createTestEntities :: Int -> [TestEntity]
 createTestEntities n = [TestEntity i ("value" ++ show i) (i * 10) | i <- [1..n]]
@@ -95,24 +96,25 @@ spec = do
       updatedEntities <- select conn allEntries :: IO [TestEntity]
       all ((== "updated") . testValue) (filter ((<= 5) . testId) updatedEntities) `shouldBe` True
 
-    -- it "handles transaction rollback in ExplicitCommit mode" $ do
-    --   conn <- prepareDBExplicit
-    --   let entities = createTestEntities 3
+    it "handles transaction rollback in ExplicitCommit mode" $ do
+      conn <- prepareDBExplicit
+      let entities = createTestEntities 3
+      commit conn
       
-    --   -- Start a transaction, insert entities, then rollback
-    --   _ <- try @PersistenceException $ insertMany conn entities
-    --   rollback conn
+      -- Start a transaction, insert entities, then rollback
+      _ <- try @PersistenceException $ insertMany conn entities
+      rollback conn
       
-    --   -- Verify nothing was persisted
-    --   allEntities <- select conn allEntries :: IO [TestEntity]
-    --   length allEntities `shouldBe` 0
+      -- Verify nothing was persisted
+      allEntities <- select conn allEntries :: IO [TestEntity]
+      length allEntities `shouldBe` 0
       
-    --   -- Now commit a transaction
-    --   _ <- try @PersistenceException $ insertMany conn entities
-    --   commit conn
+      -- Now commit a transaction
+      _ <- try @PersistenceException $ insertMany conn entities
+      commit conn
       
-    --   allEntities' <- select conn allEntries :: IO [TestEntity]
-    --   length allEntities' `shouldBe` 3
+      allEntities' <- select conn allEntries :: IO [TestEntity]
+      length allEntities' `shouldBe` 3
 
   describe "Error Recovery - Prepared Statement Cleanup" $ do
     it "cleans up prepared statements on error using withPreparedStatement" $ do
@@ -177,23 +179,24 @@ spec = do
       remaining <- select conn allEntries :: IO [TestEntity]
       map testId remaining `shouldBe` [2, 4]
 
-    -- it "recovers from constraint violations in batch inserts" $ do
-    --   conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
-    --   -- Create table with a CHECK constraint
-    --   runRaw conn "CREATE TABLE testentity (testId INTEGER PRIMARY KEY, testValue TEXT, testCount INTEGER CHECK(testCount >= 0))"
+    it "recovers from constraint violations in batch inserts" $ do
+      conn <- connect AutoCommit <$> connectSqlite3 ":memory:"
+      -- Create table with a CHECK constraint
+      runRaw conn "CREATE TABLE TestEntity (testId INTEGER PRIMARY KEY, testValue TEXT, testCount INTEGER CHECK(testCount >= 0))"
+      commit conn
       
-    --   -- Try to insert with invalid data (negative count)
-    --   let invalidEntities = [TestEntity 1 "valid" 10, TestEntity 2 "invalid" (-5)]
-    --   result <- try $ insertMany conn invalidEntities
+      -- Try to insert with invalid data (negative count)
+      let invalidEntities = [TestEntity 1 "valid" 10, TestEntity 2 "invalid" (-5)]
+      result <- try $ insertMany conn invalidEntities
       
-    --   case result of
-    --     Left (DatabaseError msg) -> msg `shouldSatisfy` \m -> 
-    --       "constraint" `isInfixOf` m || "CHECK" `isInfixOf` m
-    --     _ -> expectationFailure "Expected DatabaseError for constraint violation"
-      
-    --   -- Verify no partial inserts occurred
-    --   entities <- select conn allEntries :: IO [TestEntity]
-    --   length entities `shouldBe` 0
+      case result of
+        Left (DatabaseError msg) -> msg `shouldSatisfy` \m -> 
+          "constraint" `isInfixOf` m || "CHECK" `isInfixOf` m
+        _ -> expectationFailure " Expected DatabaseError for constraint violation"
+
+      -- Verify no partial inserts occurred
+      entities <- select conn allEntries :: IO [TestEntity]
+      length entities `shouldBe` 0
 
   describe "Error Recovery - Connection Pool Resilience" $ do
     it "handles operations with connection pool correctly" $ do
