@@ -1,8 +1,8 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Database.GP.Query
-  ( WhereClauseExpr,
-    Field,
+  ( WhereClauseExpr(..),
+    Field(..),
     field,
     whereClauseExprToSql,
     whereClauseValues,
@@ -30,6 +30,13 @@ module Database.GP.Query
     limit,
     limitOffset,
     NonEmpty (..),
+    JoinType (..),
+    JoinCondition (..),
+    innerJoin,
+    leftJoin,
+    rightJoin,
+    fullJoin,
+    qualifiedField,
   )
 where
 
@@ -53,6 +60,19 @@ import           Database.HDBC      (SqlValue, toSql)
 data CompareOp = Eq | Gt | Lt | GtEq | LtEq | NotEq | Like
 
 data Field = Field [String] String
+  deriving (Show, Eq)
+
+data JoinType = InnerJoin | LeftJoin | RightJoin | FullJoin
+  deriving (Show, Eq)
+
+data JoinCondition = JoinCondition
+  { joinType :: JoinType,
+    joinTable :: String,
+    joinAlias :: Maybe String,
+    leftField :: Field,
+    rightField :: Field
+  }
+  deriving (Show, Eq)
 
 data WhereClauseExpr
   = Where Field CompareOp SqlValue
@@ -68,6 +88,7 @@ data WhereClauseExpr
   | OrderBy WhereClauseExpr (NonEmpty (Field, SortOrder))
   | Limit WhereClauseExpr Int
   | LimitOffset WhereClauseExpr Int Int
+  | Join WhereClauseExpr [JoinCondition]
 
 data SortOrder = ASC | DESC
   deriving (Show)
@@ -151,6 +172,7 @@ whereClauseExprToSql (OrderBy clause pairs) = whereClauseExprToSql @a clause ++ 
     renderedPairs ne = intercalate ", " (NE.toList (NE.map (\(f, order) -> columnToSql @a f ++ " " ++ show order) ne))
 whereClauseExprToSql (Limit clause x) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show x
 whereClauseExprToSql (LimitOffset clause offset lim) = whereClauseExprToSql @a clause ++ " LIMIT " ++ show lim ++ " OFFSET " ++ show offset
+whereClauseExprToSql (Join clause _joins) = whereClauseExprToSql @a clause
 
 opToSql :: CompareOp -> String
 opToSql Eq    = "="
@@ -185,6 +207,26 @@ whereClauseValues ByIdColumn = []
 whereClauseValues (OrderBy clause _) = whereClauseValues clause
 whereClauseValues (Limit clause _) = whereClauseValues clause
 whereClauseValues (LimitOffset clause _ _) = whereClauseValues clause
+whereClauseValues (Join clause _) = whereClauseValues clause
 
 params :: Int -> [String]
 params n = replicate n "?"
+
+qualifiedField :: String -> String -> Field
+qualifiedField table fieldName = Field [] (table ++ "." ++ fieldName)
+
+innerJoin :: WhereClauseExpr -> String -> Maybe String -> Field -> Field -> WhereClauseExpr
+innerJoin expr table alias left right = 
+  Join expr [JoinCondition InnerJoin table alias left right]
+
+leftJoin :: WhereClauseExpr -> String -> Maybe String -> Field -> Field -> WhereClauseExpr
+leftJoin expr table alias left right = 
+  Join expr [JoinCondition LeftJoin table alias left right]
+
+rightJoin :: WhereClauseExpr -> String -> Maybe String -> Field -> Field -> WhereClauseExpr
+rightJoin expr table alias left right = 
+  Join expr [JoinCondition RightJoin table alias left right]
+
+fullJoin :: WhereClauseExpr -> String -> Maybe String -> Field -> Field -> WhereClauseExpr
+fullJoin expr table alias left right = 
+  Join expr [JoinCondition FullJoin table alias left right]

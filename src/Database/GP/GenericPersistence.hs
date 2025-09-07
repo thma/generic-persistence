@@ -60,6 +60,13 @@ module Database.GP.GenericPersistence
     limit,
     limitOffset,
     NonEmpty (..),
+    JoinType (..),
+    JoinCondition (..),
+    innerJoin,
+    leftJoin,
+    rightJoin,
+    fullJoin,
+    qualifiedField,
   )
 where
 
@@ -73,7 +80,7 @@ import           Database.GP.GenericPersistenceSafe (PersistenceException,
 import qualified Database.GP.GenericPersistenceSafe as GpSafe
 import           Database.GP.SqlGenerator
 import           Database.GP.TypeInfo
-import           Database.HDBC
+import           Database.HDBC              (SqlValue)
 
 -- |
 -- This module defines RDBMS Persistence operations for Record Data Types that are instances of 'Data'.

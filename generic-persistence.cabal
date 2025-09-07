@@ -71,6 +71,7 @@ test-suite generic-persistence-test
       ErrorRecoverySpec
       ExceptionsSpec
       GenericPersistenceSpec
+      JoinSpec
       OneToManySafeSpec
       OneToManySpec
       PostgresQuerySpec
@@ -79,6 +80,7 @@ test-suite generic-persistence-test
       ReferenceSpec
       SelfReferenceSpec
       SpecHook
+      SqlGeneratorSpec
       Paths_generic_persistence
   hs-source-dirs:
       test

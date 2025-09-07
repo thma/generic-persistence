@@ -4,7 +4,6 @@ module ReferenceSpec
   )
 where
 
-import           Data.Maybe
 import           Database.GP.GenericPersistence
 import           Database.HDBC
 import           Database.HDBC.Sqlite3

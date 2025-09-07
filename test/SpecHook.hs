@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module SpecHook where
+module SpecHook (hook) where
 -- | This module is a hook for Hspec to use the JUnit formatter.
 -- | It is used to generate JUnit XML reports for the test suite.
 

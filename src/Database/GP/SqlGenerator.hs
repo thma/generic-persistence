@@ -6,6 +6,7 @@ module Database.GP.SqlGenerator
     updateStmtFor,
     upsertStmtFor,
     selectFromStmt,
+    selectFromStmtWithJoins,
     countStmtFor,
     deleteStmtFor,
     createTableStmtFor,
@@ -41,12 +42,24 @@ module Database.GP.SqlGenerator
     defaultSqliteMapping,
     defaultPostgresMapping,
     ColumnTypeMapping,
+    JoinType (..),
+    JoinCondition (..),
+    innerJoin,
+    leftJoin,
+    rightJoin,
+    fullJoin,
+    qualifiedField,
   )
 where
 
 import           Data.List          (intercalate)
 import           Database.GP.Entity
-import           Database.GP.Query
+import           Database.GP.Query  (WhereClauseExpr(..), Field(..), JoinCondition(..), JoinType(..), 
+                                     SortOrder(..), NonEmpty(..), field, whereClauseValues, whereClauseExprToSql,
+                                     (&&.), (||.), (=.), (>.), (<.), (>=.), (<=.), (<>.), like, between,
+                                     in', isNull, not', sqlFun, allEntries, byId, byIdColumn, 
+                                     orderBy, limit, limitOffset, innerJoin, leftJoin, rightJoin, 
+                                     fullJoin, qualifiedField, params, idColumn)
 
 -- |
 --  This module defines some basic SQL statements for Record Data Types that are instances of 'Entity'.
@@ -130,14 +143,64 @@ updateStmtFor =
 -- | A function that returns an SQL select statement for an entity. Type 'a' must be an instance of Entity.
 --   The function takes a where clause expression as parameter. This expression is used to filter the result set.
 selectFromStmt :: forall a fn id. (Entity a fn id) => WhereClauseExpr -> String
-selectFromStmt whereClauseExpr =
+selectFromStmt whereClauseExpr = 
+  case extractJoins whereClauseExpr of
+    (clause, []) -> 
+      "SELECT "
+        ++ intercalate ", " (columnNamesFor @a)
+        ++ " FROM "
+        ++ tableName @a
+        ++ " WHERE "
+        ++ whereClauseExprToSql @a clause
+        ++ ";"
+    (clause, joins) -> selectFromStmtWithJoins @a joins clause
+
+-- | Extract JOIN conditions from a WHERE clause expression
+extractJoins :: WhereClauseExpr -> (WhereClauseExpr, [JoinCondition])
+extractJoins (Join clause joins) = (clause, joins)
+extractJoins (OrderBy (Join clause joins) order) = (OrderBy clause order, joins)
+extractJoins (Limit (Join clause joins) lim) = (Limit clause lim, joins)
+extractJoins (LimitOffset (Join clause joins) offset lim) = (LimitOffset clause offset lim, joins)
+extractJoins expr = (expr, [])
+
+-- | A function that returns an SQL select statement with JOIN support
+selectFromStmtWithJoins :: forall a fn id. (Entity a fn id) => [JoinCondition] -> WhereClauseExpr -> String
+selectFromStmtWithJoins joins whereClauseExpr =
   "SELECT "
-    ++ intercalate ", " (columnNamesFor @a)
+    ++ intercalate ", " (qualifiedColumns @a ++ joinColumns joins)
     ++ " FROM "
     ++ tableName @a
+    ++ joinClauses joins
     ++ " WHERE "
     ++ whereClauseExprToSql @a whereClauseExpr
     ++ ";"
+  where
+    qualifiedColumns :: forall b fnb idb. (Entity b fnb idb) => [String]
+    qualifiedColumns = map (\col -> tableName @b ++ "." ++ col) (columnNamesFor @b)
+    
+    joinColumns :: [JoinCondition] -> [String]
+    joinColumns = concatMap (\jc -> 
+      case joinAlias jc of
+        Just alias -> [alias ++ ".*"]
+        Nothing -> [joinTable jc ++ ".*"])
+    
+    joinClauses :: [JoinCondition] -> String
+    joinClauses = concatMap renderJoin
+    
+    renderJoin :: JoinCondition -> String
+    renderJoin jc = " " ++ joinTypeToSql (joinType jc) ++ " " ++ joinTable jc ++ 
+      maybe "" (\alias -> " AS " ++ alias) (joinAlias jc) ++
+      " ON " ++ renderField (leftField jc) ++ " = " ++ renderField (rightField jc)
+    
+    renderField :: Field -> String
+    renderField (Field [] name) = name
+    renderField (Field funs name) = foldr (\f acc -> f ++ "(" ++ acc ++ ")") name funs
+    
+    joinTypeToSql :: JoinType -> String
+    joinTypeToSql InnerJoin = "INNER JOIN"
+    joinTypeToSql LeftJoin = "LEFT JOIN"
+    joinTypeToSql RightJoin = "RIGHT JOIN"
+    joinTypeToSql FullJoin = "FULL OUTER JOIN"
 
 -- | A function that returns an SQL count statement for an entity. Type 'a' must be an instance of Entity.
 --   The function takes a where clause expression as parameter. This expression is used to filter the result set.

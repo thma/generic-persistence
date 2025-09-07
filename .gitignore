@@ -8,3 +8,4 @@ dist-newstyle/
 .DS_Store
 junit.xml
 CL*.md
+coverage-report/
